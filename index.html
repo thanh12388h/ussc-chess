@@ -578,7 +578,7 @@
 <body>
 
 <!-- ==================== LOGIN PAGE ==================== -->
-<div class="page active" id="page-login">
+<div class="page" id="page-login">
   <div class="login-card anim-fade">
     <div class="chess-icon">🔐</div>
     <div class="logo" style="font-size:2rem;">Admin Login</div>
@@ -599,7 +599,7 @@
 </div>
 
 <!-- ==================== PAGE: HOME ==================== -->
-<div class="page" id="page-home">
+<div class="page active" id="page-home">
   <div class="card anim-fade" style="text-align:center;">
     <div class="chess-icon">♟️</div>
     <div class="logo">USSC Chess</div>
@@ -779,7 +779,10 @@
     <div style="text-align:center; margin-bottom:20px;">
       <div class="logo" style="font-size:2rem;">Admin Panel</div>
       <div class="subtitle">USSC Chess Tournament</div>
-      <button class="btn btn-sm btn-outline" onclick="handleAdminLogout()" style="margin-top:12px; max-width:120px; margin-left:auto; margin-right:auto; display:block;">🚪 Đăng Xuất</button>
+      <div style="display:flex; justify-content:center; gap:10px; flex-wrap:wrap; margin-top:12px;">
+        <button type="button" class="btn btn-outline btn-sm" onclick="showPage('page-home'); handleAdminLogout()">← Trang Chủ</button>
+        <button type="button" class="btn btn-sm btn-outline" onclick="handleAdminLogout()">🚪 Đăng Xuất</button>
+      </div>
     </div>
     <div class="nav-pills">
       <button class="nav-pill active" onclick="adminTab('players')" id="tab-players">👥 Người Chơi</button>
@@ -918,6 +921,7 @@ function handleAdminLogin() {
     } else {
       alert('❌ Tên đăng nhập hoặc mật khẩu không chính xác');
     }
+    return;
   }
 }
 
