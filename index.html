@@ -713,6 +713,18 @@
       <div class="chess-board" id="player-chess-board"></div>
     </div>
 
+    <div style="font-size:0.9rem; color:var(--muted); font-family:'Space Mono',monospace; margin-bottom:14px; text-align:center;">
+      Thời gian còn lại: <span id="player-auction-timer" style="color:var(--gold);">3:00</span>
+    </div>
+    <div class="bet-controls">
+      <input type="number" id="player-bet-input" class="bet-input" min="50" max="500" value="50" placeholder="Số tiền cược">
+      <button class="btn btn-blue btn-sm" onclick="placeAuctionBid()">💰 Cược</button>
+      <button class="btn btn-outline btn-sm" onclick="passAuctionBid()">⛔ Pass</button>
+    </div>
+    <div id="player-bid-status" style="font-size:0.85rem; color:var(--muted); font-family:'Space Mono',monospace; margin-bottom:16px; text-align:center;">
+      Chưa đặt cược. Vui lòng bet hoặc pass khi phiên đấu giá bắt đầu.
+    </div>
+
     <hr class="divider">
 
     <div class="answer-input-group">
@@ -724,6 +736,15 @@
     </div>
 
     <button class="btn btn-gold" onclick="submitAuctionAnswer()" style="margin-top:16px;">✅ Nộp Đáp Án</button>
+
+    <div id="player-round-result" class="result-card" style="display:none; margin-top:20px;">
+      <div style="font-size:0.9rem; color:var(--muted); text-transform:uppercase; letter-spacing:0.15em;">Kết quả vòng</div>
+      <div class="result-answer" id="player-round-result-text">...</div>
+      <div class="result-item"><span>Đáp án chính xác</span><strong id="player-correct-answer"></strong></div>
+      <div class="result-item"><span>Kết quả nhóm</span><strong id="player-round-result-status"></strong></div>
+      <div class="result-item"><span>Điểm thay đổi</span><strong id="player-round-result-delta"></strong></div>
+    </div>
+
     <button class="btn btn-outline" onclick="showPage('page-home')" style="margin-top:8px;">← Trang Chủ</button>
   </div>
 </div>
@@ -824,11 +845,12 @@
             <div style="font-family:'Bebas Neue',sans-serif; font-size:2rem; color:var(--gold);" id="auction-bet-range">50 – 200 ĐP</div>
           </div>
           <div class="chess-board" id="auction-board-display"></div>
-          <div style="margin-top:12px;">
-            <button class="btn btn-gold btn-sm" onclick="revealAnswerAdmin()">🎯 Mở Câu & Nhập Đáp Án</button>
-          </div>
-          <div style="margin-top:8px;">
-            <button class="btn btn-outline btn-sm" onclick="nextAuctionRound()">⏭ Vòng Tiếp Theo</button>
+          <div id="auction-round-status" class="alert" style="margin-top:12px;">Phiên đấu giá chưa bắt đầu</div>
+          <div style="margin-top:12px; display:flex; gap:8px; flex-wrap:wrap; justify-content:center;">
+            <button class="btn btn-green btn-sm" onclick="startAuctionTimer()">▶ Bắt Đầu</button>
+            <button class="btn btn-outline btn-sm" onclick="stopAuctionTimer()">⏸ Dừng</button>
+            <button class="btn btn-purple btn-sm" onclick="publishAuctionResults()">🔒 Chốt Kết Quả</button>
+            <button class="btn btn-outline btn-sm" onclick="resetAuctionRound()">🔄 Reset</button>
           </div>
         </div>
         <div class="panel">
@@ -836,11 +858,7 @@
           <div style="font-family:'Space Mono',monospace; font-size:0.7rem; color:var(--muted); margin-bottom:12px;">Thời gian thảo luận: <span id="auction-timer" style="color:var(--gold);">3:00</span></div>
           <div id="team-bid-list"></div>
           <hr class="divider">
-          <div style="display:flex; gap:8px; flex-wrap:wrap;">
-            <button class="btn btn-green btn-sm" onclick="startAuctionTimer()">▶ Bắt Đầu</button>
-            <button class="btn btn-outline btn-sm" onclick="stopAuctionTimer()">⏸ Dừng</button>
-            <button class="btn btn-outline btn-sm" onclick="resetAuctionTimer()">🔄 Reset</button>
-          </div>
+          <div style="font-size:0.85rem; color:var(--muted);">Khi phiên dừng hoặc hết giờ, nhấn "Chốt Kết Quả" để công bố và cập nhật điểm.</div>
         </div>
       </div>
     </div>
@@ -967,10 +985,15 @@ let quizState = {
 };
 let auctionState = {
   round: 0,
+  running: false,
+  review: false,
+  finalized: false,
   timerInterval: null,
   timeLeft: 180,
   bids: {},
   answers: {},
+  teamReview: {},
+  finalResults: {},
   roundData: [
     {gm:"Kasparov vs Topalov", ctx:"Wijk aan Zee 1999 · Nước 24", fen:"rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1", answer:"e5", range:"50–200"},
     {gm:"Bobby Fischer vs Robert Byrne", ctx:"US Championship 1963 · Nước 11", fen:"rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2", answer:"Nf3", range:"50–200"},
@@ -995,6 +1018,17 @@ function getTest2Players() {
   try { return JSON.parse(localStorage.getItem(STORAGE_KEYS.test2_players) || '[]'); } catch { return []; }
 }
 function saveTest2Players(p) { localStorage.setItem(STORAGE_KEYS.test2_players, JSON.stringify(p)); }
+function saveAuctionState() { localStorage.setItem(STORAGE_KEYS.auction_state, JSON.stringify(auctionState)); }
+function loadAuctionState() {
+  const stored = localStorage.getItem(STORAGE_KEYS.auction_state);
+  if (!stored) return;
+  try {
+    const parsed = JSON.parse(stored);
+    auctionState = Object.assign({}, auctionState, parsed);
+  } catch (e) {
+    console.warn('Cannot parse auction state', e);
+  }
+}
 function isQuizOpen() { return localStorage.getItem(STORAGE_KEYS.quiz_open) === '1'; }
 
 function showPage(id) {
@@ -1003,7 +1037,8 @@ function showPage(id) {
   if (!target) return;
   target.classList.add('active');
   if (id === 'page-leaderboard') renderLeaderboard();
-  if (id === 'page-admin') { if (!checkAdminAccess()) return; adminRefreshPlayers(); adminRefreshTeams(); updateAdminStats(); }
+  if (id === 'page-admin') { if (!checkAdminAccess()) return; adminRefreshPlayers(); adminRefreshTeams(); updateAdminStats(); updateAuctionStatus(); }
+  if (id === 'page-auction-player') { loadAuctionState(); renderAuctionPlayerState(); }
 }
 
 function adminTab(tab) {
@@ -1013,7 +1048,7 @@ function adminTab(tab) {
     const btn = document.getElementById('tab-'+t);
     if (btn) btn.classList.toggle('active', t===tab);
   });
-  if (tab === 'auction') renderTeamBidList();
+  if (tab === 'auction') { renderTeamBidList(); updateAuctionStatus(); }
   if (tab === 'result') renderFinalResult();
   if (tab === 'teams') adminRefreshTeams();
 }
@@ -1233,22 +1268,103 @@ function startAuctionPlayer() {
   document.getElementById('player-answer-input').className = 'answer-input';
   renderChessBoard('player-chess-board', rd.fen);
   showPage('page-auction-player');
+  renderAuctionPlayerState();
+}
+
+function placeAuctionBid() {
+  if (!auctionState.running) { alert('⚠ Phiên đấu giá chưa bắt đầu hoặc đã dừng.'); return; }
+  const amount = parseInt(document.getElementById('player-bet-input').value) || 0;
+  const team = currentTest2Player.team;
+  const rd = auctionState.roundData[auctionState.round];
+  const parts = rd.range.split('–');
+  const minBet = parseInt(parts[0]) || 50;
+  const maxBet = Math.min(parseInt(parts[1]) || 500, getTeamTotalScore(team));
+  if (amount < minBet || amount > maxBet) {
+    alert(`Cược phải từ ${minBet} đến ${maxBet} ĐP`);
+    return;
+  }
+  auctionState.bids[team] = { amount, passed: false };
+  auctionState.teamReview[team] = { status: 'auto', delta: 0 };
+  saveAuctionState();
+  renderAuctionPlayerState();
+  renderTeamBidList();
+}
+
+function passAuctionBid() {
+  if (!auctionState.running) { alert('⚠ Phiên đấu giá chưa bắt đầu hoặc đã dừng.'); return; }
+  const team = currentTest2Player.team;
+  auctionState.bids[team] = { amount: 0, passed: true };
+  auctionState.teamReview[team] = { status: 'pass', delta: 0 };
+  saveAuctionState();
+  renderAuctionPlayerState();
+  renderTeamBidList();
 }
 
 function submitAuctionAnswer() {
+  if (!auctionState.running) { alert('⚠ Phiên đấu giá chưa bắt đầu hoặc đã dừng.'); return; }
   const input = document.getElementById('player-answer-input');
   const answer = input.value.trim().toUpperCase();
   if (!answer) { alert('⚠ Vui lòng nhập đáp án'); return; }
 
-  const rd = auctionState.roundData[auctionState.round];
-  if (answer === rd.answer) {
-    input.className = 'answer-input correct';
-    auctionState.answers[currentTest2Player.team] = answer;
-    alert('✅ Đáp án chính xác! Nhóm của bạn sẽ được cộng điểm.');
+  auctionState.answers[currentTest2Player.team] = answer;
+  auctionState.teamReview[currentTest2Player.team] = auctionState.teamReview[currentTest2Player.team] || { status: 'auto', delta: 0 };
+  saveAuctionState();
+  renderAuctionPlayerState();
+  alert('✅ Đã nộp đáp án. Kết quả sẽ hiện khi Admin chốt vòng.');
+}
+
+function getTeamTotalScore(teamName) {
+  const teams = getTeams();
+  const team = teams.find(t => t.name === teamName);
+  return team ? team.totalScore : 0;
+}
+
+function renderAuctionPlayerState() {
+  const timerEl = document.getElementById('player-auction-timer');
+  const statusEl = document.getElementById('player-bid-status');
+  const resultCard = document.getElementById('player-round-result');
+  const rd = auctionState.roundData[auctionState.round] || auctionState.roundData[0];
+  const answerInput = document.getElementById('player-answer-input');
+  const bidInput = document.getElementById('player-bet-input');
+  const team = currentTest2Player?.team;
+  if (timerEl) timerEl.textContent = formatTime(auctionState.timeLeft);
+
+  if (!team) return;
+  const bid = auctionState.bids[team];
+  if (auctionState.finalized) {
+    statusEl.textContent = 'Phiên đấu giá đã chốt. Kết quả được hiển thị bên dưới.';
+    answerInput.disabled = true;
+    bidInput.disabled = true;
+  } else if (auctionState.running) {
+    statusEl.textContent = bid ? (bid.passed ? 'Bạn đã chọn PASS.' : `Bạn đã cược ${bid.amount} ĐP.`) : 'Phiên đấu giá đang diễn ra. Vui lòng đặt cược và nộp đáp án.';
+    answerInput.disabled = false;
+    bidInput.disabled = false;
+  } else if (auctionState.review) {
+    statusEl.textContent = 'Phiên đã dừng, chờ Admin chốt kết quả.';
+    answerInput.disabled = true;
+    bidInput.disabled = true;
   } else {
-    input.className = 'answer-input wrong';
-    alert('❌ Đáp án không chính xác.');
+    statusEl.textContent = 'Chờ Admin bắt đầu phiên đấu giá.';
+    answerInput.disabled = true;
+    bidInput.disabled = true;
   }
+
+  if (auctionState.finalized && auctionState.finalResults && auctionState.finalResults[team]) {
+    const result = auctionState.finalResults[team];
+    resultCard.style.display = 'block';
+    document.getElementById('player-round-result-text').textContent = `Vòng ${auctionState.round + 1}`;
+    document.getElementById('player-correct-answer').textContent = result.correctAnswer || rd.answer;
+    document.getElementById('player-round-result-status').textContent = result.status === 'correct' ? 'ĐÚNG' : result.status === 'pass' ? 'PASS' : 'SAI';
+    document.getElementById('player-round-result-delta').textContent = `${result.delta >= 0 ? '+' : ''}${result.delta} ĐP`;
+  } else {
+    resultCard.style.display = 'none';
+  }
+}
+
+function formatTime(seconds) {
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  return `${m}:${String(s).padStart(2, '0')}`;
 }
 
 // ============================================================
@@ -1422,32 +1538,71 @@ function renderTeamBidList() {
   if(el) el.innerHTML = teams.map(t => {
     const bid = auctionState.bids[t.name];
     const answer = auctionState.answers[t.name];
+    const review = auctionState.teamReview[t.name] || { status: 'auto', delta: 0 };
     const rd = auctionState.roundData[round] || auctionState.roundData[0];
     const parts = rd.range.split('–');
-    const minBet = parseInt(parts[0])||50, maxBet = parseInt(parts[1])||500;
+    const minBet = parseInt(parts[0])||50;
+    const maxBet = Math.min(parseInt(parts[1])||500, t.totalScore);
     let statusClass = 'pending';
     let statusText = 'Chờ...';
-    if (answer) {
-      statusClass = answer === rd.answer ? 'correct' : 'wrong';
-      statusText = answer === rd.answer ? '✅' + answer : '❌' + answer;
-    } else if (bid) {
-      statusClass = bid.passed ? 'passed' : 'placed';
-      statusText = bid.passed ? 'PASS' : '💰' + bid.amount + 'ĐP';
+    if (auctionState.finalized) {
+      const result = auctionState.finalResults[t.name] || { status: 'pass', delta: 0 };
+      statusClass = result.status === 'correct' ? 'correct' : result.status === 'wrong' ? 'wrong' : 'passed';
+      statusText = result.status === 'correct' ? `✅ +${result.delta}` : result.status === 'wrong' ? `❌ ${result.delta}` : 'PASS';
+    } else if (auctionState.review) {
+      if (review.status === 'pass') {
+        statusClass = 'passed';
+        statusText = 'PASS';
+      } else if (review.status === 'correct') {
+        statusClass = 'correct';
+        statusText = `✅ ${review.delta}`;
+      } else if (review.status === 'wrong') {
+        statusClass = 'wrong';
+        statusText = `❌ ${review.delta}`;
+      } else if (answer) {
+        statusClass = answer.toUpperCase() === rd.answer.toUpperCase() ? 'correct' : 'wrong';
+        statusText = answer.toUpperCase() === rd.answer.toUpperCase() ? `✅ ${answer}` : `❌ ${answer}`;
+      } else if (bid) {
+        statusClass = bid.passed ? 'passed' : 'placed';
+        statusText = bid.passed ? 'PASS' : `💰 ${bid.amount} ĐP`;
+      }
+    } else {
+      if (answer) {
+        statusClass = 'pending';
+        statusText = `Đã nộp: ${answer}`;
+      } else if (bid) {
+        statusClass = bid.passed ? 'passed' : 'placed';
+        statusText = bid.passed ? 'PASS' : `💰 ${bid.amount} ĐP`;
+      }
     }
+
+    const reviewControls = auctionState.review && !auctionState.finalized ? `
+      <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-top:10px;">
+        <select id="review-status-${t.name.replace(/\s+/g,'_')}" style="padding:6px 8px; border-radius:8px; border:1px solid var(--border); background:var(--surface2); color:var(--white);">
+          <option value="auto" ${review.status==='auto'?'selected':''}>Tự động</option>
+          <option value="correct" ${review.status==='correct'?'selected':''}>Đúng</option>
+          <option value="wrong" ${review.status==='wrong'?'selected':''}>Sai</option>
+          <option value="pass" ${review.status==='pass'?'selected':''}>Pass</option>
+        </select>
+        <input type="number" id="review-delta-${t.name.replace(/\s+/g,'_')}" value="${review.delta || 0}" style="width:80px;padding:6px 8px;font-size:0.85rem;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--white);">
+        <button class="btn btn-sm btn-purple" onclick="updateTeamReview('${t.name}')">Lưu sửa</button>
+      </div>` : '';
+
     return `
-    <div class="team-bid-row" id="bid-row-${t.name.replace(' ','_')}">
+    <div class="team-bid-row" id="bid-row-${t.name.replace(/\s+/g,'_')}">
       <div>
         <div class="team-name" style="font-size:0.95rem;">${t.name}</div>
         <div style="font-family:'Space Mono',monospace;font-size:0.7rem;color:var(--muted);">${t.totalScore} ĐP</div>
       </div>
       <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
-        <input type="number" class="bet-input" id="bet-${t.name.replace(' ','_')}"
-          min="${minBet}" max="${Math.min(maxBet, t.totalScore)}" value="${minBet}"
+        <input type="number" class="bet-input" id="bet-${t.name.replace(/\s+/g,'_')}"
+          min="${minBet}" max="${maxBet}" value="${minBet}"
           style="width:80px;padding:6px 8px;font-size:0.85rem;">
         <button class="btn btn-blue btn-sm" onclick="placeBid('${t.name}')">Cược</button>
         <button class="btn btn-outline btn-sm" onclick="passRound('${t.name}')">Pass</button>
       </div>
       <span class="bid-status ${statusClass}">${statusText}</span>
+      ${reviewControls}
     </div>`;
   }).join('');
 
@@ -1461,66 +1616,142 @@ function renderTeamBidList() {
   }
 }
 
+function updateAuctionStatus() {
+  const statusEl = document.getElementById('auction-round-status');
+  if (!statusEl) return;
+  if (auctionState.running) {
+    statusEl.textContent = '⏱ Phiên đấu giá đang chạy. Người chơi có thể đặt cược và nộp đáp án.';
+    statusEl.style.borderColor = 'var(--green)';
+    statusEl.style.color = 'var(--green)';
+  } else if (auctionState.review) {
+    statusEl.textContent = '⏳ Phiên đã dừng. Chờ Admin chốt kết quả.';
+    statusEl.style.borderColor = 'var(--gold)';
+    statusEl.style.color = 'var(--gold)';
+  } else if (auctionState.finalized) {
+    statusEl.textContent = '✅ Kết quả đã chốt. Sẵn sàng vòng tiếp theo.';
+    statusEl.style.borderColor = 'var(--blue)';
+    statusEl.style.color = 'var(--blue)';
+  } else {
+    statusEl.textContent = 'Phiên đấu giá chưa bắt đầu.';
+    statusEl.style.borderColor = 'var(--border)';
+    statusEl.style.color = 'var(--muted)';
+  }
+}
+
 function placeBid(teamName) {
-  const key = teamName.replace(' ','_');
+  if (!auctionState.running) { alert('⚠ Phiên đấu giá chưa bắt đầu.'); return; }
+  const key = teamName.replace(/\s+/g,'_');
   const val = parseInt(document.getElementById('bet-'+key).value) || 0;
   const teams = getTeams();
   const team = teams.find(t=>t.name===teamName);
   if (!team) return;
   const rd = auctionState.roundData[auctionState.round] || auctionState.roundData[0];
   const parts = rd.range.split('–');
-  const minBet = parseInt(parts[0])||50, maxBet = parseInt(parts[1])||500;
-  if (val < minBet || val > Math.min(maxBet, team.totalScore)) {
-    alert(`Cược phải từ ${minBet} đến ${Math.min(maxBet, team.totalScore)} ĐP`); return;
+  const minBet = parseInt(parts[0])||50;
+  const maxBet = Math.min(parseInt(parts[1])||500, team.totalScore);
+  if (val < minBet || val > maxBet) {
+    alert(`Cược phải từ ${minBet} đến ${maxBet} ĐP`); return;
   }
   auctionState.bids[teamName] = { amount: val, passed: false };
+  auctionState.teamReview[teamName] = auctionState.teamReview[teamName] || { status:'auto', delta:0 };
+  saveAuctionState();
   renderTeamBidList();
 }
 
 function passRound(teamName) {
+  if (!auctionState.running) { alert('⚠ Phiên đấu giá chưa bắt đầu.'); return; }
   auctionState.bids[teamName] = { amount: 0, passed: true };
+  auctionState.teamReview[teamName] = { status:'pass', delta:0 };
+  saveAuctionState();
   renderTeamBidList();
 }
 
-function revealAnswerAdmin() {
-  const rd = auctionState.roundData[auctionState.round] || auctionState.roundData[0];
-  const answer = prompt(`🎯 ĐÁP ÁN CHÍNH XÁC VÒNG ${auctionState.round+1}:\n\n${rd.answer}\n\nNhóm trả lời ĐÚNG (cách nhau dấu phẩy):\n(VD: USSC 1,USSC 3 hoặc để trống nếu tất cả sai)`);
-  if (answer === null) return;
+function updateTeamReview(teamName) {
+  const statusEl = document.getElementById(`review-status-${teamName.replace(/\s+/g,'_')}`);
+  const deltaEl = document.getElementById(`review-delta-${teamName.replace(/\s+/g,'_')}`);
+  if (!statusEl || !deltaEl) return;
+  const status = statusEl.value;
+  const delta = parseInt(deltaEl.value) || 0;
+  auctionState.teamReview[teamName] = { status, delta };
+  saveAuctionState();
+  renderTeamBidList();
+}
 
-  const correctTeams = answer.split(',').map(s=>s.trim()).filter(Boolean);
+function publishAuctionResults() {
+  if (!auctionState.review) { alert('⚠ Vui lòng dừng phiên đấu giá trước khi chốt kết quả.'); return; }
+  const rd = auctionState.roundData[auctionState.round] || auctionState.roundData[0];
   const teams = getTeams();
+  auctionState.finalResults = {};
 
   teams.forEach(t => {
     const bid = auctionState.bids[t.name];
-    if (!bid || bid.passed) return;
-    if (correctTeams.includes(t.name)) {
-      t.totalScore += bid.amount * 2;
-      t.auctionScore = (t.auctionScore||0) + bid.amount * 2;
-      t.correctAnswers = (t.correctAnswers||0) + 1;
+    const answer = auctionState.answers[t.name] ? auctionState.answers[t.name].toUpperCase() : '';
+    const review = auctionState.teamReview[t.name] || { status:'auto', delta:0 };
+    let status = 'pass';
+    let delta = 0;
+
+    if (!bid || bid.passed) {
+      status = 'pass';
+      delta = 0;
     } else {
-      t.totalScore -= bid.amount;
-      t.auctionScore = (t.auctionScore||0) - bid.amount;
-      t.wrongAnswers = (t.wrongAnswers||0) + 1;
+      const autoCorrect = answer === rd.answer.toUpperCase();
+      if (review.status === 'auto') {
+        status = autoCorrect ? 'correct' : 'wrong';
+      } else {
+        status = review.status;
+      }
+      if (review.status !== 'auto') {
+        delta = review.delta;
+      } else if (status === 'correct') {
+        delta = bid.amount * 2;
+      } else if (status === 'wrong') {
+        delta = -bid.amount;
+      }
+    }
+
+    if (status !== 'pass') {
+      t.totalScore += delta;
+      t.auctionScore = (t.auctionScore||0) + delta;
+      if (status === 'correct') t.correctAnswers = (t.correctAnswers||0) + 1;
+      if (status === 'wrong') t.wrongAnswers = (t.wrongAnswers||0) + 1;
     }
     if (t.totalScore < 0) t.totalScore = 0;
+
+    auctionState.finalResults[t.name] = {
+      status,
+      delta,
+      correctAnswer: rd.answer,
+      submittedAnswer: answer,
+    };
   });
 
   saveTeams(teams);
-  auctionState.bids = {};
-  auctionState.answers = {};
+  auctionState.finalized = true;
+  auctionState.review = false;
+  saveAuctionState();
   adminRefreshTeams();
   renderTeamBidList();
-  alert(`✅ Đã cập nhật điểm!\nĐáp án: ${rd.answer}`);
-}
+  updateAdminStats();
+  renderAuctionPlayerState();
+  alert('✅ Đã chốt kết quả vòng đấu giá. Người chơi có thể xem điểm cập nhật.');
+
 
 function nextAuctionRound() {
   if (auctionState.round < auctionState.roundData.length - 1) {
     auctionState.round++;
+    auctionState.running = false;
+    auctionState.review = false;
+    auctionState.finalized = false;
+    auctionState.timeLeft = 180;
+    auctionState.timerInterval = null;
     auctionState.bids = {};
     auctionState.answers = {};
+    auctionState.teamReview = {};
+    auctionState.finalResults = {};
+    saveAuctionState();
     stopAuctionTimer();
-    resetAuctionTimer();
     renderTeamBidList();
+    updateAuctionStatus();
   } else {
     alert('🏁 Đã kết thúc tất cả ' + auctionState.roundData.length + ' vòng đấu giá!');
     adminTab('result');
@@ -1528,18 +1759,58 @@ function nextAuctionRound() {
 }
 
 function startAuctionTimer() {
-  if (auctionState.timerInterval) return;
+  if (auctionState.running) return;
+  auctionState.running = true;
+  auctionState.review = false;
+  auctionState.finalized = false;
+  auctionState.timeLeft = 180;
+  auctionState.finalResults = {};
+  auctionState.timerInterval = null;
+  saveAuctionState();
+  renderTeamBidList();
+  updateAuctionStatus();
+  renderAuctionPlayerState();
+
   auctionState.timerInterval = setInterval(() => {
     auctionState.timeLeft--;
     const m = Math.floor(auctionState.timeLeft/60);
     const s = auctionState.timeLeft%60;
     const el = document.getElementById('auction-timer');
     if(el) { el.textContent = `${m}:${String(s).padStart(2,'0')}`; el.style.color = auctionState.timeLeft<=30?'var(--red)':'var(--gold)'; }
-    if (auctionState.timeLeft <= 0) { stopAuctionTimer(); alert('⏰ Hết giờ thảo luận!'); }
+    saveAuctionState();
+    renderAuctionPlayerState();
+    if (auctionState.timeLeft <= 0) { stopAuctionTimer(); auctionState.review = true; saveAuctionState(); updateAuctionStatus(); renderTeamBidList(); renderAuctionPlayerState(); alert('⏰ Hết giờ thảo luận! Hãy chốt kết quả.'); }
   }, 1000);
 }
-function stopAuctionTimer() { clearInterval(auctionState.timerInterval); auctionState.timerInterval = null; }
-function resetAuctionTimer() { stopAuctionTimer(); auctionState.timeLeft = 180; const el=document.getElementById('auction-timer'); if(el) { el.textContent='3:00'; el.style.color='var(--gold)'; } }
+
+function stopAuctionTimer() {
+  clearInterval(auctionState.timerInterval);
+  auctionState.timerInterval = null;
+  auctionState.running = false;
+  auctionState.review = true;
+  saveAuctionState();
+  updateAuctionStatus();
+  renderTeamBidList();
+  renderAuctionPlayerState();
+}
+
+function resetAuctionRound() {
+  stopAuctionTimer();
+  auctionState.running = false;
+  auctionState.review = false;
+  auctionState.finalized = false;
+  auctionState.timeLeft = 180;
+  auctionState.bids = {};
+  auctionState.answers = {};
+  auctionState.teamReview = {};
+  auctionState.finalResults = {};
+  saveAuctionState();
+  const el = document.getElementById('auction-timer');
+  if(el) { el.textContent='3:00'; el.style.color='var(--gold)'; }
+  renderTeamBidList();
+  updateAuctionStatus();
+  renderAuctionPlayerState();
+}
 
 // ============================================================
 // FINAL RESULT
@@ -1573,6 +1844,31 @@ document.addEventListener('DOMContentLoaded', () => {
   if (sessionStorage.getItem('admin_logged_in') === '1') {
     isAdminLoggedIn = true;
   }
+  loadAuctionState();
+  updateAuctionStatus();
+  renderTeamBidList();
+
+  window.addEventListener('storage', (event) => {
+    if (event.key === STORAGE_KEYS.auction_state) {
+      loadAuctionState();
+      renderTeamBidList();
+      updateAuctionStatus();
+      if (document.getElementById('page-auction-player')?.classList.contains('active')) {
+        renderAuctionPlayerState();
+      }
+    }
+  });
+
+  setInterval(() => {
+    loadAuctionState();
+    if (document.getElementById('page-auction-player')?.classList.contains('active')) {
+      renderAuctionPlayerState();
+    }
+    if (document.getElementById('page-admin')?.classList.contains('active')) {
+      renderTeamBidList();
+      updateAuctionStatus();
+    }
+  }, 1000);
 });
 </script>
 </body>
