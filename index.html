@@ -593,8 +593,8 @@
       <label>Mật Khẩu</label>
       <input type="password" id="login-password" placeholder="••••••" autocomplete="off">
     </div>
-    <button class="btn btn-gold" onclick="handleAdminLogin()">🔓 Đăng Nhập</button>
-    <button class="btn btn-outline" onclick="showPage('page-home')" style="margin-top:8px;">← Trang Chủ</button>
+    <button type="button" class="btn btn-gold" onclick="handleAdminLogin()">🔓 Đăng Nhập</button>
+    <button type="button" class="btn btn-outline" onclick="showPage('page-home')" style="margin-top:8px;">← Trang Chủ</button>
   </div>
 </div>
 
@@ -892,8 +892,12 @@ function handleAdminLogin() {
   const errEl = document.getElementById('login-error');
 
   if (!username || !password) {
-    errEl.textContent = '⚠ Vui lòng điền tên đăng nhập và mật khẩu';
-    errEl.style.display = 'block';
+    if (errEl) {
+      errEl.textContent = '⚠ Vui lòng điền tên đăng nhập và mật khẩu';
+      errEl.style.display = 'block';
+    } else {
+      alert('⚠ Vui lòng điền tên đăng nhập và mật khẩu');
+    }
     return;
   }
 
@@ -908,8 +912,12 @@ function handleAdminLogin() {
     adminRefreshTeams();
     updateAdminStats();
   } else {
-    errEl.textContent = '❌ Tên đăng nhập hoặc mật khẩu không chính xác';
-    errEl.style.display = 'block';
+    if (errEl) {
+      errEl.textContent = '❌ Tên đăng nhập hoặc mật khẩu không chính xác';
+      errEl.style.display = 'block';
+    } else {
+      alert('❌ Tên đăng nhập hoặc mật khẩu không chính xác');
+    }
   }
 }
 
@@ -1847,6 +1855,9 @@ document.addEventListener('DOMContentLoaded', () => {
   loadAuctionState();
   updateAuctionStatus();
   renderTeamBidList();
+  window.showPage = showPage;
+  window.handleAdminLogin = handleAdminLogin;
+  window.handleAdminLogout = handleAdminLogout;
 
   window.addEventListener('storage', (event) => {
     if (event.key === STORAGE_KEYS.auction_state) {
