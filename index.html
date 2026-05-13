@@ -807,6 +807,7 @@
           <div class="alert" id="admin-quiz-status">Quiz chưa bắt đầu</div>
           <button class="btn btn-gold" onclick="adminOpenQuiz()" style="margin-bottom:8px">✅ Mở Quiz (Thi Đấu 1)</button>
           <button class="btn btn-outline" onclick="adminCloseQuiz()" style="margin-bottom:8px">🔒 Đóng Quiz</button>
+          <button class="btn btn-sm" style="background:#4CAF50;color:#fff;margin-bottom:8px;width:100%" onclick="shareQuizLink()" title="Sao chép liên kết">📋 Sao Chép Link Quiz</button>
           <hr class="divider">
           <div class="panel-title" style="font-size:1rem;">📊 Thống Kê</div>
           <div id="admin-stats" style="font-family:'Space Mono',monospace; font-size:0.8rem; line-height:2; color:var(--muted);"></div>
@@ -951,25 +952,47 @@ const STORAGE_KEYS = {
   test2_players: 'ussc_test2_players',
 };
 
-function getQueryParam(name) {
-  return new URLSearchParams(window.location.search).get(name);
+let cachedQuizOpen = false;
+let lastQuizCheckTime = 0;
+
+async function fetchQuizState() {
+  try {
+    const response = await fetch('/api/quiz-state');
+    if (response.ok) {
+      const data = await response.json();
+      cachedQuizOpen = data.quizOpen;
+      lastQuizCheckTime = Date.now();
+      return cachedQuizOpen;
+    }
+  } catch (e) {
+    console.warn('Cannot fetch quiz state from API', e);
+  }
+  return cachedQuizOpen;
 }
 
-function setQuizOpenShareParam(open) {
-  const params = new URLSearchParams(window.location.search);
-  if (open) {
-    params.set('quiz_open', '1');
-  } else {
-    params.delete('quiz_open');
+async function setQuizStateAPI(open) {
+  try {
+    const response = await fetch('/api/quiz-state', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ quizOpen: open })
+    });
+    if (response.ok) {
+      const data = await response.json();
+      cachedQuizOpen = data.quizOpen;
+      lastQuizCheckTime = Date.now();
+      return true;
+    }
+  } catch (e) {
+    console.warn('Cannot set quiz state via API', e);
   }
-  const newUrl = window.location.pathname + (params.toString() ? '?' + params.toString() : '');
-  history.replaceState(null, '', newUrl);
+  return false;
 }
 
 function refreshQuizOpenUI() {
   const status = document.getElementById('admin-quiz-status');
   if (!status) return;
-  if (isQuizOpen()) {
+  if (cachedQuizOpen) {
     status.textContent = '✅ Quiz đang MỞ – Người chơi có thể đăng ký';
     status.style.borderColor = 'var(--green)';
     status.style.color = 'var(--green)';
@@ -1070,7 +1093,10 @@ function loadAuctionState() {
     console.warn('Cannot parse auction state', e);
   }
 }
-function isQuizOpen() { return localStorage.getItem(STORAGE_KEYS.quiz_open) === '1'; }
+function isQuizOpen() { 
+  // Check URL parameter first (for shared link), then cached state from API
+  return new URLSearchParams(window.location.search).get('quiz_open') === '1' || cachedQuizOpen;
+}
 
 function showPage(id) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
@@ -1138,7 +1164,7 @@ function renderChessBoard(containerId, fen) {
 // ============================================================
 // REGISTER
 // ============================================================
-function handleRegister() {
+async function handleRegister() {
   const name = document.getElementById('reg-name').value.trim();
   const mssv = document.getElementById('reg-mssv').value.trim();
   const err = document.getElementById('reg-error');
@@ -1150,8 +1176,11 @@ function handleRegister() {
   if (players.find(p => p.mssv === mssv)) {
     err.textContent = '⚠ MSSV này đã đăng ký!'; err.style.display='block'; return;
   }
-  if (!isQuizOpen()) {
-    err.textContent = '⏳ Quiz chưa mở. Vui lòng đợi Admin mở.'; err.style.display='block'; return;
+  const quizIsOpen = await isQuizOpen();
+  if (!quizIsOpen) {
+    err.textContent = '⏳ Quiz chưa mở. Vui lòng đợi Admin mở.';
+    err.style.display = 'block';
+    return;
   }
 
   err.style.display='none';
@@ -1481,15 +1510,22 @@ function updateAdminStats() {
     `Số nhóm: <span style="color:var(--white)">${teams.length}</span>`;
 }
 
-function adminOpenQuiz() {
-  localStorage.setItem(STORAGE_KEYS.quiz_open, '1');
-  setQuizOpenShareParam(true);
-  refreshQuizOpenUI();
+async function adminOpenQuiz() {
+  const success = await setQuizStateAPI(true);
+  if (success) refreshQuizOpenUI();
 }
-function adminCloseQuiz() {
-  localStorage.setItem(STORAGE_KEYS.quiz_open, '0');
-  setQuizOpenShareParam(false);
-  refreshQuizOpenUI();
+async function adminCloseQuiz() {
+  const success = await setQuizStateAPI(false);
+  if (success) refreshQuizOpenUI();
+}
+function shareQuizLink() {
+  const baseUrl = window.location.origin + window.location.pathname;
+  const quizOpenUrl = baseUrl + (baseUrl.includes('?') ? '&' : '?') + 'quiz_open=1';
+  navigator.clipboard.writeText(quizOpenUrl).then(() => {
+    alert('✅ Đã sao chép link:\n' + quizOpenUrl + '\n\nGửi link này cho những người tham gia để họ thấy Quiz đang mở.');
+  }).catch(() => {
+    alert('Link Quiz mở:\n' + quizOpenUrl + '\n\nCopy link này và gửi cho những người tham gia.');
+  });
 }
 function clearAllData() {
   if (!confirm('Xóa TẤT CẢ dữ liệu? Không thể hoàn tác!')) return;
@@ -1880,10 +1916,15 @@ function computeFinalResult() {
 }
 
 // Init
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
   if (sessionStorage.getItem('admin_logged_in') === '1') {
     isAdminLoggedIn = true;
   }
+  
+  // Initial fetch of quiz state from API
+  await fetchQuizState();
+  refreshQuizOpenUI();
+  
   loadAuctionState();
   updateAuctionStatus();
   renderTeamBidList();
@@ -1902,7 +1943,11 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  setInterval(() => {
+  // Periodic refresh of quiz state from API (every 2 seconds)
+  setInterval(async () => {
+    await fetchQuizState();
+    refreshQuizOpenUI();
+    
     loadAuctionState();
     if (document.getElementById('page-auction-player')?.classList.contains('active')) {
       renderAuctionPlayerState();
@@ -1911,7 +1956,7 @@ document.addEventListener('DOMContentLoaded', () => {
       renderTeamBidList();
       updateAuctionStatus();
     }
-  }, 1000);
+  }, 2000);
 }); 
 </script>
 </body>
