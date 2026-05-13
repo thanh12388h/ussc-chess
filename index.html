@@ -951,6 +951,35 @@ const STORAGE_KEYS = {
   test2_players: 'ussc_test2_players',
 };
 
+function getQueryParam(name) {
+  return new URLSearchParams(window.location.search).get(name);
+}
+
+function setQuizOpenShareParam(open) {
+  const params = new URLSearchParams(window.location.search);
+  if (open) {
+    params.set('quiz_open', '1');
+  } else {
+    params.delete('quiz_open');
+  }
+  const newUrl = window.location.pathname + (params.toString() ? '?' + params.toString() : '');
+  history.replaceState(null, '', newUrl);
+}
+
+function refreshQuizOpenUI() {
+  const status = document.getElementById('admin-quiz-status');
+  if (!status) return;
+  if (isQuizOpen()) {
+    status.textContent = '✅ Quiz đang MỞ – Người chơi có thể đăng ký';
+    status.style.borderColor = 'var(--green)';
+    status.style.color = 'var(--green)';
+  } else {
+    status.textContent = '🔒 Quiz đã ĐÓNG';
+    status.style.borderColor = 'rgba(245,200,66,0.3)';
+    status.style.color = 'var(--gold)';
+  }
+}
+
 const CHESS_QUESTIONS = [
   {q:"Con Hậu có thể di chuyển bao nhiêu ô?", opts:["Tối đa 8","Không giới hạn theo đường thẳng","3 ô","Chỉ chéo"], ans:1},
   {q:"Cờ vua bắt nguồn từ quốc gia nào?", opts:["Trung Quốc","Hy Lạp","Ấn Độ","Ba Tư"], ans:2},
@@ -1049,7 +1078,7 @@ function showPage(id) {
   if (!target) return;
   target.classList.add('active');
   if (id === 'page-leaderboard') renderLeaderboard();
-  if (id === 'page-admin') { if (!checkAdminAccess()) return; adminRefreshPlayers(); adminRefreshTeams(); updateAdminStats(); updateAuctionStatus(); }
+  if (id === 'page-admin') { if (!checkAdminAccess()) return; adminRefreshPlayers(); adminRefreshTeams(); updateAdminStats(); updateAuctionStatus(); refreshQuizOpenUI(); }
   if (id === 'page-auction-player') { loadAuctionState(); renderAuctionPlayerState(); }
 }
 
@@ -1454,15 +1483,13 @@ function updateAdminStats() {
 
 function adminOpenQuiz() {
   localStorage.setItem(STORAGE_KEYS.quiz_open, '1');
-  document.getElementById('admin-quiz-status').textContent = '✅ Quiz đang MỞ – Người chơi có thể đăng ký';
-  document.getElementById('admin-quiz-status').style.borderColor = 'var(--green)';
-  document.getElementById('admin-quiz-status').style.color = 'var(--green)';
+  setQuizOpenShareParam(true);
+  refreshQuizOpenUI();
 }
 function adminCloseQuiz() {
   localStorage.setItem(STORAGE_KEYS.quiz_open, '0');
-  document.getElementById('admin-quiz-status').textContent = '🔒 Quiz đã ĐÓNG';
-  document.getElementById('admin-quiz-status').style.borderColor = 'rgba(245,200,66,0.3)';
-  document.getElementById('admin-quiz-status').style.color = 'var(--gold)';
+  setQuizOpenShareParam(false);
+  refreshQuizOpenUI();
 }
 function clearAllData() {
   if (!confirm('Xóa TẤT CẢ dữ liệu? Không thể hoàn tác!')) return;
