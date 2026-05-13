@@ -3,9 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>USSC Chess Tournament</title>
+<title>USSC Chess Tournament - Firebase Sync</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Space+Mono:wght@400;700&family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
 <style>
+  /* ... GIỮ NGUYÊN TOÀN BỘ CSS CŨ CỦA BẠN ... */
   :root {
     --bg: #0a0a0f;
     --surface: #12121a;
@@ -573,9 +574,78 @@
     transition:all 0.2s;
   }
   .nav-pill.active { background:var(--gold); color:#0a0a0f; font-weight:700; }
+
+  /* Loading overlay */
+  .loading-overlay {
+    position:fixed;
+    top:0;
+    left:0;
+    right:0;
+    bottom:0;
+    background:rgba(10,10,15,0.9);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    z-index:1000;
+    font-family:'Space Mono',monospace;
+    font-size:0.9rem;
+    color:var(--gold);
+    backdrop-filter:blur(4px);
+  }
+  .online-badge {
+    position:fixed;
+    bottom:16px;
+    right:16px;
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:20px;
+    padding:4px 12px;
+    font-size:0.7rem;
+    font-family:'Space Mono',monospace;
+    color:var(--muted);
+    z-index:100;
+  }
+  .online-badge.online { color:var(--green); border-color:var(--green); }
+  .online-badge.offline { color:var(--red); border-color:var(--red); }
 </style>
+
+<!-- Firebase SDKs -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
+<script>
+  // Your web app's Firebase configuration
+  const firebaseConfig = {
+    apiKey: "AIzaSyB43pT1Jfe4fKEmoadWZPtUsPhupHMNV6E",
+    authDomain: "ussc-chess.firebaseapp.com",
+    projectId: "ussc-chess",
+    storageBucket: "ussc-chess.firebasestorage.app",
+    messagingSenderId: "699411458052",
+    appId: "1:699411458052:web:19ebd58c8b1437c20f6d51",
+    measurementId: "G-FN7NB2S1XY"
+  };
+
+  // Initialize Firebase
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.firestore();
+  const auth = firebase.auth();
+  
+  // Enable offline persistence
+  db.enablePersistence({ synchronizeTabs: true }).catch(err => {
+    if (err.code == 'failed-precondition') {
+      console.warn('Multiple tabs open, persistence can only be enabled in one tab at a time.');
+    }
+  });
+</script>
 </head>
 <body>
+
+<div id="loading-overlay" class="loading-overlay" style="display:none;">
+  <div>⏳ Đang đồng bộ dữ liệu...</div>
+</div>
+<div id="online-badge" class="online-badge">🟢 Online</div>
 
 <!-- ==================== LOGIN PAGE ==================== -->
 <div class="page" id="page-login">
@@ -780,7 +850,7 @@
       <div class="logo" style="font-size:2rem;">Admin Panel</div>
       <div class="subtitle">USSC Chess Tournament</div>
       <div style="display:flex; justify-content:center; gap:10px; flex-wrap:wrap; margin-top:12px;">
-        <button type="button" class="btn btn-outline btn-sm" onclick="showPage('page-home'); handleAdminLogout()">← Trang Chủ</button>
+        <button type="button" class="btn btn-outline btn-sm" onclick="showPage('page-home')">← Trang Chủ</button>
         <button type="button" class="btn btn-sm btn-outline" onclick="handleAdminLogout()">🚪 Đăng Xuất</button>
       </div>
     </div>
@@ -855,6 +925,7 @@
             <button class="btn btn-outline btn-sm" onclick="stopAuctionTimer()">⏸ Dừng</button>
             <button class="btn btn-purple btn-sm" onclick="publishAuctionResults()">🔒 Chốt Kết Quả</button>
             <button class="btn btn-outline btn-sm" onclick="resetAuctionRound()">🔄 Reset</button>
+            <button class="btn btn-outline btn-sm" onclick="nextAuctionRound()">⏩ Vòng Tiếp</button>
           </div>
         </div>
         <div class="panel">
@@ -885,27 +956,73 @@
 
 <script>
 // ============================================================
-// ADMIN LOGIN
+// FIREBASE REAL-TIME SYNC
 // ============================================================
-const ADMIN_CREDENTIALS = { username: 'admin', password: 'admin123' };
+let currentPlayer = null;
+let currentTest2Player = null;
 let isAdminLoggedIn = false;
+let onlineStatus = true;
 
-function handleAdminLogin() {
+// Collections
+const playersCollection = db.collection('players');
+const test2PlayersCollection = db.collection('test2_players');
+const teamsCollection = db.collection('teams');
+const auctionStateDoc = db.collection('settings').doc('auction_state');
+const quizSettingsDoc = db.collection('settings').doc('quiz');
+
+// Monitor connection status
+firebase.firestore().enableNetwork().then(() => {
+  updateOnlineStatus(true);
+}).catch(() => {
+  updateOnlineStatus(false);
+});
+
+db.collection('settings').onSnapshot((snapshot) => {
+  updateOnlineStatus(true);
+}, (error) => {
+  updateOnlineStatus(false);
+});
+
+function updateOnlineStatus(isOnline) {
+  onlineStatus = isOnline;
+  const badge = document.getElementById('online-badge');
+  if (badge) {
+    if (isOnline) {
+      badge.textContent = '🟢 Online • Đồng bộ realtime';
+      badge.className = 'online-badge online';
+    } else {
+      badge.textContent = '🔴 Offline • Đang dùng cache';
+      badge.className = 'online-badge offline';
+    }
+  }
+}
+
+function showLoading(show) {
+  const overlay = document.getElementById('loading-overlay');
+  if (overlay) overlay.style.display = show ? 'flex' : 'none';
+}
+
+// ============================================================
+// ADMIN LOGIN (Firebase Auth)
+// ============================================================
+const ADMIN_EMAIL = "admin@ussc-chess.com";
+const ADMIN_PASSWORD = "admin123";
+
+async function handleAdminLogin() {
   const username = document.getElementById('login-username').value.trim();
   const password = document.getElementById('login-password').value;
   const errEl = document.getElementById('login-error');
 
   if (!username || !password) {
-    if (errEl) {
-      errEl.textContent = '⚠ Vui lòng điền tên đăng nhập và mật khẩu';
-      errEl.style.display = 'block';
-    } else {
-      alert('⚠ Vui lòng điền tên đăng nhập và mật khẩu');
-    }
+    errEl.textContent = '⚠ Vui lòng điền tên đăng nhập và mật khẩu';
+    errEl.style.display = 'block';
     return;
   }
 
-  if (username === ADMIN_CREDENTIALS.username && password === ADMIN_CREDENTIALS.password) {
+  try {
+    showLoading(true);
+    // Sign in with Firebase Auth
+    await auth.signInWithEmailAndPassword(ADMIN_EMAIL, ADMIN_PASSWORD);
     isAdminLoggedIn = true;
     sessionStorage.setItem('admin_logged_in', '1');
     errEl.style.display = 'none';
@@ -915,20 +1032,23 @@ function handleAdminLogin() {
     adminRefreshPlayers();
     adminRefreshTeams();
     updateAdminStats();
-  } else {
-    if (errEl) {
-      errEl.textContent = '❌ Tên đăng nhập hoặc mật khẩu không chính xác';
-      errEl.style.display = 'block';
-    } else {
-      alert('❌ Tên đăng nhập hoặc mật khẩu không chính xác');
-    }
-    return;
+    
+    // Start listening to real-time updates
+    startRealtimeListeners();
+  } catch (error) {
+    console.error('Login error:', error);
+    errEl.textContent = '❌ Tên đăng nhập hoặc mật khẩu không chính xác';
+    errEl.style.display = 'block';
+  } finally {
+    showLoading(false);
   }
 }
 
-function handleAdminLogout() {
+async function handleAdminLogout() {
+  await auth.signOut();
   isAdminLoggedIn = false;
   sessionStorage.removeItem('admin_logged_in');
+  stopRealtimeListeners();
   showPage('page-home');
 }
 
@@ -942,66 +1062,109 @@ function checkAdminAccess() {
 }
 
 // ============================================================
+// REAL-TIME LISTENERS
+// ============================================================
+let playersUnsubscribe = null;
+let test2PlayersUnsubscribe = null;
+let teamsUnsubscribe = null;
+let auctionUnsubscribe = null;
+let quizUnsubscribe = null;
+
+function startRealtimeListeners() {
+  // Listen to players collection
+  playersUnsubscribe = playersCollection.onSnapshot((snapshot) => {
+    if (document.getElementById('page-admin')?.classList.contains('active')) {
+      adminRefreshPlayers();
+    }
+    if (document.getElementById('page-leaderboard')?.classList.contains('active')) {
+      renderLeaderboard();
+    }
+    updateAdminStats();
+  });
+  
+  // Listen to teams collection
+  teamsUnsubscribe = teamsCollection.onSnapshot((snapshot) => {
+    if (document.getElementById('page-admin')?.classList.contains('active')) {
+      adminRefreshTeams();
+    }
+    if (document.getElementById('page-leaderboard')?.classList.contains('active')) {
+      renderLeaderboard();
+    }
+    if (document.getElementById('admin-tab-auction')?.style.display !== 'none') {
+      renderTeamBidList();
+    }
+  });
+  
+  // Listen to auction state
+  auctionUnsubscribe = auctionStateDoc.onSnapshot((doc) => {
+    if (doc.exists) {
+      auctionState = doc.data();
+    }
+    renderTeamBidList();
+    updateAuctionStatus();
+    if (document.getElementById('page-auction-player')?.classList.contains('active')) {
+      renderAuctionPlayerState();
+    }
+  });
+  
+  // Listen to quiz settings
+  quizUnsubscribe = quizSettingsDoc.onSnapshot((doc) => {
+    if (doc.exists) {
+      cachedQuizOpen = doc.data().quizOpen || false;
+    }
+    refreshQuizOpenUI();
+  });
+}
+
+function stopRealtimeListeners() {
+  if (playersUnsubscribe) playersUnsubscribe();
+  if (test2PlayersUnsubscribe) test2PlayersUnsubscribe();
+  if (teamsUnsubscribe) teamsUnsubscribe();
+  if (auctionUnsubscribe) auctionUnsubscribe();
+  if (quizUnsubscribe) quizUnsubscribe();
+}
+
+// ============================================================
+// DATA OPERATIONS
+// ============================================================
+async function getPlayers() {
+  const snapshot = await playersCollection.orderBy('score', 'desc').get();
+  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+}
+
+async function getTeams() {
+  const snapshot = await teamsCollection.orderBy('totalScore', 'desc').get();
+  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+}
+
+async function getTest2Players() {
+  const snapshot = await test2PlayersCollection.get();
+  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+}
+
+async function savePlayer(playerData) {
+  await playersCollection.doc(playerData.mssv).set(playerData);
+}
+
+async function saveTeam(teamData) {
+  await teamsCollection.doc(teamData.name).set(teamData);
+}
+
+async function deleteTeam(teamName) {
+  await teamsCollection.doc(teamName).delete();
+}
+
+async function deleteAllTeams() {
+  const snapshot = await teamsCollection.get();
+  const batch = db.batch();
+  snapshot.docs.forEach(doc => batch.delete(doc.ref));
+  await batch.commit();
+}
+
+// ============================================================
 // STATE
 // ============================================================
-const STORAGE_KEYS = {
-  players: 'ussc_players',
-  teams: 'ussc_teams',
-  quiz_open: 'ussc_quiz_open',
-  auction_state: 'ussc_auction',
-  test2_players: 'ussc_test2_players',
-};
-
 let cachedQuizOpen = false;
-let lastQuizCheckTime = 0;
-
-async function fetchQuizState() {
-  try {
-    const response = await fetch('/api/quiz-state');
-    if (response.ok) {
-      const data = await response.json();
-      cachedQuizOpen = data.quizOpen;
-      lastQuizCheckTime = Date.now();
-      return cachedQuizOpen;
-    }
-  } catch (e) {
-    console.warn('Cannot fetch quiz state from API', e);
-  }
-  return cachedQuizOpen;
-}
-
-async function setQuizStateAPI(open) {
-  try {
-    const response = await fetch('/api/quiz-state', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ quizOpen: open })
-    });
-    if (response.ok) {
-      const data = await response.json();
-      cachedQuizOpen = data.quizOpen;
-      lastQuizCheckTime = Date.now();
-      return true;
-    }
-  } catch (e) {
-    console.warn('Cannot set quiz state via API', e);
-  }
-  return false;
-}
-
-function refreshQuizOpenUI() {
-  const status = document.getElementById('admin-quiz-status');
-  if (!status) return;
-  if (cachedQuizOpen) {
-    status.textContent = '✅ Quiz đang MỞ – Người chơi có thể đăng ký';
-    status.style.borderColor = 'var(--green)';
-    status.style.color = 'var(--green)';
-  } else {
-    status.textContent = '🔒 Quiz đã ĐÓNG';
-    status.style.borderColor = 'rgba(245,200,66,0.3)';
-    status.style.color = 'var(--gold)';
-  }
-}
 
 const CHESS_QUESTIONS = [
   {q:"Con Hậu có thể di chuyển bao nhiêu ô?", opts:["Tối đa 8","Không giới hạn theo đường thẳng","3 ô","Chỉ chéo"], ans:1},
@@ -1036,8 +1199,6 @@ const CHESS_QUESTIONS = [
   {q:"Elo rating 2700+ được gọi là?", opts:["Kiện tướng","Đại kiện tướng","Super Grandmaster","FM"], ans:2},
 ];
 
-let currentPlayer = null;
-let currentTest2Player = null;
 let quizState = {
   questions: [],
   current: 0,
@@ -1047,6 +1208,7 @@ let quizState = {
   timeLeft: 180,
   finished: false,
 };
+
 let auctionState = {
   round: 0,
   running: false,
@@ -1070,32 +1232,8 @@ let auctionState = {
 // ============================================================
 // UTILS
 // ============================================================
-function getPlayers() {
-  try { return JSON.parse(localStorage.getItem(STORAGE_KEYS.players) || '[]'); } catch { return []; }
-}
-function savePlayers(p) { localStorage.setItem(STORAGE_KEYS.players, JSON.stringify(p)); }
-function getTeams() {
-  try { return JSON.parse(localStorage.getItem(STORAGE_KEYS.teams) || '[]'); } catch { return []; }
-}
-function saveTeams(t) { localStorage.setItem(STORAGE_KEYS.teams, JSON.stringify(t)); }
-function getTest2Players() {
-  try { return JSON.parse(localStorage.getItem(STORAGE_KEYS.test2_players) || '[]'); } catch { return []; }
-}
-function saveTest2Players(p) { localStorage.setItem(STORAGE_KEYS.test2_players, JSON.stringify(p)); }
-function saveAuctionState() { localStorage.setItem(STORAGE_KEYS.auction_state, JSON.stringify(auctionState)); }
-function loadAuctionState() {
-  const stored = localStorage.getItem(STORAGE_KEYS.auction_state);
-  if (!stored) return;
-  try {
-    const parsed = JSON.parse(stored);
-    auctionState = Object.assign({}, auctionState, parsed);
-  } catch (e) {
-    console.warn('Cannot parse auction state', e);
-  }
-}
-function isQuizOpen() { 
-  // Check URL parameter first (for shared link), then cached state from API
-  return new URLSearchParams(window.location.search).get('quiz_open') === '1' || cachedQuizOpen;
+function shuffleArray(arr) {
+  const a = [...arr]; for (let i=a.length-1; i>0; i--) { const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a;
 }
 
 function showPage(id) {
@@ -1104,20 +1242,14 @@ function showPage(id) {
   if (!target) return;
   target.classList.add('active');
   if (id === 'page-leaderboard') renderLeaderboard();
-  if (id === 'page-admin') { if (!checkAdminAccess()) return; adminRefreshPlayers(); adminRefreshTeams(); updateAdminStats(); updateAuctionStatus(); refreshQuizOpenUI(); }
-  if (id === 'page-auction-player') { loadAuctionState(); renderAuctionPlayerState(); }
+  if (id === 'page-admin') { if (!checkAdminAccess()) return; adminRefreshPlayers(); adminRefreshTeams(); updateAdminStats(); updateAuctionStatus(); refreshQuizOpenUI(); startRealtimeListeners(); }
+  if (id === 'page-auction-player') { renderAuctionPlayerState(); }
 }
 
-function adminTab(tab) {
-  ['players','teams','auction','result'].forEach(t => {
-    const el = document.getElementById('admin-tab-'+t);
-    if (el) el.style.display = t===tab ? '' : 'none';
-    const btn = document.getElementById('tab-'+t);
-    if (btn) btn.classList.toggle('active', t===tab);
-  });
-  if (tab === 'auction') { renderTeamBidList(); updateAuctionStatus(); }
-  if (tab === 'result') renderFinalResult();
-  if (tab === 'teams') adminRefreshTeams();
+function formatTime(seconds) {
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  return `${m}:${String(s).padStart(2, '0')}`;
 }
 
 // ============================================================
@@ -1172,13 +1304,19 @@ async function handleRegister() {
   if (!name || !mssv) { err.textContent = '⚠ Vui lòng điền đầy đủ thông tin'; err.style.display='block'; return; }
   if (!/^\d{8,10}$/.test(mssv)) { err.textContent = '⚠ MSSV không hợp lệ (8-10 chữ số)'; err.style.display='block'; return; }
 
-  const players = getPlayers();
-  if (players.find(p => p.mssv === mssv)) {
-    err.textContent = '⚠ MSSV này đã đăng ký!'; err.style.display='block'; return;
-  }
-  const quizIsOpen = await isQuizOpen();
+  const quizDoc = await quizSettingsDoc.get();
+  const quizIsOpen = quizDoc.exists ? quizDoc.data().quizOpen : false;
+  
   if (!quizIsOpen) {
     err.textContent = '⏳ Quiz chưa mở. Vui lòng đợi Admin mở.';
+    err.style.display = 'block';
+    return;
+  }
+
+  // Check if MSSV already exists
+  const existingPlayer = await playersCollection.doc(mssv).get();
+  if (existingPlayer.exists) {
+    err.textContent = '⚠ MSSV này đã đăng ký!';
     err.style.display = 'block';
     return;
   }
@@ -1188,7 +1326,7 @@ async function handleRegister() {
   startQuiz();
 }
 
-function handleRegister2() {
+async function handleRegister2() {
   const name = document.getElementById('reg2-name').value.trim();
   const mssv = document.getElementById('reg2-mssv').value.trim();
   const team = document.getElementById('reg2-team').value.trim();
@@ -1197,24 +1335,22 @@ function handleRegister2() {
   if (!name || !mssv || !team) { err.textContent = '⚠ Vui lòng điền đầy đủ thông tin'; err.style.display='block'; return; }
   if (!/^\d{8,10}$/.test(mssv)) { err.textContent = '⚠ MSSV không hợp lệ'; err.style.display='block'; return; }
 
-  const teams = getTeams();
-  const teamExists = teams.find(t => t.name === team);
-  if (!teamExists) {
-    err.textContent = '⚠ Tên nhóm không tồn tại! Liên hệ Admin.'; err.style.display='block'; return;
+  const teamDoc = await teamsCollection.doc(team).get();
+  if (!teamDoc.exists) {
+    err.textContent = '⚠ Tên nhóm không tồn tại! Liên hệ Admin.';
+    err.style.display='block';
+    return;
   }
 
   err.style.display='none';
   currentTest2Player = { name, mssv, team, registeredAt: Date.now() };
+  await test2PlayersCollection.doc(mssv).set(currentTest2Player);
   startAuctionPlayer();
 }
 
 // ============================================================
 // QUIZ
 // ============================================================
-function shuffleArray(arr) {
-  const a = [...arr]; for (let i=a.length-1; i>0; i--) { const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a;
-}
-
 function startQuiz() {
   quizState = {
     questions: shuffleArray(CHESS_QUESTIONS),
@@ -1290,7 +1426,7 @@ function startQuizTimer() {
   }, 1000);
 }
 
-function endQuiz() {
+async function endQuiz() {
   quizState.finished = true;
   clearInterval(quizState.timerInterval);
 
@@ -1299,16 +1435,13 @@ function endQuiz() {
   currentPlayer.finishedAt = Date.now();
   currentPlayer.responseTime = Math.round((currentPlayer.finishedAt - currentPlayer.startTime) / 1000);
 
-  const players = getPlayers();
-  const existing = players.findIndex(p => p.mssv === currentPlayer.mssv);
-  if (existing >= 0) players[existing] = currentPlayer;
-  else players.push(currentPlayer);
-  savePlayers(players);
+  await savePlayer(currentPlayer);
 
   document.getElementById('done-score').textContent = quizState.score;
   document.getElementById('done-correct').textContent = `${quizState.correct} / 30 câu đúng`;
 
-  const sorted = [...players].sort((a,b) => {
+  const players = await getPlayers();
+  const sorted = players.sort((a,b) => {
     if (b.score !== a.score) return b.score - a.score;
     return (a.responseTime||0) - (b.responseTime||0);
   });
@@ -1341,36 +1474,39 @@ function startAuctionPlayer() {
   renderAuctionPlayerState();
 }
 
-function placeAuctionBid() {
+async function placeAuctionBid() {
   if (!auctionState.running) { alert('⚠ Phiên đấu giá chưa bắt đầu hoặc đã dừng.'); return; }
   const amount = parseInt(document.getElementById('player-bet-input').value) || 0;
   const team = currentTest2Player.team;
   const rd = auctionState.roundData[auctionState.round];
   const parts = rd.range.split('–');
   const minBet = parseInt(parts[0]) || 50;
-  const maxBet = Math.min(parseInt(parts[1]) || 500, getTeamTotalScore(team));
+  
+  const teams = await getTeams();
+  const teamData = teams.find(t => t.name === team);
+  const maxBet = Math.min(parseInt(parts[1]) || 500, teamData?.totalScore || 0);
+  
   if (amount < minBet || amount > maxBet) {
     alert(`Cược phải từ ${minBet} đến ${maxBet} ĐP`);
     return;
   }
+  
   auctionState.bids[team] = { amount, passed: false };
   auctionState.teamReview[team] = { status: 'auto', delta: 0 };
-  saveAuctionState();
+  await auctionStateDoc.set(auctionState);
   renderAuctionPlayerState();
-  renderTeamBidList();
 }
 
-function passAuctionBid() {
+async function passAuctionBid() {
   if (!auctionState.running) { alert('⚠ Phiên đấu giá chưa bắt đầu hoặc đã dừng.'); return; }
   const team = currentTest2Player.team;
   auctionState.bids[team] = { amount: 0, passed: true };
   auctionState.teamReview[team] = { status: 'pass', delta: 0 };
-  saveAuctionState();
+  await auctionStateDoc.set(auctionState);
   renderAuctionPlayerState();
-  renderTeamBidList();
 }
 
-function submitAuctionAnswer() {
+async function submitAuctionAnswer() {
   if (!auctionState.running) { alert('⚠ Phiên đấu giá chưa bắt đầu hoặc đã dừng.'); return; }
   const input = document.getElementById('player-answer-input');
   const answer = input.value.trim().toUpperCase();
@@ -1378,15 +1514,9 @@ function submitAuctionAnswer() {
 
   auctionState.answers[currentTest2Player.team] = answer;
   auctionState.teamReview[currentTest2Player.team] = auctionState.teamReview[currentTest2Player.team] || { status: 'auto', delta: 0 };
-  saveAuctionState();
+  await auctionStateDoc.set(auctionState);
   renderAuctionPlayerState();
   alert('✅ Đã nộp đáp án. Kết quả sẽ hiện khi Admin chốt vòng.');
-}
-
-function getTeamTotalScore(teamName) {
-  const teams = getTeams();
-  const team = teams.find(t => t.name === teamName);
-  return team ? team.totalScore : 0;
 }
 
 function renderAuctionPlayerState() {
@@ -1397,26 +1527,27 @@ function renderAuctionPlayerState() {
   const answerInput = document.getElementById('player-answer-input');
   const bidInput = document.getElementById('player-bet-input');
   const team = currentTest2Player?.team;
+  
   if (timerEl) timerEl.textContent = formatTime(auctionState.timeLeft);
 
   if (!team) return;
   const bid = auctionState.bids[team];
   if (auctionState.finalized) {
     statusEl.textContent = 'Phiên đấu giá đã chốt. Kết quả được hiển thị bên dưới.';
-    answerInput.disabled = true;
-    bidInput.disabled = true;
+    if (answerInput) answerInput.disabled = true;
+    if (bidInput) bidInput.disabled = true;
   } else if (auctionState.running) {
     statusEl.textContent = bid ? (bid.passed ? 'Bạn đã chọn PASS.' : `Bạn đã cược ${bid.amount} ĐP.`) : 'Phiên đấu giá đang diễn ra. Vui lòng đặt cược và nộp đáp án.';
-    answerInput.disabled = false;
-    bidInput.disabled = false;
+    if (answerInput) answerInput.disabled = false;
+    if (bidInput) bidInput.disabled = false;
   } else if (auctionState.review) {
     statusEl.textContent = 'Phiên đã dừng, chờ Admin chốt kết quả.';
-    answerInput.disabled = true;
-    bidInput.disabled = true;
+    if (answerInput) answerInput.disabled = true;
+    if (bidInput) bidInput.disabled = true;
   } else {
     statusEl.textContent = 'Chờ Admin bắt đầu phiên đấu giá.';
-    answerInput.disabled = true;
-    bidInput.disabled = true;
+    if (answerInput) answerInput.disabled = true;
+    if (bidInput) bidInput.disabled = true;
   }
 
   if (auctionState.finalized && auctionState.finalResults && auctionState.finalResults[team]) {
@@ -1427,42 +1558,37 @@ function renderAuctionPlayerState() {
     document.getElementById('player-round-result-status').textContent = result.status === 'correct' ? 'ĐÚNG' : result.status === 'pass' ? 'PASS' : 'SAI';
     document.getElementById('player-round-result-delta').textContent = `${result.delta >= 0 ? '+' : ''}${result.delta} ĐP`;
   } else {
-    resultCard.style.display = 'none';
+    if (resultCard) resultCard.style.display = 'none';
   }
-}
-
-function formatTime(seconds) {
-  const m = Math.floor(seconds / 60);
-  const s = seconds % 60;
-  return `${m}:${String(s).padStart(2, '0')}`;
 }
 
 // ============================================================
 // LEADERBOARD
 // ============================================================
-function renderLeaderboard() {
-  const players = getPlayers().sort((a,b) => {
+async function renderLeaderboard() {
+  const players = await getPlayers();
+  const sorted = players.sort((a,b) => {
     if (b.score !== a.score) return b.score - a.score;
     return (a.responseTime||0) - (b.responseTime||0);
   });
   
   const el = document.getElementById('lb-individual');
-  if (!players.length) { el.innerHTML = '<div style="color:var(--muted);text-align:center;padding:24px;font-family:Space Mono,monospace;font-size:0.8rem;">Chưa có người chơi nào</div>'; return; }
+  if (!sorted.length) { el.innerHTML = '<div style="color:var(--muted);text-align:center;padding:24px;font-family:Space Mono,monospace;font-size:0.8rem;">Chưa có người chơi nào</div>'; return; }
 
   const medals = ['🥇','🥈','🥉'];
-  el.innerHTML = `<table class="lb-table"><thead><tr><th>#</th><th>Người Chơi</th><th>Điểm</th><th>Thời Gian</th></tr></thead><tbody>` +
-    players.map((p,i) => `<tr class="anim-slide" style="animation-delay:${i*0.03}s">
+  el.innerHTML = `<table class="lb-table"><thead><th>#</th><th>Người Chơi</th><th>Điểm</th><th>Thời Gian</th></thead><tbody>` +
+    sorted.map((p,i) => `<tr class="anim-slide" style="animation-delay:${i*0.03}s">
       <td class="${i<3?'rank-'+(i+1):''}">${medals[i]||i+1}</td>
       <td><div style="font-weight:600">${p.name}</div><div class="mssv-tag">${p.mssv}</div></td>
       <td class="score-badge">${p.score}</td>
       <td style="color:var(--muted);font-family:'Space Mono',monospace;font-size:0.8rem">${p.responseTime || 0}s</td>
-    </tr>`).join('') + '</tbody></table>';
+     </tr>`).join('') + '</tbody></table>';
 
-  const teams = getTeams();
+  const teams = await getTeams();
   const teamPanel = document.getElementById('lb-teams');
   if (!teams.length) { teamPanel.innerHTML = '<div style="color:var(--muted);font-size:0.8rem;font-family:Space Mono,monospace;">Chưa ghép nhóm</div>'; return; }
-  const sorted = [...teams].sort((a,b) => b.totalScore-a.totalScore);
-  teamPanel.innerHTML = sorted.map((t,i) => `
+  const sortedTeams = [...teams].sort((a,b) => b.totalScore-a.totalScore);
+  teamPanel.innerHTML = sortedTeams.map((t,i) => `
     <div class="team-card ${i===0?'winner':''}">
       <div>
         <div class="team-name">${i===0?'👑 ':''}${t.name}</div>
@@ -1475,14 +1601,15 @@ function renderLeaderboard() {
 // ============================================================
 // ADMIN – PLAYERS
 // ============================================================
-function adminRefreshPlayers() {
-  const players = getPlayers().sort((a,b) => {
+async function adminRefreshPlayers() {
+  const players = await getPlayers();
+  const sorted = players.sort((a,b) => {
     if (b.score !== a.score) return b.score - a.score;
     return (a.responseTime||0) - (b.responseTime||0);
   });
   const el = document.getElementById('admin-player-list');
-  if (!players.length) { el.innerHTML = '<div style="color:var(--muted);text-align:center;padding:16px;font-size:0.8rem;">Chưa có người đăng ký</div>'; return; }
-  el.innerHTML = players.map((p,i) => `
+  if (!sorted.length) { el.innerHTML = '<div style="color:var(--muted);text-align:center;padding:16px;font-size:0.8rem;">Chưa có người đăng ký</div>'; return; }
+  el.innerHTML = sorted.map((p,i) => `
     <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);font-size:0.85rem;">
       <div>
         <span style="color:var(--gold);font-family:'Space Mono',monospace;margin-right:8px;">#${i+1}</span>
@@ -1497,9 +1624,9 @@ function adminRefreshPlayers() {
   updateAdminStats();
 }
 
-function updateAdminStats() {
-  const players = getPlayers();
-  const teams = getTeams();
+async function updateAdminStats() {
+  const players = await getPlayers();
+  const teams = await getTeams();
   const total = players.length;
   const avg = total ? Math.round(players.reduce((s,p)=>s+p.score,0)/total) : 0;
   const max = total ? Math.max(...players.map(p=>p.score)) : 0;
@@ -1511,84 +1638,148 @@ function updateAdminStats() {
 }
 
 async function adminOpenQuiz() {
-  const success = await setQuizStateAPI(true);
-  if (success) refreshQuizOpenUI();
+  await quizSettingsDoc.set({ quizOpen: true });
+  refreshQuizOpenUI();
 }
+
 async function adminCloseQuiz() {
-  const success = await setQuizStateAPI(false);
-  if (success) refreshQuizOpenUI();
+  await quizSettingsDoc.set({ quizOpen: false });
+  refreshQuizOpenUI();
 }
+
+function refreshQuizOpenUI() {
+  const status = document.getElementById('admin-quiz-status');
+  if (!status) return;
+  if (cachedQuizOpen) {
+    status.textContent = '✅ Quiz đang MỞ – Người chơi có thể đăng ký';
+    status.style.borderColor = 'var(--green)';
+    status.style.color = 'var(--green)';
+  } else {
+    status.textContent = '🔒 Quiz đã ĐÓNG';
+    status.style.borderColor = 'rgba(245,200,66,0.3)';
+    status.style.color = 'var(--gold)';
+  }
+}
+
 function shareQuizLink() {
   const baseUrl = window.location.origin + window.location.pathname;
-  const quizOpenUrl = baseUrl + (baseUrl.includes('?') ? '&' : '?') + 'quiz_open=1';
-  navigator.clipboard.writeText(quizOpenUrl).then(() => {
-    alert('✅ Đã sao chép link:\n' + quizOpenUrl + '\n\nGửi link này cho những người tham gia để họ thấy Quiz đang mở.');
+  navigator.clipboard.writeText(baseUrl).then(() => {
+    alert('✅ Đã sao chép link!\nGửi link này cho những người tham gia.');
   }).catch(() => {
-    alert('Link Quiz mở:\n' + quizOpenUrl + '\n\nCopy link này và gửi cho những người tham gia.');
+    alert('Link: ' + baseUrl);
   });
 }
-function clearAllData() {
+
+async function clearAllData() {
   if (!confirm('Xóa TẤT CẢ dữ liệu? Không thể hoàn tác!')) return;
-  Object.values(STORAGE_KEYS).forEach(k => localStorage.removeItem(k));
-  adminRefreshPlayers();
-  adminRefreshTeams();
+  
+  showLoading(true);
+  try {
+    // Delete all players
+    const playersSnapshot = await playersCollection.get();
+    const batch = db.batch();
+    playersSnapshot.docs.forEach(doc => batch.delete(doc.ref));
+    
+    // Delete all test2 players
+    const test2Snapshot = await test2PlayersCollection.get();
+    test2Snapshot.docs.forEach(doc => batch.delete(doc.ref));
+    
+    // Delete all teams
+    const teamsSnapshot = await teamsCollection.get();
+    teamsSnapshot.docs.forEach(doc => batch.delete(doc.ref));
+    
+    await batch.commit();
+    
+    // Reset auction state
+    auctionState = {
+      round: 0,
+      running: false,
+      review: false,
+      finalized: false,
+      timerInterval: null,
+      timeLeft: 180,
+      bids: {},
+      answers: {},
+      teamReview: {},
+      finalResults: {},
+      roundData: auctionState.roundData
+    };
+    await auctionStateDoc.set(auctionState);
+    
+    alert('✅ Đã xóa toàn bộ dữ liệu!');
+    adminRefreshPlayers();
+    adminRefreshTeams();
+    updateAdminStats();
+  } catch (error) {
+    console.error('Clear data error:', error);
+    alert('❌ Lỗi khi xóa dữ liệu: ' + error.message);
+  } finally {
+    showLoading(false);
+  }
 }
 
 // ============================================================
 // ADMIN – TEAMS
 // ============================================================
-function autoGroupTeams() {
-  const players = getPlayers().sort((a,b) => b.score-a.score);
-  if (players.length < 3) { document.getElementById('group-result').textContent = '⚠ Cần ít nhất 3 người chơi!'; return; }
+async function autoGroupTeams() {
+  const players = await getPlayers();
+  const sorted = players.sort((a,b) => b.score-a.score);
+  if (sorted.length < 3) { document.getElementById('group-result').textContent = '⚠ Cần ít nhất 3 người chơi!'; return; }
 
   const teams = [];
   const used = new Set();
   let teamNum = 1;
 
-  for (let i = 0; i < players.length; i++) {
-    if (used.has(i)) continue;
-    const group = [players[i]];
-    used.add(i);
-    for (let j = i+1; j < players.length && group.length < 3; j++) {
-      if (used.has(j)) continue;
-      if (Math.abs(players[i].score - players[j].score) <= 300) {
-        group.push(players[j]);
-        used.add(j);
+  for (let i = 0; i < sorted.length; i++) {
+    if (used.has(sorted[i].mssv)) continue;
+    const group = [sorted[i]];
+    used.add(sorted[i].mssv);
+    for (let j = i+1; j < sorted.length && group.length < 3; j++) {
+      if (used.has(sorted[j].mssv)) continue;
+      if (Math.abs(sorted[i].score - sorted[j].score) <= 300) {
+        group.push(sorted[j]);
+        used.add(sorted[j].mssv);
       }
     }
-    for (let j = 0; j < players.length && group.length < 3; j++) {
-      if (!used.has(j)) { group.push(players[j]); used.add(j); }
+    for (let j = 0; j < sorted.length && group.length < 3; j++) {
+      if (!used.has(sorted[j].mssv)) { 
+        group.push(sorted[j]); 
+        used.add(sorted[j].mssv); 
+      }
     }
     if (group.length >= 2) {
-      teams.push({
-        name: `USSC ${teamNum++}`,
-        members: group,
+      const teamName = `USSC ${teamNum++}`;
+      const teamData = {
+        name: teamName,
+        members: group.map(p => ({ name: p.name, mssv: p.mssv, score: p.score })),
         baseScore: group.reduce((s,p)=>s+p.score,0),
         totalScore: group.reduce((s,p)=>s+p.score,0),
         auctionScore: 0,
         correctAnswers: 0,
         wrongAnswers: 0,
-      });
+      };
+      await saveTeam(teamData);
+      teams.push(teamData);
     }
   }
 
-  saveTeams(teams);
-  adminRefreshTeams();
   document.getElementById('group-result').textContent = `✅ Đã ghép ${teams.length} nhóm thành công!`;
-  renderTeamBidList();
-}
-
-function clearTeams() {
-  saveTeams([]);
   adminRefreshTeams();
   renderTeamBidList();
 }
 
-function adminRefreshTeams() {
-  const teams = getTeams().sort((a,b) => b.totalScore-a.totalScore);
+async function clearTeams() {
+  await deleteAllTeams();
+  adminRefreshTeams();
+  renderTeamBidList();
+}
+
+async function adminRefreshTeams() {
+  const teams = await getTeams();
+  const sorted = teams.sort((a,b) => b.totalScore-a.totalScore);
   const el = document.getElementById('admin-team-list');
-  if (!teams.length) { el.innerHTML = '<div style="color:var(--muted);font-size:0.8rem;text-align:center;padding:16px;">Chưa có nhóm</div>'; return; }
-  el.innerHTML = teams.map((t,i) => `
+  if (!sorted.length) { el.innerHTML = '<div style="color:var(--muted);font-size:0.8rem;text-align:center;padding:16px;">Chưa có nhóm</div>'; return; }
+  el.innerHTML = sorted.map((t,i) => `
     <div class="team-card ${i===0?'winner':''}">
       <div>
         <div class="team-name">${t.name}</div>
@@ -1602,10 +1793,10 @@ function adminRefreshTeams() {
 }
 
 // ============================================================
-// AUCTION
+// AUCTION ADMIN
 // ============================================================
-function renderTeamBidList() {
-  const teams = getTeams();
+async function renderTeamBidList() {
+  const teams = await getTeams();
   const round = auctionState.round;
   const el = document.getElementById('team-bid-list');
   if (!teams.length) { if(el) el.innerHTML = '<div style="color:var(--muted);font-size:0.8rem;">Chưa có nhóm</div>'; return; }
@@ -1713,11 +1904,11 @@ function updateAuctionStatus() {
   }
 }
 
-function placeBid(teamName) {
+async function placeBid(teamName) {
   if (!auctionState.running) { alert('⚠ Phiên đấu giá chưa bắt đầu.'); return; }
   const key = teamName.replace(/\s+/g,'_');
   const val = parseInt(document.getElementById('bet-'+key).value) || 0;
-  const teams = getTeams();
+  const teams = await getTeams();
   const team = teams.find(t=>t.name===teamName);
   if (!team) return;
   const rd = auctionState.roundData[auctionState.round] || auctionState.roundData[0];
@@ -1729,36 +1920,36 @@ function placeBid(teamName) {
   }
   auctionState.bids[teamName] = { amount: val, passed: false };
   auctionState.teamReview[teamName] = auctionState.teamReview[teamName] || { status:'auto', delta:0 };
-  saveAuctionState();
+  await auctionStateDoc.set(auctionState);
   renderTeamBidList();
 }
 
-function passRound(teamName) {
+async function passRound(teamName) {
   if (!auctionState.running) { alert('⚠ Phiên đấu giá chưa bắt đầu.'); return; }
   auctionState.bids[teamName] = { amount: 0, passed: true };
   auctionState.teamReview[teamName] = { status:'pass', delta:0 };
-  saveAuctionState();
+  await auctionStateDoc.set(auctionState);
   renderTeamBidList();
 }
 
-function updateTeamReview(teamName) {
+async function updateTeamReview(teamName) {
   const statusEl = document.getElementById(`review-status-${teamName.replace(/\s+/g,'_')}`);
   const deltaEl = document.getElementById(`review-delta-${teamName.replace(/\s+/g,'_')}`);
   if (!statusEl || !deltaEl) return;
   const status = statusEl.value;
   const delta = parseInt(deltaEl.value) || 0;
   auctionState.teamReview[teamName] = { status, delta };
-  saveAuctionState();
+  await auctionStateDoc.set(auctionState);
   renderTeamBidList();
 }
 
-function publishAuctionResults() {
+async function publishAuctionResults() {
   if (!auctionState.review) { alert('⚠ Vui lòng dừng phiên đấu giá trước khi chốt kết quả.'); return; }
   const rd = auctionState.roundData[auctionState.round] || auctionState.roundData[0];
-  const teams = getTeams();
+  const teams = await getTeams();
   auctionState.finalResults = {};
 
-  teams.forEach(t => {
+  for (const t of teams) {
     const bid = auctionState.bids[t.name];
     const answer = auctionState.answers[t.name] ? auctionState.answers[t.name].toUpperCase() : '';
     const review = auctionState.teamReview[t.name] || { status:'auto', delta:0 };
@@ -1792,39 +1983,39 @@ function publishAuctionResults() {
     }
     if (t.totalScore < 0) t.totalScore = 0;
 
+    await saveTeam(t);
+
     auctionState.finalResults[t.name] = {
       status,
       delta,
       correctAnswer: rd.answer,
       submittedAnswer: answer,
     };
-  });
+  }
 
-  saveTeams(teams);
   auctionState.finalized = true;
   auctionState.review = false;
-  saveAuctionState();
+  await auctionStateDoc.set(auctionState);
   adminRefreshTeams();
   renderTeamBidList();
   updateAdminStats();
-  renderAuctionPlayerState();
   alert('✅ Đã chốt kết quả vòng đấu giá. Người chơi có thể xem điểm cập nhật.');
 }
 
-
-function nextAuctionRound() {
+async function nextAuctionRound() {
   if (auctionState.round < auctionState.roundData.length - 1) {
     auctionState.round++;
     auctionState.running = false;
     auctionState.review = false;
     auctionState.finalized = false;
     auctionState.timeLeft = 180;
+    if (auctionState.timerInterval) clearInterval(auctionState.timerInterval);
     auctionState.timerInterval = null;
     auctionState.bids = {};
     auctionState.answers = {};
     auctionState.teamReview = {};
     auctionState.finalResults = {};
-    saveAuctionState();
+    await auctionStateDoc.set(auctionState);
     stopAuctionTimer();
     renderTeamBidList();
     updateAuctionStatus();
@@ -1834,6 +2025,8 @@ function nextAuctionRound() {
   }
 }
 
+let auctionTimerInterval = null;
+
 function startAuctionTimer() {
   if (auctionState.running) return;
   auctionState.running = true;
@@ -1841,36 +2034,46 @@ function startAuctionTimer() {
   auctionState.finalized = false;
   auctionState.timeLeft = 180;
   auctionState.finalResults = {};
+  if (auctionState.timerInterval) clearInterval(auctionState.timerInterval);
   auctionState.timerInterval = null;
-  saveAuctionState();
+  auctionStateDoc.set(auctionState);
   renderTeamBidList();
   updateAuctionStatus();
-  renderAuctionPlayerState();
 
-  auctionState.timerInterval = setInterval(() => {
+  auctionTimerInterval = setInterval(async () => {
+    if (!auctionState.running) {
+      clearInterval(auctionTimerInterval);
+      return;
+    }
     auctionState.timeLeft--;
     const m = Math.floor(auctionState.timeLeft/60);
     const s = auctionState.timeLeft%60;
     const el = document.getElementById('auction-timer');
     if(el) { el.textContent = `${m}:${String(s).padStart(2,'0')}`; el.style.color = auctionState.timeLeft<=30?'var(--red)':'var(--gold)'; }
-    saveAuctionState();
-    renderAuctionPlayerState();
-    if (auctionState.timeLeft <= 0) { stopAuctionTimer(); auctionState.review = true; saveAuctionState(); updateAuctionStatus(); renderTeamBidList(); renderAuctionPlayerState(); alert('⏰ Hết giờ thảo luận! Hãy chốt kết quả.'); }
+    await auctionStateDoc.set(auctionState);
+    if (auctionState.timeLeft <= 0) {
+      clearInterval(auctionTimerInterval);
+      auctionState.running = false;
+      auctionState.review = true;
+      await auctionStateDoc.set(auctionState);
+      updateAuctionStatus();
+      renderTeamBidList();
+      alert('⏰ Hết giờ thảo luận! Hãy chốt kết quả.');
+    }
   }, 1000);
 }
 
 function stopAuctionTimer() {
-  clearInterval(auctionState.timerInterval);
-  auctionState.timerInterval = null;
+  clearInterval(auctionTimerInterval);
+  auctionTimerInterval = null;
   auctionState.running = false;
   auctionState.review = true;
-  saveAuctionState();
+  auctionStateDoc.set(auctionState);
   updateAuctionStatus();
   renderTeamBidList();
-  renderAuctionPlayerState();
 }
 
-function resetAuctionRound() {
+async function resetAuctionRound() {
   stopAuctionTimer();
   auctionState.running = false;
   auctionState.review = false;
@@ -1880,23 +2083,23 @@ function resetAuctionRound() {
   auctionState.answers = {};
   auctionState.teamReview = {};
   auctionState.finalResults = {};
-  saveAuctionState();
+  await auctionStateDoc.set(auctionState);
   const el = document.getElementById('auction-timer');
   if(el) { el.textContent='3:00'; el.style.color='var(--gold)'; }
   renderTeamBidList();
   updateAuctionStatus();
-  renderAuctionPlayerState();
 }
 
 // ============================================================
 // FINAL RESULT
 // ============================================================
-function renderFinalResult() {
-  const teams = getTeams().sort((a,b)=>b.totalScore-a.totalScore);
+async function renderFinalResult() {
+  const teams = await getTeams();
+  const sorted = teams.sort((a,b)=>b.totalScore-a.totalScore);
   const el = document.getElementById('final-result-list');
-  if (!teams.length) { el.innerHTML='<div style="color:var(--muted);font-size:0.8rem;">Chưa có dữ liệu nhóm</div>'; return; }
+  if (!sorted.length) { el.innerHTML='<div style="color:var(--muted);font-size:0.8rem;">Chưa có dữ liệu nhóm</div>'; return; }
   const medals = ['🥇','🥈','🥉'];
-  el.innerHTML = teams.map((t,i) => `
+  el.innerHTML = sorted.map((t,i) => `
     <div class="team-card ${i===0?'winner':''}">
       <div>
         <div class="team-name">${medals[i]||'#'+(i+1)} ${t.name}</div>
@@ -1909,54 +2112,78 @@ function renderFinalResult() {
     </div>`).join('');
 }
 
-function computeFinalResult() {
-  renderFinalResult();
-  const teams = getTeams().sort((a,b)=>b.totalScore-a.totalScore);
-  if (teams.length) alert(`🏆 CHÚC MỪNG ĐỘI ${teams[0].name.toUpperCase()}!\n\nVô địch với ${teams[0].totalScore} điểm!\n${teams[0].members.map(m=>m.name).join(', ')}`);
+async function computeFinalResult() {
+  await renderFinalResult();
+  const teams = await getTeams();
+  const sorted = teams.sort((a,b)=>b.totalScore-a.totalScore);
+  if (sorted.length) alert(`🏆 CHÚC MỪNG ĐỘI ${sorted[0].name.toUpperCase()}!\n\nVô địch với ${sorted[0].totalScore} điểm!\n${sorted[0].members.map(m=>m.name).join(', ')}`);
 }
 
-// Init
+function adminTab(tab) {
+  ['players','teams','auction','result'].forEach(t => {
+    const el = document.getElementById('admin-tab-'+t);
+    if (el) el.style.display = t===tab ? '' : 'none';
+    const btn = document.getElementById('tab-'+t);
+    if (btn) btn.classList.toggle('active', t===tab);
+  });
+  if (tab === 'auction') { renderTeamBidList(); updateAuctionStatus(); }
+  if (tab === 'result') renderFinalResult();
+  if (tab === 'teams') adminRefreshTeams();
+}
+
+// Expose global functions
+window.showPage = showPage;
+window.handleAdminLogin = handleAdminLogin;
+window.handleAdminLogout = handleAdminLogout;
+window.handleRegister = handleRegister;
+window.handleRegister2 = handleRegister2;
+window.skipQuestion = skipQuestion;
+window.placeAuctionBid = placeAuctionBid;
+window.passAuctionBid = passAuctionBid;
+window.submitAuctionAnswer = submitAuctionAnswer;
+window.renderLeaderboard = renderLeaderboard;
+window.adminRefreshPlayers = adminRefreshPlayers;
+window.adminRefreshTeams = adminRefreshTeams;
+window.adminOpenQuiz = adminOpenQuiz;
+window.adminCloseQuiz = adminCloseQuiz;
+window.shareQuizLink = shareQuizLink;
+window.clearAllData = clearAllData;
+window.autoGroupTeams = autoGroupTeams;
+window.clearTeams = clearTeams;
+window.placeBid = placeBid;
+window.passRound = passRound;
+window.updateTeamReview = updateTeamReview;
+window.startAuctionTimer = startAuctionTimer;
+window.stopAuctionTimer = stopAuctionTimer;
+window.publishAuctionResults = publishAuctionResults;
+window.resetAuctionRound = resetAuctionRound;
+window.nextAuctionRound = nextAuctionRound;
+window.computeFinalResult = computeFinalResult;
+window.adminTab = adminTab;
+
+// Initial load
 document.addEventListener('DOMContentLoaded', async () => {
   if (sessionStorage.getItem('admin_logged_in') === '1') {
     isAdminLoggedIn = true;
   }
   
-  // Initial fetch of quiz state from API
-  await fetchQuizState();
+  // Load quiz settings
+  const quizDoc = await quizSettingsDoc.get();
+  if (quizDoc.exists) {
+    cachedQuizOpen = quizDoc.data().quizOpen || false;
+  }
   refreshQuizOpenUI();
   
-  loadAuctionState();
+  // Load auction state
+  const auctionDoc = await auctionStateDoc.get();
+  if (auctionDoc.exists) {
+    auctionState = { ...auctionState, ...auctionDoc.data() };
+  } else {
+    await auctionStateDoc.set(auctionState);
+  }
+  
   updateAuctionStatus();
   renderTeamBidList();
-  window.showPage = showPage;
-  window.handleAdminLogin = handleAdminLogin;
-  window.handleAdminLogout = handleAdminLogout;
-
-  window.addEventListener('storage', (event) => {
-    if (event.key === STORAGE_KEYS.auction_state) {
-      loadAuctionState();
-      renderTeamBidList();
-      updateAuctionStatus();
-      if (document.getElementById('page-auction-player')?.classList.contains('active')) {
-        renderAuctionPlayerState();
-      }
-    }
-  });
-
-  // Periodic refresh of quiz state from API (every 2 seconds)
-  setInterval(async () => {
-    await fetchQuizState();
-    refreshQuizOpenUI();
-    
-    loadAuctionState();
-    if (document.getElementById('page-auction-player')?.classList.contains('active')) {
-      renderAuctionPlayerState();
-    }
-    if (document.getElementById('page-admin')?.classList.contains('active')) {
-      renderTeamBidList();
-      updateAuctionStatus();
-    }
-  }, 2000);
 }); 
 </script>
 </body>
