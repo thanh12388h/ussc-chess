@@ -758,11 +758,6 @@ function renderChessBoardSVG(containerId, fen, size = 320) {
   
   container.appendChild(boardDiv);
 }
-
-  // Ghi đè hàm renderChessBoard cũ (nếu có)
-  if (typeof window.renderChessBoard !== 'undefined') {
-    window.renderChessBoard = renderChessBoardSVG;
-  }
 </script>
 
 <script>
@@ -2337,7 +2332,7 @@ function startAuctionPlayer() {
   
   document.getElementById('player-answer-input').value = '';
   document.getElementById('player-answer-input').className = 'answer-input';
-  renderChessBoard('player-chess-board', rd.fen);
+  renderChessBoardSVG('player-chess-board', rd.fen, 320);
   showPage('page-auction-player');
   renderAuctionPlayerState();
 }
@@ -2818,7 +2813,7 @@ async function renderTeamBidList() {
     if(roundEl) roundEl.textContent = `VÒNG ${round+1} / ${auctionState.roundData.length}`;
     const rangeEl = document.getElementById('auction-bet-range');
     if(rangeEl) rangeEl.textContent = rd.range + ' ĐP';
-    renderChessBoard('auction-board-display', rd.fen);
+    renderChessBoardSVG('auction-board-display', rd.fen, 320);
   }
 }
 
