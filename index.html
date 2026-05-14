@@ -2044,8 +2044,15 @@ function startAuctionPlayer() {
 
 async function placeAuctionBid() {
   if (!auctionState.running) { alert('⚠ Phiên đấu giá chưa bắt đầu hoặc đã dừng.'); return; }
-  const amount = parseInt(document.getElementById('player-bet-input').value) || 0;
   const team = currentTest2Player.team;
+  // Check if the player has already placed a bid or passed in this round
+  if (auctionState.bids[team] && (auctionState.bids[team].amount > 0 || auctionState.bids[team].passed)) {
+    alert('⚠ Bạn đã đặt cược hoặc pass trong vòng này rồi.');
+    return;
+  }
+
+  const amount = parseInt(document.getElementById('player-bet-input').value) || 0;
+  
   const rd = auctionState.roundData[auctionState.round];
   const parts = rd.range.split('–');
   const minBet = parseInt(parts[0]) || 50;
@@ -2055,7 +2062,7 @@ async function placeAuctionBid() {
   const maxBet = Math.min(parseInt(parts[1]) || 500, teamData?.totalScore || 0);
   
   if (amount < minBet || amount > maxBet) {
-    alert(`Cược phải từ ${minBet} đến ${maxBet} ĐP`);
+    alert(`Cược phải từ ${minBet} đến ${maxBet} ĐP (Tổng điểm hiện tại của nhóm: ${teamData?.totalScore || 0})`);
     return;
   }
   
@@ -2068,6 +2075,12 @@ async function placeAuctionBid() {
 async function passAuctionBid() {
   if (!auctionState.running) { alert('⚠ Phiên đấu giá chưa bắt đầu hoặc đã dừng.'); return; }
   const team = currentTest2Player.team;
+  // Check if the player has already placed a bid or passed in this round
+  if (auctionState.bids[team] && (auctionState.bids[team].amount > 0 || auctionState.bids[team].passed)) {
+    alert('⚠ Bạn đã đặt cược hoặc pass trong vòng này rồi.');
+    return;
+  }
+
   auctionState.bids[team] = { amount: 0, passed: true };
   auctionState.teamReview[team] = { status: 'pass', delta: 0 };
   await auctionStateDoc.set(auctionState, { merge: true });
@@ -2076,12 +2089,23 @@ async function passAuctionBid() {
 
 async function submitAuctionAnswer() {
   if (!auctionState.running) { alert('⚠ Phiên đấu giá chưa bắt đầu hoặc đã dừng.'); return; }
+  const team = currentTest2Player.team;
+  // Check if the team has already made a bid or passed
+  if (!auctionState.bids[team] || (!auctionState.bids[team].amount > 0 && !auctionState.bids[team].passed)) {
+    alert('⚠ Vui lòng đặt cược hoặc pass trước khi nộp đáp án.');
+    return;
+  }
+  if (auctionState.bids[team].passed) {
+    alert('⚠ Bạn đã chọn PASS, không thể nộp đáp án.');
+    return;
+  }
+
   const input = document.getElementById('player-answer-input');
   const answer = input.value.trim().toUpperCase();
   if (!answer) { alert('⚠ Vui lòng nhập đáp án'); return; }
 
   auctionState.answers[currentTest2Player.team] = answer;
-  auctionState.teamReview[currentTest2Player.team] = auctionState.teamReview[currentTest2Player.team] || { status: 'auto', delta: 0 };
+  // Do not set teamReview status here, it should be done by admin or in publishAuctionResults based on answer
   await auctionStateDoc.set(auctionState, { merge: true });
   renderAuctionPlayerState();
   alert('✅ Đã nộp đáp án. Kết quả sẽ hiện khi Admin chốt vòng.');
@@ -2451,9 +2475,9 @@ async function renderTeamBidList() {
       <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
         <input type="number" class="bet-input" id="bet-${t.name.replace(/\s+/g,'_')}"
           min="${minBet}" max="${maxBet}" value="${bid ? (bid.passed ? 0 : bid.amount) : minBet}"
-          style="width:80px;padding:6px 8px;font-size:0.85rem;">
-        <button class="btn btn-blue btn-sm" onclick="placeBid('${t.name}')">Cược</button>
-        <button class="btn btn-outline btn-sm" onclick="passRound('${t.name}')">Pass</button>
+          style="width:80px;padding:6px 8px;font-size:0.85rem;" ${bid && (bid.amount > 0 || bid.passed) ? 'disabled' : ''}>
+        <button class="btn btn-blue btn-sm" id="bet-btn-${t.name.replace(/\s+/g,'_')}" onclick="placeBid('${t.name}')" ${bid && (bid.amount > 0 || bid.passed) ? 'disabled' : ''}>Cược</button>
+        <button class="btn btn-outline btn-sm" id="pass-btn-${t.name.replace(/\s+/g,'_')}" onclick="passRound('${t.name}')" ${bid && (bid.amount > 0 || bid.passed) ? 'disabled' : ''}>Pass</button>
       </div>
       <span class="bid-status ${statusClass}">${statusText}</span>
       ${reviewControls}
