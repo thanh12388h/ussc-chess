@@ -631,8 +631,8 @@
 
   // Initialize Firebase
   firebase.initializeApp(firebaseConfig);
-  const db = firebase.firestore();
-  const auth = firebase.auth();
+  var db = firebase.firestore();
+  var auth = firebase.auth();
   
   // Enable offline persistence
   db.enablePersistence({ synchronizeTabs: true }).catch(err => {
