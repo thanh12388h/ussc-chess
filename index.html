@@ -698,6 +698,10 @@
       <label>Mã Số Sinh Viên</label>
       <input type="text" id="reg-mssv" placeholder="22XXXXXXX" autocomplete="off" maxlength="10">
     </div>
+    <div class="field">
+      <label>Mật Khẩu Nhóm</label>
+      <input type="password" id="reg-password" placeholder="Mật khẩu do Admin cấp" autocomplete="off">
+    </div>
     <div id="reg-error" style="color:var(--red);font-size:0.8rem;margin-bottom:12px;font-family:'Space Mono',monospace;display:none;"></div>
     <button class="btn btn-gold" onclick="handleRegister()">Xác Nhận & Bắt Đầu →</button>
     <button class="btn btn-outline" onclick="showPage('page-home')" style="margin-top:8px;">← Quay Lại</button>
@@ -722,6 +726,10 @@
     <div class="field">
       <label>Tên Nhóm (hoặc mã nhóm từ Admin)</label>
       <input type="text" id="reg2-team" placeholder="Nhập tên nhóm được cấp" autocomplete="off">
+    </div>
+    <div class="field">
+      <label>Mật Khẩu Nhóm</label>
+      <input type="password" id="reg2-password" placeholder="Mật khẩu từ đăng ký phần 1" autocomplete="off">
     </div>
     <div id="reg2-error" style="color:var(--red);font-size:0.8rem;margin-bottom:12px;font-family:'Space Mono',monospace;display:none;"></div>
     <button class="btn btn-gold" onclick="handleRegister2()">Xác Nhận & Bắt Đầu →</button>
@@ -1319,9 +1327,10 @@ function renderChessBoard(containerId, fen) {
 async function handleRegister() {
   const name = document.getElementById('reg-name').value.trim();
   const mssv = document.getElementById('reg-mssv').value.trim();
+  const password = document.getElementById('reg-password').value.trim();
   const err = document.getElementById('reg-error');
 
-  if (!name || !mssv) { err.textContent = '⚠ Vui lòng điền đầy đủ thông tin'; err.style.display='block'; return; }
+  if (!name || !mssv || !password) { err.textContent = '⚠ Vui lòng điền đầy đủ thông tin'; err.style.display='block'; return; }
   if (!/^\d{8,10}$/.test(mssv)) { err.textContent = '⚠ MSSV không hợp lệ (8-10 chữ số)'; err.style.display='block'; return; }
 
   const quizDoc = await quizSettingsDoc.get();
@@ -1342,7 +1351,8 @@ async function handleRegister() {
   }
 
   err.style.display='none';
-  currentPlayer = { name, mssv, score: 0, correct: 0, registeredAt: Date.now(), responseTime: 0 };
+  currentPlayer = { name, mssv, password, score: 0, correct: 0, registeredAt: Date.now(), responseTime: 0 };
+  await playersCollection.doc(mssv).set(currentPlayer);
   startQuiz();
 }
 
@@ -1350,14 +1360,46 @@ async function handleRegister2() {
   const name = document.getElementById('reg2-name').value.trim();
   const mssv = document.getElementById('reg2-mssv').value.trim();
   const team = document.getElementById('reg2-team').value.trim();
+  const password = document.getElementById('reg2-password').value.trim();
   const err = document.getElementById('reg2-error');
 
-  if (!name || !mssv || !team) { err.textContent = '⚠ Vui lòng điền đầy đủ thông tin'; err.style.display='block'; return; }
+  if (!name || !mssv || !team || !password) { err.textContent = '⚠ Vui lòng điền đầy đủ thông tin'; err.style.display='block'; return; }
   if (!/^\d{8,10}$/.test(mssv)) { err.textContent = '⚠ MSSV không hợp lệ'; err.style.display='block'; return; }
+
+  // Check if already registered for test2
+  const existingPlayer = await test2PlayersCollection.doc(mssv).get();
+  if (existingPlayer.exists) {
+    err.textContent = '⚠ MSSV này đã đăng ký đấu giá!';
+    err.style.display='block';
+    return;
+  }
+
+  // Check if registered for test1
+  const playerDoc = await playersCollection.doc(mssv).get();
+  if (!playerDoc.exists) {
+    err.textContent = '⚠ Bạn chưa đăng ký thi đấu phần 1! Đăng ký phần 1 trước.';
+    err.style.display='block';
+    return;
+  }
+
+  const playerData = playerDoc.data();
+  if (playerData.password !== password) {
+    err.textContent = '⚠ Mật khẩu không đúng!';
+    err.style.display='block';
+    return;
+  }
 
   const teamDoc = await teamsCollection.doc(team).get();
   if (!teamDoc.exists) {
     err.textContent = '⚠ Tên nhóm không tồn tại! Liên hệ Admin.';
+    err.style.display='block';
+    return;
+  }
+
+  const teamData = teamDoc.data();
+  const member = teamData.members.find(m => m.mssv === mssv && m.name === name);
+  if (!member) {
+    err.textContent = '⚠ Thông tin MSSV, tên hoặc tên nhóm không khớp với dữ liệu đã cấp phát! Kiểm tra lại.';
     err.style.display='block';
     return;
   }
