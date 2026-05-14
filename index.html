@@ -372,7 +372,9 @@
     display:flex;
     align-items:center;
     justify-content:center;
-    font-size:2rem;
+    font-size:2.3rem;
+    font-family: 'Segoe UI Symbol', 'Apple Color Emoji', 'Noto Color Emoji', sans-serif;
+    line-height:1;
     background: transparent;
     cursor:default;
   }
@@ -1266,16 +1268,20 @@ function formatTime(seconds) {
 function fenToBoard(fen) {
   const board = [];
   const rows = fen.split(' ')[0].split('/');
-  
+  const pieces = {
+    'p':'♟︎','r':'♜','n':'♞','b':'♝','q':'♛','k':'♚',
+    'P':'♙','R':'♖','N':'♘','B':'♗','Q':'♕','K':'♔'
+  };
+
   rows.forEach((row,rIdx) => {
     let col = 0;
     for (let char of row) {
       if (isNaN(char)) {
-        board.push({piece:char,isLight:(rIdx+col)%2===0});
+        board.push({piece: pieces[char] || '', isLight:(rIdx+col)%2===0});
         col++;
       } else {
-        for (let i=0; i<parseInt(char); i++) {
-          board.push({piece:'',isLight:(rIdx+col)%2===0});
+        for (let i=0; i<parseInt(char,10); i++) {
+          board.push({piece:'', isLight:(rIdx+col)%2===0});
           col++;
         }
       }
@@ -1288,35 +1294,11 @@ function renderChessBoard(containerId, fen) {
   const container = document.getElementById(containerId);
   if (!container) return;
   const board = fenToBoard(fen);
-  const pieceImages = {
-    'P': 'https://lichess.org/static/lila-1/images/piece/merida/wP.svg',
-    'p': 'https://lichess.org/static/lila-1/images/piece/merida/bP.svg',
-    'R': 'https://lichess.org/static/lila-1/images/piece/merida/wR.svg',
-    'r': 'https://lichess.org/static/lila-1/images/piece/merida/bR.svg',
-    'N': 'https://lichess.org/static/lila-1/images/piece/merida/wN.svg',
-    'n': 'https://lichess.org/static/lila-1/images/piece/merida/bN.svg',
-    'B': 'https://lichess.org/static/lila-1/images/piece/merida/wB.svg',
-    'b': 'https://lichess.org/static/lila-1/images/piece/merida/bB.svg',
-    'Q': 'https://lichess.org/static/lila-1/images/piece/merida/wQ.svg',
-    'q': 'https://lichess.org/static/lila-1/images/piece/merida/bQ.svg',
-    'K': 'https://lichess.org/static/lila-1/images/piece/merida/wK.svg',
-    'k': 'https://lichess.org/static/lila-1/images/piece/merida/bK.svg'
-  };
   container.innerHTML = '';
   board.forEach(sq => {
     const div = document.createElement('div');
     div.className = 'chess-square' + (sq.isLight ? '' : ' dark');
-    if (sq.piece) {
-      const img = document.createElement('img');
-      img.src = pieceImages[sq.piece];
-      img.style.width = '100%';
-      img.style.height = '100%';
-      img.style.objectFit = 'contain';
-      img.style.pointerEvents = 'none';
-      img.alt = sq.piece;
-      img.draggable = false;
-      div.appendChild(img);
-    }
+    div.textContent = sq.piece;
     container.appendChild(div);
   });
 }
