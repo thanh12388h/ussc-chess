@@ -161,6 +161,7 @@
   }
   .quiz-timer.danger { color: var(--red); animation: pulse 0.5s infinite; }
   @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.5} }
+  @keyframes slideDown { from {opacity:0; transform:translateY(-20px)} to {opacity:1; transform:translateY(0)} }
   .quiz-progress {
     font-family: 'Space Mono', monospace;
     font-size: 0.8rem;
@@ -863,6 +864,11 @@
       <div class="logo" style="font-size:1.4rem; margin-bottom:8px;">Thế Cờ Đấu Giá</div>
       <div style="font-family:'Space Mono',monospace; font-size:0.8rem; color:var(--muted);" id="player-team-info">Nhóm: ?</div>
     </div>
+
+    <div id="player-result-notification" style="display:none; padding:14px 16px; background:linear-gradient(135deg,rgba(46,204,113,0.15),rgba(52,152,219,0.15)); border:1px solid var(--green); border-radius:10px; margin-bottom:16px; text-align:center; animation:slideDown 0.4s ease;">
+      <div style="font-size:1.2rem; margin-bottom:6px;">🎊 CÔNG BỐ KẾT QUẢ!</div>
+      <div style="font-size:0.85rem; color:var(--white); font-family:'Space Mono',monospace;">Vòng đấu giá đã chốt. Xem kết quả dưới đây →</div>
+    </div>
     
     <div class="auction-board-container">
       <div style="font-size:0.75rem; color:var(--muted); font-family:'Space Mono',monospace; margin-bottom:8px;">BÀN CỜ</div>
@@ -893,7 +899,7 @@
 
     <button class="btn btn-gold" onclick="submitAuctionAnswer()" style="margin-top:16px;">✅ Nộp Đáp Án</button>
 
-    <div id="player-round-result" class="result-card" style="display:none; margin-top:20px;">
+    <div id="player-round-result" class="result-card" style="display:none; margin-top:20px; border:2px solid var(--green);">
       <div style="font-size:0.9rem; color:var(--muted); text-transform:uppercase; letter-spacing:0.15em;">Kết quả vòng</div>
       <div class="result-answer" id="player-round-result-text">...</div>
       <div class="result-item"><span>Đáp án chính xác</span><strong id="player-correct-answer"></strong></div>
@@ -1512,14 +1518,17 @@ async function renderHistory() {
 
   try {
     const playerDoc = await playersCollection.doc(mssv).get();
+    const test2PlayerDoc = await test2PlayersCollection.doc(mssv).get();
+    
     if (!playerDoc.exists) {
       historyEl.innerHTML = '<p style="text-align:center; color:var(--muted);">Không tìm thấy dữ liệu</p>';
       return;
     }
 
     const player = playerDoc.data();
+    const test2Player = test2PlayerDoc.exists ? test2PlayerDoc.data() : null;
 
-    // Compute rank
+    // Compute rank for Test 1
     let rank = '—';
     let totalPlayers = 0;
     if (player.finishedAt) {
@@ -1536,6 +1545,50 @@ async function renderHistory() {
 
     const rankColor = rank === 1 ? 'var(--gold)' : rank <= 3 ? '#c0c0c0' : 'var(--green)';
     const rankMedal = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : '🏅';
+
+    // Build Test 2 results section
+    const test2HTML = test2Player ? `
+      <div style="margin-top:20px;">
+        <div style="font-size:0.75rem; color:var(--muted); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:16px;">Kết Quả Test 2 — Đấu Giá Cờ Vua</div>
+        <div style="background:var(--surface2); border-radius:10px; padding:16px; margin-bottom:16px;">
+          <div style="font-size:0.9rem; color:var(--white); margin-bottom:12px;">
+            <strong>Nhóm:</strong> ${test2Player.team || '—'}
+          </div>
+          ${test2Player.auctionResults && test2Player.auctionResults.length > 0 ? `
+            <div style="display:grid; gap:8px;">
+              ${test2Player.auctionResults.map((result, idx) => {
+                const statusColor = result.status === 'correct' ? 'var(--green)' : result.status === 'wrong' ? 'var(--red)' : 'var(--muted)';
+                const statusEmoji = result.status === 'correct' ? '✅' : result.status === 'wrong' ? '❌' : '⊘';
+                return `
+                  <div style="background:var(--surface); border-left:3px solid ${statusColor}; padding:10px 12px; border-radius:6px;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                      <span style="font-size:0.9rem; font-weight:600; color:var(--gold);">Vòng ${result.round}</span>
+                      <span style="color:${statusColor}; font-weight:700;">${statusEmoji} ${result.status === 'correct' ? 'ĐÚNG' : result.status === 'wrong' ? 'SAI' : 'PASS'}</span>
+                    </div>
+                    <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; font-size:0.75rem; font-family:'Space Mono',monospace; color:var(--muted);">
+                      <div>💰 Cược: ${result.bid} ĐP</div>
+                      <div>📝 Nộp: ${result.answer || '—'}</div>
+                      <div style="color:${result.delta >= 0 ? 'var(--green)' : 'var(--red)'};">${result.delta >= 0 ? '+' : ''}${result.delta} ĐP</div>
+                    </div>
+                  </div>
+                `;
+              }).join('')}
+            </div>
+          ` : `
+            <div style="font-size:0.9rem; color:var(--muted); padding:10px; text-align:center;">
+              ⏳ Chờ kết quả vòng đấu giá
+            </div>
+          `}
+        </div>
+      </div>
+    ` : `
+      <div style="margin-top:20px;">
+        <div style="font-size:0.75rem; color:var(--muted); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:16px;">Kết Quả Test 2 — Đấu Giá Cờ Vua</div>
+        <div style="font-size:0.9rem; color:var(--muted); padding:20px; background:var(--surface2); border-radius:8px; font-family:'Space Mono',monospace;">
+          ⏳ Chưa tham gia Test 2
+        </div>
+      </div>
+    `;
 
     const historyHTML = `
       <div class="card" style="text-align:center;">
@@ -1576,6 +1629,7 @@ async function renderHistory() {
           <button class="btn btn-gold" onclick="showPage('page-register')" style="max-width:280px; margin:0 auto;">🎮 Tham Gia Thi Đấu 1 Ngay</button>
           `}
         </div>
+        ${test2HTML}
       </div>
     `;
     historyEl.innerHTML = historyHTML;
@@ -1904,18 +1958,32 @@ async function handleRegister2() {
 
   err.style.display='none';
   
-  // Check if user already registered - if so, allow them to re-enter
-  const existingPlayer = await test2PlayersCollection.doc(mssv).get();
-  if (existingPlayer.exists) {
-    // User is re-entering - load existing data
-    currentTest2Player = { ...existingPlayer.data(), name, mssv, team };
+  // Load existing test2 player data if available, or create new
+  const existingPlayerDoc = await test2PlayersCollection.doc(mssv).get();
+  if (existingPlayerDoc.exists) {
+    currentTest2Player = { ...existingPlayerDoc.data(), name, mssv, team };
   } else {
-    // First time entry
-    currentTest2Player = { name, mssv, team, registeredAt: Date.now() };
+    currentTest2Player = { name, mssv, team, registeredAt: Date.now(), auctionResults: [] };
     await test2PlayersCollection.doc(mssv).set(currentTest2Player);
   }
   
-  startAuctionPlayer();
+  // Ensure player's team in Firestore is updated if they rejoin with a different team
+  if (currentTest2Player.team !== team) {
+    currentTest2Player.team = team;
+    await test2PlayersCollection.doc(mssv).set({ team: team }, { merge: true });
+  }
+
+  // Check if there's an ongoing auction. If so, go straight to the auction player page.
+  // Otherwise, go to home and let the admin start the auction.
+  const auctionStateSnap = await auctionStateDoc.get();
+  const currentAuctionState = auctionStateSnap.exists ? auctionStateSnap.data() : auctionState;
+
+  if (currentAuctionState.running || currentAuctionState.review || currentAuctionState.finalized) {
+    startAuctionPlayer();
+  } else {
+    showPage('page-home');
+    alert('Giải đấu đấu giá chưa bắt đầu hoặc đã kết thúc. Vui lòng quay lại sau hoặc kiểm tra lịch sử thi đấu.');
+  }
 }
 
 // ============================================================
@@ -2132,6 +2200,7 @@ function renderAuctionPlayerState() {
   const timerEl = document.getElementById('player-auction-timer');
   const statusEl = document.getElementById('player-bid-status');
   const resultCard = document.getElementById('player-round-result');
+  const resultNotif = document.getElementById('player-result-notification');
   const rd = auctionState.roundData[auctionState.round] || auctionState.roundData[0];
   const answerInput = document.getElementById('player-answer-input');
   const bidInput = document.getElementById('player-bet-input');
@@ -2145,27 +2214,40 @@ function renderAuctionPlayerState() {
     statusEl.textContent = 'Phiên đấu giá đã chốt. Kết quả được hiển thị bên dưới.';
     if (answerInput) answerInput.disabled = true;
     if (bidInput) bidInput.disabled = true;
+    // Show notification if results just finalized
+    if (resultNotif && resultNotif.style.display === 'none') {
+      resultNotif.style.display = 'block';
+      resultNotif.style.animation = 'slideDown 0.4s ease';
+      setTimeout(() => {
+        resultCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 500);
+    }
   } else if (auctionState.running) {
     statusEl.textContent = bid ? (bid.passed ? 'Bạn đã chọn PASS.' : `Bạn đã cược ${bid.amount} ĐP.`) : 'Phiên đấu giá đang diễn ra. Vui lòng đặt cược và nộp đáp án.';
     if (answerInput) answerInput.disabled = false;
     if (bidInput) bidInput.disabled = false;
+    if (resultNotif) resultNotif.style.display = 'none';
   } else if (auctionState.review) {
     statusEl.textContent = 'Phiên đã dừng, chờ Admin chốt kết quả.';
     if (answerInput) answerInput.disabled = true;
     if (bidInput) bidInput.disabled = true;
+    if (resultNotif) resultNotif.style.display = 'none';
   } else {
     statusEl.textContent = 'Chờ Admin bắt đầu phiên đấu giá.';
     if (answerInput) answerInput.disabled = true;
     if (bidInput) bidInput.disabled = true;
+    if (resultNotif) resultNotif.style.display = 'none';
   }
 
   if (auctionState.finalized && auctionState.finalResults && auctionState.finalResults[team]) {
     const result = auctionState.finalResults[team];
     resultCard.style.display = 'block';
-    document.getElementById('player-round-result-text').textContent = `Vòng ${auctionState.round + 1}`;
+    const statusColor = result.status === 'correct' ? 'var(--green)' : result.status === 'wrong' ? 'var(--red)' : 'var(--muted)';
+    const statusEmoji = result.status === 'correct' ? '✅' : result.status === 'wrong' ? '❌' : '⊘';
+    document.getElementById('player-round-result-text').innerHTML = `<span style="color:${statusColor};">${statusEmoji} Vòng ${auctionState.round + 1}</span>`;
     document.getElementById('player-correct-answer').textContent = result.correctAnswer || rd.answer;
-    document.getElementById('player-round-result-status').textContent = result.status === 'correct' ? 'ĐÚNG' : result.status === 'pass' ? 'PASS' : 'SAI';
-    document.getElementById('player-round-result-delta').textContent = `${result.delta >= 0 ? '+' : ''}${result.delta} ĐP`;
+    document.getElementById('player-round-result-status').innerHTML = `<span style="color:${statusColor};font-weight:700;">${result.status === 'correct' ? 'ĐÚNG ✅' : result.status === 'pass' ? 'PASS ⊘' : 'SAI ❌'}</span>`;
+    document.getElementById('player-round-result-delta').innerHTML = `<span style="color:${result.delta >= 0 ? 'var(--green)' : 'var(--red)'};">${result.delta >= 0 ? '+' : ''}${result.delta} ĐP</span>`;
   } else {
     if (resultCard) resultCard.style.display = 'none';
   }
@@ -2576,6 +2658,7 @@ async function publishAuctionResults() {
   if (!auctionState.review) { alert('⚠ Vui lòng dừng phiên đấu giá trước khi chốt kết quả.'); return; }
   const rd = auctionState.roundData[auctionState.round] || auctionState.roundData[0];
   const teams = await getTeams();
+  const test2Players = await getTest2Players();
   auctionState.finalResults = {};
 
   for (const t of teams) {
@@ -2620,6 +2703,27 @@ async function publishAuctionResults() {
       correctAnswer: rd.answer,
       submittedAnswer: answer,
     };
+
+    // Save results to each test2 player in the team
+    for (const member of t.members) {
+      const test2Player = test2Players.find(p => p.mssv === member.mssv);
+      if (test2Player) {
+        if (!test2Player.auctionResults) test2Player.auctionResults = [];
+        // Store this round's result
+        test2Player.auctionResults.push({
+          round: auctionState.round + 1,
+          teamName: t.name,
+          bid: bid ? bid.amount : 0,
+          passed: bid ? bid.passed : true,
+          answer: answer,
+          correctAnswer: rd.answer,
+          status: status,
+          delta: delta,
+          timestamp: Date.now()
+        });
+        await test2PlayersCollection.doc(member.mssv).set(test2Player);
+      }
+    }
   }
 
   auctionState.finalized = true;
