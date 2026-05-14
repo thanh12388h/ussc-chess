@@ -629,18 +629,18 @@
 
 <script>
 const PIECE_SVG = {
-  wP: "https://upload.wikimedia.org/wikipedia/commons/4/45/Chess_plt45.svg",
-  wN: "https://upload.wikimedia.org/wikipedia/commons/7/70/Chess_nlt45.svg",
-  wB: "https://upload.wikimedia.org/wikipedia/commons/b/b1/Chess_blt45.svg",
-  wR: "https://upload.wikimedia.org/wikipedia/commons/7/72/Chess_rlt45.svg",
-  wQ: "https://upload.wikimedia.org/wikipedia/commons/1/15/Chess_qlt45.svg",
-  wK: "https://upload.wikimedia.org/wikipedia/commons/4/42/Chess_klt45.svg",
-  bP: "https://upload.wikimedia.org/wikipedia/commons/c/c7/Chess_pdt45.svg",
-  bN: "https://upload.wikimedia.org/wikipedia/commons/e/ef/Chess_ndt45.svg",
-  bB: "https://upload.wikimedia.org/wikipedia/commons/9/98/Chess_bdt45.svg",
-  bR: "https://upload.wikimedia.org/wikipedia/commons/f/ff/Chess_rdt45.svg",
-  bQ: "https://upload.wikimedia.org/wikipedia/commons/4/47/Chess_qdt45.svg",
-  bK: "https://upload.wikimedia.org/wikipedia/commons/f/f0/Chess_kdt45.svg",
+  wP: "https://upload.wikimedia.org/wikipedia/commons/4/45/Chess_plt45.png",
+  wN: "https://upload.wikimedia.org/wikipedia/commons/7/70/Chess_nlt45.png",
+  wB: "https://upload.wikimedia.org/wikipedia/commons/b/b1/Chess_blt45.png",
+  wR: "https://upload.wikimedia.org/wikipedia/commons/7/72/Chess_rlt45.png",
+  wQ: "https://upload.wikimedia.org/wikipedia/commons/1/15/Chess_qlt45.png",
+  wK: "https://upload.wikimedia.org/wikipedia/commons/4/42/Chess_klt45.png",
+  bP: "https://upload.wikimedia.org/wikipedia/commons/c/c7/Chess_pdt45.png",
+  bN: "https://upload.wikimedia.org/wikipedia/commons/e/ef/Chess_ndt45.png",
+  bB: "https://upload.wikimedia.org/wikipedia/commons/9/98/Chess_bdt45.png",
+  bR: "https://upload.wikimedia.org/wikipedia/commons/f/ff/Chess_rdt45.png",
+  bQ: "https://upload.wikimedia.org/wikipedia/commons/4/47/Chess_qdt45.png",
+  bK: "https://upload.wikimedia.org/wikipedia/commons/f/f0/Chess_kdt45.png",
 };
 
 function parseFen(fen) {
@@ -676,6 +676,21 @@ async function getUserTeamName(mssv) {
   const teams = await getTeams();
   const team = teams.find(t => Array.isArray(t.members) && t.members.some(m => m.mssv === mssv));
   return team ? team.name : null;
+}
+
+async function resolveCurrentUserTeam() {
+  const mssv = getLoggedInMssv();
+  if (!mssv) return null;
+  const teamName = await getUserTeamName(mssv);
+  if (!teamName) return null;
+  if (!currentTest2Player) {
+    currentTest2Player = { mssv, team: teamName };
+  } else {
+    currentTest2Player.team = teamName;
+  }
+  const teamInputEl = document.getElementById('reg2-team');
+  if (teamInputEl) teamInputEl.value = teamName;
+  return teamName;
 }
 
 async function refreshHomeTeamInfo() {
@@ -776,6 +791,13 @@ function renderChessBoardSVG(containerId, fen, size = 320) {
           filter: drop-shadow(0 2px 2px rgba(0,0,0,0.3));
           pointer-events: none;
         `;
+        img.onerror = () => {
+          img.remove();
+          const fallback = document.createElement('span');
+          fallback.textContent = piece[1];
+          fallback.style.cssText = `font-size: 1.4rem; color: ${piece[0] === 'w' ? '#fff' : '#000'};`;
+          squareDiv.appendChild(fallback);
+        };
         squareDiv.appendChild(img);
       }
       
@@ -2318,14 +2340,14 @@ async function endQuiz() {
 // ============================================================
 // AUCTION PLAYER
 // ============================================================
-function startAuctionPlayer() {
+async function startAuctionPlayer() {
   if (auctionState.round >= auctionState.roundData.length) {
     alert('🏁 Đã kết thúc tất cả vòng đấu giá!');
     showPage('page-home');
     return;
   }
   const rd = auctionState.roundData[auctionState.round];
-  const team = currentTest2Player?.team;
+  const team = await resolveCurrentUserTeam();
   if (!team) {
     alert('⚠ Không tìm thấy nhóm của bạn. Vui lòng đăng ký lại hoặc liên hệ Admin.');
     showPage('page-register2');
@@ -2352,10 +2374,10 @@ function startAuctionPlayer() {
 
 async function placeAuctionBid() {
   if (!auctionState.running) { alert('⚠ Phiên đấu giá chưa bắt đầu hoặc đã dừng.'); return; }
-  const team = currentTest2Player?.team;
+  const team = await resolveCurrentUserTeam();
   if (!team) { alert('⚠ Lỗi: không tìm thấy nhóm của bạn.'); return; }
-  // Check if the player has already placed a bid or passed in this round
-  if (auctionState.bids[team] && (auctionState.bids[team].amount > 0 || auctionState.bids[team].passed)) {
+  const bidRecord = auctionState.bids?.[team];
+  if (bidRecord && (bidRecord.amount > 0 || bidRecord.passed)) {
     alert('⚠ Bạn đã đặt cược hoặc pass trong vòng này rồi.');
     return;
   }
@@ -2381,6 +2403,9 @@ async function placeAuctionBid() {
     return;
   }
   
+  auctionState.bids = auctionState.bids || {};
+  auctionState.answers = auctionState.answers || {};
+  auctionState.teamReview = auctionState.teamReview || {};
   auctionState.bids[team] = { amount, passed: false };
   auctionState.answers[team] = answer;
   auctionState.teamReview[team] = { status: 'auto', delta: 0 };
@@ -2391,14 +2416,17 @@ async function placeAuctionBid() {
 
 async function passAuctionBid() {
   if (!auctionState.running) { alert('⚠ Phiên đấu giá chưa bắt đầu hoặc đã dừng.'); return; }
-  const team = currentTest2Player?.team;
+  const team = await resolveCurrentUserTeam();
   if (!team) { alert('⚠ Lỗi: không tìm thấy nhóm của bạn.'); return; }
-  // Check if the player has already placed a bid or passed in this round
-  if (auctionState.bids[team] && (auctionState.bids[team].amount > 0 || auctionState.bids[team].passed)) {
+  const bidRecord = auctionState.bids?.[team];
+  if (bidRecord && (bidRecord.amount > 0 || bidRecord.passed)) {
     alert('⚠ Bạn đã đặt cược hoặc pass trong vòng này rồi.');
     return;
   }
 
+  auctionState.bids = auctionState.bids || {};
+  auctionState.answers = auctionState.answers || {};
+  auctionState.teamReview = auctionState.teamReview || {};
   auctionState.bids[team] = { amount: 0, passed: true };
   auctionState.answers[team] = '';
   auctionState.teamReview[team] = { status: 'pass', delta: 0 };
@@ -2431,12 +2459,21 @@ function renderAuctionPlayerState() {
     document.getElementById('player-round-badge').textContent = `VÒNG ${Math.min(auctionState.round + 1, auctionState.roundData.length)} / ${auctionState.roundData.length}`;
   }
 
-  const isActionLocked = !auctionState.running || auctionState.review || auctionState.finalized;
-  const bid = team ? auctionState.bids[team] : null;
+  if (!team && isLoggedIn()) {
+    getUserTeamName(getLoggedInMssv()).then((teamName) => {
+      if (teamName) {
+        currentTest2Player = currentTest2Player || {};
+        currentTest2Player.team = teamName;
+        renderAuctionPlayerState();
+      }
+    });
+  }
+
+  const bid = team ? auctionState.bids?.[team] : null;
   const hasActed = bid && (bid.passed || bid.amount > 0);
 
   if (!team) {
-    statusEl.textContent = '⚠ Không tìm thấy nhóm của bạn. Vui lòng đăng ký lại hoặc liên hệ Admin.';
+    if (statusEl) statusEl.textContent = '⚠ Không tìm thấy nhóm của bạn. Vui lòng đăng ký lại hoặc liên hệ Admin.';
     if (answerInput) answerInput.disabled = true;
     if (bidInput) bidInput.disabled = true;
     if (betBtn) betBtn.disabled = true;
@@ -2445,7 +2482,7 @@ function renderAuctionPlayerState() {
   }
 
   if (auctionState.finalized) {
-    statusEl.textContent = 'Phiên đấu giá đã chốt. Kết quả được hiển thị bên dưới.';
+    if (statusEl) statusEl.textContent = 'Phiên đấu giá đã chốt. Kết quả được hiển thị bên dưới.';
     if (answerInput) answerInput.disabled = true;
     if (bidInput) bidInput.disabled = true;
     if (betBtn) betBtn.disabled = true;
@@ -2459,13 +2496,13 @@ function renderAuctionPlayerState() {
     }
   } else if (auctionState.running) {
     if (hasActed) {
-      statusEl.textContent = bid.passed ? 'Bạn đã chọn PASS. Hành động đã khóa.' : `Bạn đã cược ${bid.amount} ĐP và nộp nước đi. Hành động đã khóa.`;
+      if (statusEl) statusEl.textContent = bid.passed ? 'Bạn đã chọn PASS. Hành động đã khóa.' : `Bạn đã cược ${bid.amount} ĐP và nộp nước đi. Hành động đã khóa.`;
       if (answerInput) answerInput.disabled = true;
       if (bidInput) bidInput.disabled = true;
       if (betBtn) betBtn.disabled = true;
       if (passBtn) passBtn.disabled = true;
     } else {
-      statusEl.textContent = 'Phiên đấu giá đang diễn ra. Nhập nước đi và bấm Cược hoặc bấm Pass.';
+      if (statusEl) statusEl.textContent = 'Phiên đấu giá đang diễn ra. Nhập nước đi và bấm Cược hoặc bấm Pass.';
       if (answerInput) answerInput.disabled = false;
       if (bidInput) bidInput.disabled = false;
       if (betBtn) betBtn.disabled = false;
@@ -2473,14 +2510,14 @@ function renderAuctionPlayerState() {
     }
     if (resultNotif) resultNotif.style.display = 'none';
   } else if (auctionState.review) {
-    statusEl.textContent = 'Phiên đã dừng, chờ Admin chốt kết quả.';
+    if (statusEl) statusEl.textContent = 'Phiên đã dừng, chờ Admin chốt kết quả.';
     if (answerInput) answerInput.disabled = true;
     if (bidInput) bidInput.disabled = true;
     if (betBtn) betBtn.disabled = true;
     if (passBtn) passBtn.disabled = true;
     if (resultNotif) resultNotif.style.display = 'none';
   } else {
-    statusEl.textContent = 'Chờ Admin bắt đầu phiên đấu giá.';
+    if (statusEl) statusEl.textContent = 'Chờ Admin bắt đầu phiên đấu giá.';
     if (answerInput) answerInput.disabled = true;
     if (bidInput) bidInput.disabled = true;
     if (betBtn) betBtn.disabled = true;
