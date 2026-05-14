@@ -1797,22 +1797,30 @@ async function handleRegister() {
 
     const mssv = getLoggedInMssv();
 
-    // Luôn fetch thẳng từ server, bypass mọi cache
-    const quizSnap = await quizSettingsDoc.get({ source: 'server' });
-    const quizIsOpen = quizSnap.exists ? quizSnap.data().quizOpen : false;
-    cachedQuizOpen = quizIsOpen; // cập nhật lại cache
-    refreshQuizOpenUI();
+    if (btn) { btn.textContent = '⏳ Đang kiểm tra...'; btn.disabled = true; }
+
+    // Đọc quiz status thẳng từ server (không dùng { source:'server' } để tránh lỗi permissions)
+    // cachedQuizOpen đã được onSnapshot cập nhật realtime — dùng làm primary check
+    // Đồng thời fetch lại để chắc chắn
+    let quizIsOpen = cachedQuizOpen;
+    try {
+      const quizSnap = await quizSettingsDoc.get();
+      quizIsOpen = quizSnap.exists ? quizSnap.data().quizOpen : false;
+      cachedQuizOpen = quizIsOpen;
+      refreshQuizOpenUI();
+    } catch(e) {
+      // Nếu không đọc được, dùng cachedQuizOpen từ onSnapshot
+      quizIsOpen = cachedQuizOpen;
+    }
 
     if (!quizIsOpen) {
       err.textContent = '⏳ Quiz chưa mở. Vui lòng đợi Admin mở.';
       err.style.display = 'block';
+      if (btn) { btn.textContent = '🎮 Bắt Đầu Thi Đấu 1 →'; btn.disabled = false; }
       return;
     }
 
-    if (btn) btn.textContent = '⏳ Đang kiểm tra...';
-    if (btn) btn.disabled = true;
-
-    const playerDoc = await playersCollection.doc(mssv).get({ source: 'server' });
+    const playerDoc = await playersCollection.doc(mssv).get();
     if (!playerDoc.exists) {
       err.textContent = '⚠ Tài khoản không tồn tại. Vui lòng đăng ký lại.';
       err.style.display = 'block';
