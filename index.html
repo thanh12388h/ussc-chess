@@ -3323,5 +3323,148 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 <script>
 </script>
+
+
+<script>
+// ============================================================
+// FIX: Re-render chess board when FEN changes
+// ============================================================
+
+// 1. Fix renderTeamBidList - đảm bảo render bàn cờ sau khi cập nhật
+const originalRenderTeamBidList = window.renderTeamBidList;
+window.renderTeamBidList = async function() {
+    if (originalRenderTeamBidList) {
+        await originalRenderTeamBidList();
+    }
+    // Render bàn cờ admin sau khi cập nhật danh sách
+    const rd = auctionState?.roundData?.[auctionState.round];
+    if (rd && document.getElementById('auction-board-display')) {
+        renderChessBoardSVG('auction-board-display', rd.fen, 320);
+    }
+};
+
+// 2. Fix nextAuctionRound - render lại bàn cờ khi chuyển vòng
+const originalNextAuctionRound = window.nextAuctionRound;
+window.nextAuctionRound = async function() {
+    if (originalNextAuctionRound) {
+        await originalNextAuctionRound();
+    }
+    // Render lại bàn cờ admin sau khi chuyển vòng
+    const rd = auctionState?.roundData?.[auctionState.round];
+    if (rd && document.getElementById('auction-board-display')) {
+        renderChessBoardSVG('auction-board-display', rd.fen, 320);
+    }
+    // Render lại bàn cờ player nếu đang ở trang player
+    if (document.getElementById('page-auction-player')?.classList.contains('active')) {
+        const playerRd = auctionState?.roundData?.[auctionState.round];
+        if (playerRd && document.getElementById('player-chess-board')) {
+            renderChessBoardSVG('player-chess-board', playerRd.fen, 320);
+        }
+    }
+};
+
+// 3. Fix resetAuctionRound - render lại khi reset
+const originalResetAuctionRound = window.resetAuctionRound;
+window.resetAuctionRound = async function() {
+    if (originalResetAuctionRound) {
+        await originalResetAuctionRound();
+    }
+    const rd = auctionState?.roundData?.[auctionState.round];
+    if (rd && document.getElementById('auction-board-display')) {
+        renderChessBoardSVG('auction-board-display', rd.fen, 320);
+    }
+};
+
+// 4. Fix startAuctionTimer - render khi bắt đầu
+const originalStartAuctionTimer = window.startAuctionTimer;
+window.startAuctionTimer = function() {
+    if (originalStartAuctionTimer) {
+        originalStartAuctionTimer();
+    }
+    const rd = auctionState?.roundData?.[auctionState.round];
+    if (rd && document.getElementById('auction-board-display')) {
+        renderChessBoardSVG('auction-board-display', rd.fen, 320);
+    }
+};
+
+// 5. Theo dõi thay đổi của auctionState.round từ Firestore
+// Thêm listener để tự động cập nhật bàn cờ khi round thay đổi
+if (typeof auctionStateDoc !== 'undefined') {
+    // Listener riêng để cập nhật bàn cờ khi FEN thay đổi
+    auctionStateDoc.onSnapshot((doc) => {
+        if (doc.exists) {
+            const newState = doc.data();
+            const oldRound = auctionState?.round;
+            auctionState = { ...auctionState, ...newState };
+            
+            // Nếu round thay đổi hoặc có dữ liệu mới, cập nhật bàn cờ
+            if (oldRound !== auctionState.round || newState.roundData) {
+                const rd = auctionState?.roundData?.[auctionState.round];
+                if (rd) {
+                    // Cập nhật bàn cờ admin
+                    if (document.getElementById('auction-board-display')) {
+                        renderChessBoardSVG('auction-board-display', rd.fen, 320);
+                    }
+                    // Cập nhật bàn cờ player nếu đang ở trang player
+                    if (document.getElementById('page-auction-player')?.classList.contains('active')) {
+                        if (document.getElementById('player-chess-board')) {
+                            renderChessBoardSVG('player-chess-board', rd.fen, 320);
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
+// 6. Fix adminTab - render bàn cờ khi chuyển sang tab auction
+const originalAdminTab = window.adminTab;
+window.adminTab = function(tab) {
+    if (originalAdminTab) {
+        originalAdminTab(tab);
+    }
+    if (tab === 'auction') {
+        setTimeout(() => {
+            const rd = auctionState?.roundData?.[auctionState.round];
+            if (rd && document.getElementById('auction-board-display')) {
+                renderChessBoardSVG('auction-board-display', rd.fen, 320);
+            }
+        }, 100);
+    }
+};
+
+// 7. Fix startAuctionPlayer - đảm bảo render đúng FEN
+const originalStartAuctionPlayer = window.startAuctionPlayer;
+window.startAuctionPlayer = async function() {
+    if (originalStartAuctionPlayer) {
+        await originalStartAuctionPlayer();
+    }
+    // Đợi một chút để DOM cập nhật
+    setTimeout(() => {
+        const rd = auctionState?.roundData?.[auctionState.round];
+        if (rd && document.getElementById('player-chess-board')) {
+            renderChessBoardSVG('player-chess-board', rd.fen, 320);
+        }
+    }, 50);
+};
+
+// 8. Thêm hàm tiện ích để force refresh bàn cờ (có thể gọi từ console nếu cần)
+window.refreshChessBoards = function() {
+    const rd = auctionState?.roundData?.[auctionState.round];
+    if (rd) {
+        if (document.getElementById('auction-board-display')) {
+            renderChessBoardSVG('auction-board-display', rd.fen, 320);
+        }
+        if (document.getElementById('player-chess-board')) {
+            renderChessBoardSVG('player-chess-board', rd.fen, 320);
+        }
+        console.log('✅ Chess boards refreshed with FEN:', rd.fen);
+    } else {
+        console.warn('⚠ No round data available');
+    }
+};
+
+console.log('✅ Chess board auto-refresh fix applied!');
+</script>
 </body>
 </html>
