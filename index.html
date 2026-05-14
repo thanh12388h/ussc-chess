@@ -612,32 +612,41 @@
   .online-badge.offline { color:var(--red); border-color:var(--red); }
 </style>
 
-<!-- Firebase SDKs -->
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<!-- Firebase SDKs — primary CDN với fallback -->
+<script>
+  window.__firebaseLoadError = false;
+</script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"
+  onerror="window.__firebaseLoadError=true;console.error('Firebase app-compat failed to load')"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"
+  onerror="console.error('Firebase auth-compat failed to load')"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"
+  onerror="console.error('Firebase firestore-compat failed to load')"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"
+  onerror="console.error('Firebase database-compat failed to load')"></script>
 
 <script>
-  // Your web app's Firebase configuration
-  const firebaseConfig = {
-    apiKey: "AIzaSyB43pT1Jfe4fKEmoadWZPtUsPhupHMNV6E",
-    authDomain: "ussc-chess.firebaseapp.com",
-    projectId: "ussc-chess",
-    storageBucket: "ussc-chess.firebasestorage.app",
-    messagingSenderId: "699411458052",
-    appId: "1:699411458052:web:19ebd58c8b1437c20f6d51",
-    measurementId: "G-FN7NB2S1XY"
-  };
+  if (typeof firebase === 'undefined') {
+    document.body && (document.body.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;min-height:100vh;background:#0a0a0f;color:#f5c842;font-family:monospace;text-align:center;padding:24px;"><div><div style="font-size:2rem;margin-bottom:12px;">⚠️</div><div style="font-size:1.1rem;font-weight:700;margin-bottom:8px;">Không thể tải Firebase SDK</div><div style="font-size:0.85rem;color:#888;margin-bottom:16px;">Kiểm tra kết nối mạng hoặc tắt trình chặn quảng cáo (AdBlock) rồi tải lại trang.</div><button onclick="location.reload()" style="background:#f5c842;color:#000;border:none;padding:10px 24px;border-radius:8px;font-size:1rem;cursor:pointer;font-weight:700;">🔄 Tải Lại Trang</button></div></div>');
+  } else {
+    // Your web app's Firebase configuration
+    const firebaseConfig = {
+      apiKey: "AIzaSyB43pT1Jfe4fKEmoadWZPtUsPhupHMNV6E",
+      authDomain: "ussc-chess.firebaseapp.com",
+      projectId: "ussc-chess",
+      storageBucket: "ussc-chess.firebasestorage.app",
+      messagingSenderId: "699411458052",
+      appId: "1:699411458052:web:19ebd58c8b1437c20f6d51",
+      measurementId: "G-FN7NB2S1XY"
+    };
 
-  // Initialize Firebase
-  firebase.initializeApp(firebaseConfig);
-  var db = firebase.firestore();
-  var auth = firebase.auth();
-
-  // KHÔNG bật offline persistence — tránh IndexedDB cache stale
-  // gây lỗi đồng bộ giữa tab thường / tab ẩn danh / máy khác
-  // Firestore mặc định luôn đọc từ server khi không có persistence
+    // Initialize Firebase (guard against double-init)
+    if (!firebase.apps.length) {
+      firebase.initializeApp(firebaseConfig);
+    }
+    var db = firebase.firestore();
+    var auth = firebase.auth();
+  }
 </script>
 </head>
 <body>
@@ -762,6 +771,9 @@
     </div>
     <div id="history-content" style="display:grid; gap:20px;">
       <p style="text-align:center; color:var(--muted);">Đang tải...</p>
+    </div>
+    <!-- Tournament Final Result Section (shown when published) -->
+    <div id="history-tournament-result" style="display:none; margin-top:20px;">
     </div>
   </div>
 </div>
@@ -1022,7 +1034,8 @@
             <button class="btn btn-outline btn-sm" onclick="stopAuctionTimer()">⏸ Dừng</button>
             <button class="btn btn-purple btn-sm" onclick="publishAuctionResults()">🔒 Chốt Kết Quả</button>
             <button class="btn btn-outline btn-sm" onclick="resetAuctionRound()">🔄 Reset</button>
-            <button class="btn btn-outline btn-sm" onclick="nextAuctionRound()">⏩ Vòng Tiếp</button>
+            <button class="btn btn-outline btn-sm" id="btn-next-round" onclick="nextAuctionRound()">⏩ Vòng Tiếp</button>
+            <button class="btn btn-gold btn-sm" id="btn-publish-tournament" style="display:none;" onclick="publishTournamentResult()">🏆 Công Bố Kết Quả Giải Đấu</button>
           </div>
         </div>
         <div class="panel">
@@ -1040,8 +1053,20 @@
       <div class="panel" style="max-width:700px; margin:0 auto;">
         <div class="panel-title">🏆 Kết Quả Cuối Cùng</div>
         <div id="final-result-list"></div>
+        <div id="tournament-published-banner" style="display:none; margin-top:16px; padding:14px 18px; background:rgba(245,200,66,0.08); border:2px solid var(--gold); border-radius:12px; text-align:center;">
+          <div style="font-size:1.2rem; font-weight:700; color:var(--gold); margin-bottom:4px;">🏆 Kết quả giải đấu đã được công bố!</div>
+          <div style="font-size:0.8rem; color:var(--muted); font-family:'Space Mono',monospace;">Người chơi có thể xem trong Lịch Sử Thi Đấu</div>
+        </div>
         <hr class="divider">
-        <button class="btn btn-gold" onclick="computeFinalResult()">🎯 Tính Kết Quả & Công Bố</button>
+        <div style="display:flex; gap:10px; flex-wrap:wrap;">
+          <button class="btn btn-gold" onclick="computeFinalResult()" style="flex:1;">🎯 Tính Kết Quả & Xem Trước</button>
+          <button class="btn btn-green" id="btn-confirm-publish-tournament" onclick="confirmPublishTournament()" style="flex:1; background:var(--green); color:#fff;">📢 Công Bố Cho Người Chơi</button>
+        </div>
+        <hr class="divider">
+        <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:4px;">
+          <button class="btn btn-outline" onclick="restartTournament()" style="flex:1; border-color:var(--red); color:var(--red);">🔄 Chơi Lại Từ Vòng 1</button>
+          <button class="btn btn-outline" onclick="showPage('page-home')" style="flex:1;">← Trang Chủ</button>
+        </div>
       </div>
     </div>
 
@@ -1052,6 +1077,13 @@
 </div>
 
 <script>
+// Guard: nếu Firebase chưa load được thì dừng toàn bộ script
+if (typeof firebase === 'undefined' || typeof db === 'undefined') {
+  console.error('Firebase not initialized — main script aborted');
+  // Stop here; the error UI was already shown in the head script
+  throw new Error('Firebase not initialized');
+}
+
 // ============================================================
 // FIREBASE REAL-TIME SYNC
 // ============================================================
@@ -1633,6 +1665,45 @@ async function renderHistory() {
       </div>
     `;
     historyEl.innerHTML = historyHTML;
+
+    // Load and show tournament final result if published
+    try {
+      const tournamentDoc = await db.collection('settings').doc('tournament_result').get();
+      const tournamentEl = document.getElementById('history-tournament-result');
+      if (tournamentEl && tournamentDoc.exists && tournamentDoc.data().published) {
+        const rd = tournamentDoc.data();
+        const medals = ['🥇','🥈','🥉'];
+        tournamentEl.style.display = 'block';
+        tournamentEl.innerHTML = `
+          <div class="card" style="border:2px solid var(--gold); background:rgba(245,200,66,0.04);">
+            <div style="text-align:center; margin-bottom:20px;">
+              <div style="font-size:2rem; margin-bottom:8px;">🏆</div>
+              <div class="logo" style="font-size:1.6rem;">Kết Quả Giải Đấu</div>
+              <div style="font-family:'Space Mono',monospace; font-size:0.7rem; color:var(--muted); margin-top:4px;">
+                Công bố lúc: ${new Date(rd.publishedAt).toLocaleString('vi-VN')}
+              </div>
+            </div>
+            <div style="display:grid; gap:10px;">
+              ${rd.rankings.map((r, i) => `
+                <div class="team-card ${i===0?'winner':''}" style="${i===0?'border-color:var(--gold);background:rgba(245,200,66,0.08);':''}">
+                  <div>
+                    <div class="team-name" style="${i===0?'font-size:1.3rem;':''}">
+                      ${r.medal} ${r.name}
+                      ${i===0 ? '<span style="color:var(--gold);font-size:0.75rem;margin-left:8px;">VÔ ĐỊCH</span>' : ''}
+                    </div>
+                    <div class="team-members">${r.members.join(' · ')}</div>
+                    <div style="font-size:0.68rem;color:var(--muted);font-family:'Space Mono',monospace;margin-top:3px;">
+                      Base: ${r.baseScore} | Đấu giá: <span style="color:${r.auctionScore>=0?'var(--green)':'var(--red)'}">${r.auctionScore>=0?'+':''}${r.auctionScore}</span> | ✅ ${r.correctAnswers} ❌ ${r.wrongAnswers}
+                    </div>
+                  </div>
+                  <div class="team-score" style="font-size:${i===0?'1.8rem':'1.2rem'}; color:${i===0?'var(--gold)':'var(--white)'};">${r.totalScore} ĐP</div>
+                </div>`).join('')}
+            </div>
+          </div>`;
+      } else if (tournamentEl) {
+        tournamentEl.style.display = 'none';
+      }
+    } catch(e) { console.warn('Tournament result load error:', e); }
   } catch (error) {
     console.error('Render history error:', error);
     historyEl.innerHTML = '<p style="text-align:center; color:var(--red);">❌ Lỗi tải dữ liệu</p>';
@@ -2605,13 +2676,30 @@ function updateAuctionStatus() {
     statusEl.style.borderColor = 'var(--gold)';
     statusEl.style.color = 'var(--gold)';
   } else if (auctionState.finalized) {
-    statusEl.textContent = '✅ Kết quả đã chốt. Sẵn sàng vòng tiếp theo.';
-    statusEl.style.borderColor = 'var(--blue)';
-    statusEl.style.color = 'var(--blue)';
+    const isLastRound = auctionState.round >= auctionState.roundData.length - 1;
+    statusEl.textContent = isLastRound ? '🏁 Vòng cuối đã chốt. Sẵn sàng công bố kết quả giải đấu!' : '✅ Kết quả đã chốt. Sẵn sàng vòng tiếp theo.';
+    statusEl.style.borderColor = isLastRound ? 'var(--gold)' : 'var(--blue)';
+    statusEl.style.color = isLastRound ? 'var(--gold)' : 'var(--blue)';
   } else {
     statusEl.textContent = 'Phiên đấu giá chưa bắt đầu.';
     statusEl.style.borderColor = 'var(--border)';
     statusEl.style.color = 'var(--muted)';
+  }
+  updateRoundButtons();
+}
+
+function updateRoundButtons() {
+  const btnNext = document.getElementById('btn-next-round');
+  const btnPublish = document.getElementById('btn-publish-tournament');
+  if (!btnNext || !btnPublish) return;
+  const isLastRound = auctionState.round >= auctionState.roundData.length - 1;
+  const isFinalized = auctionState.finalized;
+  if (isLastRound && isFinalized) {
+    btnNext.style.display = 'none';
+    btnPublish.style.display = '';
+  } else {
+    btnNext.style.display = '';
+    btnPublish.style.display = 'none';
   }
 }
 
@@ -2752,6 +2840,7 @@ async function nextAuctionRound() {
     stopAuctionTimer();
     renderTeamBidList();
     updateAuctionStatus();
+    updateRoundButtons();
   } else {
     alert('🏁 Đã kết thúc tất cả ' + auctionState.roundData.length + ' vòng đấu giá!');
     adminTab('result');
@@ -2843,6 +2932,12 @@ async function renderFinalResult() {
       </div>
       <div class="team-score" style="font-size:1.4rem;">${t.totalScore} ĐP</div>
     </div>`).join('');
+  // Show published banner if already published
+  const banner = document.getElementById('tournament-published-banner');
+  if (banner) {
+    const settingsSnap = await db.collection('settings').doc('tournament_result').get();
+    banner.style.display = settingsSnap.exists && settingsSnap.data().published ? '' : 'none';
+  }
 }
 
 async function computeFinalResult() {
@@ -2852,6 +2947,96 @@ async function computeFinalResult() {
   if (sorted.length) alert(`🏆 CHÚC MỪNG ĐỘI ${sorted[0].name.toUpperCase()}!\n\nVô địch với ${sorted[0].totalScore} điểm!\n${sorted[0].members.map(m=>m.name).join(', ')}`);
 }
 
+// Called from auction tab button on last round
+async function publishTournamentResult() {
+  if (!confirm('Công bố kết quả giải đấu cho tất cả người chơi?')) return;
+  await confirmPublishTournament();
+  adminTab('result');
+}
+
+async function confirmPublishTournament() {
+  showLoading(true);
+  try {
+    const teams = await getTeams();
+    const sorted = teams.sort((a,b)=>b.totalScore-a.totalScore);
+    const medals = ['🥇','🥈','🥉'];
+    const resultData = {
+      published: true,
+      publishedAt: Date.now(),
+      rankings: sorted.map((t, i) => ({
+        rank: i + 1,
+        medal: medals[i] || '#' + (i+1),
+        name: t.name,
+        members: t.members.map(m => m.name),
+        totalScore: t.totalScore,
+        baseScore: t.baseScore,
+        auctionScore: t.auctionScore || 0,
+        correctAnswers: t.correctAnswers || 0,
+        wrongAnswers: t.wrongAnswers || 0,
+      }))
+    };
+    await db.collection('settings').doc('tournament_result').set(resultData);
+    await renderFinalResult();
+    if (sorted.length) {
+      alert(`🏆 ĐÃ CÔNG BỐ KẾT QUẢ!\n\nVô địch: ${sorted[0].name.toUpperCase()}\n${sorted[0].totalScore} điểm\n${sorted[0].members.map(m=>m.name).join(', ')}\n\nNgười chơi có thể xem kết quả trong Lịch Sử Thi Đấu.`);
+    } else {
+      alert('✅ Đã công bố kết quả giải đấu!');
+    }
+  } catch(e) {
+    alert('❌ Lỗi: ' + e.message);
+  } finally {
+    showLoading(false);
+  }
+}
+
+async function restartTournament() {
+  if (!confirm('⚠ Đặt lại giải đấu từ Vòng 1?\n\nĐiểm đấu giá sẽ bị xóa. Điểm Quiz (Test 1) vẫn giữ nguyên.\n\nBấm OK để xác nhận.')) return;
+  showLoading(true);
+  try {
+    // Reset all teams auction scores
+    const teams = await getTeams();
+    for (const t of teams) {
+      t.totalScore = t.baseScore;
+      t.auctionScore = 0;
+      t.correctAnswers = 0;
+      t.wrongAnswers = 0;
+      await saveTeam(t);
+    }
+    // Reset auction state to round 0
+    auctionState = {
+      ...auctionState,
+      round: 0,
+      running: false,
+      review: false,
+      finalized: false,
+      timerInterval: null,
+      timeLeft: 180,
+      bids: {},
+      answers: {},
+      teamReview: {},
+      finalResults: {},
+    };
+    await auctionStateDoc.set(auctionState);
+    // Unpublish tournament result
+    await db.collection('settings').doc('tournament_result').set({ published: false });
+    // Reset test2 player auction results
+    const test2Players = await getTest2Players();
+    for (const p of test2Players) {
+      await test2PlayersCollection.doc(p.mssv).set({ ...p, auctionResults: [] });
+    }
+    adminRefreshTeams();
+    renderTeamBidList();
+    updateAuctionStatus();
+    updateRoundButtons();
+    adminTab('auction');
+    alert('✅ Đã đặt lại giải đấu từ Vòng 1!');
+  } catch(e) {
+    alert('❌ Lỗi: ' + e.message);
+  } finally {
+    showLoading(false);
+  }
+}
+
 function adminTab(tab) {
   ['players','teams','auction','result'].forEach(t => {
     const el = document.getElementById('admin-tab-'+t);
@@ -2859,7 +3044,7 @@ function adminTab(tab) {
     const btn = document.getElementById('tab-'+t);
     if (btn) btn.classList.toggle('active', t===tab);
   });
-  if (tab === 'auction') { renderTeamBidList(); updateAuctionStatus(); }
+  if (tab === 'auction') { renderTeamBidList(); updateAuctionStatus(); updateRoundButtons(); }
   if (tab === 'result') renderFinalResult();
   if (tab === 'teams') adminRefreshTeams();
 }
@@ -2897,6 +3082,10 @@ window.publishAuctionResults = publishAuctionResults;
 window.resetAuctionRound = resetAuctionRound;
 window.nextAuctionRound = nextAuctionRound;
 window.computeFinalResult = computeFinalResult;
+window.publishTournamentResult = publishTournamentResult;
+window.confirmPublishTournament = confirmPublishTournament;
+window.restartTournament = restartTournament;
+window.updateRoundButtons = updateRoundButtons;
 window.adminTab = adminTab;
 
 // Initial load
@@ -2936,6 +3125,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   
   updateAuctionStatus();
   renderTeamBidList();
+  updateRoundButtons();
 }); 
 </script>
 </body>
