@@ -1,3 +1,5 @@
+  /* ... 1. GIAO DIỆN ... */
+
 <!DOCTYPE html>
 <html lang="vi">
 <head>
@@ -6,7 +8,7 @@
 <title>USSC Chess Tournament - Firebase Sync</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Space+Mono:wght@400;700&family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
 <style>
-  /* ... GIỮ NGUYÊN TOÀN BỘ CSS CŨ CỦA BẠN ... */
+
   :root {
     --bg: #0a0a0f;
     --surface: #12121a;
@@ -612,6 +614,10 @@
   .online-badge.offline { color:var(--red); border-color:var(--red); }
 </style>
 
+  /* ... 1. GIAO DIỆN ... */
+
+
+    /* ... 2. FIREBASE ... */
 <!-- Firebase SDKs — primary CDN với fallback -->
 <script>
   window.__firebaseLoadError = false;
@@ -626,6 +632,7 @@
   onerror="console.error('Firebase database-compat failed to load')"></script>
 
 
+    /* ... 3. FEN -> PNG ... */
 <script>
 const PIECE_SVG = {
   wP: "https://upload.wikimedia.org/wikipedia/commons/4/45/Chess_plt45.svg",
@@ -950,9 +957,6 @@ function renderChessBoardSVG(containerId, fen, size = 320) {
       <div style="color:var(--white); font-size:1rem; font-weight:600; margin-bottom:4px;" id="reg2-display-name">Họ và Tên</div>
       <div id="reg2-display-mssv">MSSV: ...</div>
     </div>
-    <div style="padding:12px 16px; background:rgba(52,152,219,0.08); border:1px solid rgba(52,152,219,0.25); border-radius:8px; font-family:'Space Mono',monospace; font-size:0.8rem; color:var(--blue); margin-bottom:16px;">
-      ℹ️ Nếu bạn vô tình thoát ra khỏi giải đấu, bạn vẫn có thể đăng nhập lại với tài khoản và nhóm của bạn để tiếp tục. Không bao giờ mất quyền truy cập!
-    </div>
     <div class="field">
       <label>Tên Nhóm (mã nhóm do Admin cấp)</label>
       <input type="text" id="reg2-team" placeholder="Vd: USSC 1" autocomplete="off">
@@ -1256,10 +1260,10 @@ function updateOnlineStatus(isOnline) {
   const badge = document.getElementById('online-badge');
   if (badge) {
     if (isOnline) {
-      badge.textContent = '🟢 Online • Đồng bộ realtime';
+      badge.textContent = '🟢 Online';
       badge.className = 'online-badge online';
     } else {
-      badge.textContent = '🔴 Offline • Đang dùng cache';
+      badge.textContent = '🔴 Offline';
       badge.className = 'online-badge offline';
     }
   }
@@ -1909,11 +1913,11 @@ let auctionState = {
   teamReview: {},
   finalResults: {},
   roundData: [
-    {gm:"Bobby Fischer vs Boris Spassky", ctx:"World Championship 1972 · Sicilian Defense", fen:"rnbqkbnr/ppp2ppp/3p4/4p3/3PP3/5N2/PPP2PPP/RNBQKB1R b KQkq - 0 3", answer:"e5", range:"50–200"},
-    {gm:"José Raúl Capablanca vs Alexander Alekhine", ctx:"Buenos Aires 1927 · Ruy Lopez", fen:"rn2kb1r/p3qppp/2p2n2/1p2p1B1/2B1P3/1QN5/PPP2PPP/R3K2R w KQkq - 0 10", answer:"e5", range:"50–200"},
-    {gm:"Wilhelm Steinitz vs Johannes Zukertort", ctx:"World Championship 1886 · Queen's Gambit", fen:"rn2kb1r/p3qppp/5n2/1B2p1B1/4P3/1Q6/PPP2PPP/R3K2R b KQkq - 0 11", answer:"e5", range:"100–400"},
-    {gm:"Garry Kasparov vs Anatoly Karpov", ctx:"World Championship 1985 · King's Indian", fen:"r3kb1r/p2nqppp/5n2/1B2p1B1/4P3/1Q6/PPP2PPP/2KR3R b kq - 2 12", answer:"e5", range:"100–400"},
-    {gm:"Magnus Carlsen vs Fabiano Caruana", ctx:"World Championship 2018 · French Defense", fen:"3rkb1r/p2Rqppp/5n2/1B2p1B1/4P3/1Q6/PPP2PPP/2K4R b k - 0 13", answer:"e5", range:"200–500"},
+    {gm:"Bobby Fischer vs Boris Spassky", ctx:"World Championship 1972 · Sicilian Defense", fen:"rn1qkbnr/ppp2ppp/3p4/4P3/4P1b1/5N2/PPP2PPP/RNBQKB1R b KQkq - 0 4", answer:"e5", range:"50–200"},
+    {gm:"José Raúl Capablanca vs Alexander Alekhine", ctx:"Buenos Aires 1927 · Ruy Lopez", fen:"rn1qkbnr/ppp2ppp/3p4/4P3/4P1b1/5N2/PPP2PPP/RNBQKB1R b KQkq - 0 4", answer:"e5", range:"50–200"},
+    {gm:"Wilhelm Steinitz vs Johannes Zukertort", ctx:"World Championship 1886 · Queen's Gambit", fen:"rn1qkbnr/ppp2ppp/3p4/4P3/4P1b1/5N2/PPP2PPP/RNBQKB1R b KQkq - 0 4", answer:"e5", range:"100–400"},
+    {gm:"Garry Kasparov vs Anatoly Karpov", ctx:"World Championship 1985 · King's Indian", fen:"rn1qkbnr/ppp2ppp/3p4/4P3/4P1b1/5N2/PPP2PPP/RNBQKB1R b KQkq - 0 4", answer:"e5", range:"100–400"},
+    {gm:"Magnus Carlsen vs Fabiano Caruana", ctx:"World Championship 2018 · French Defense", fen:"rn1qkbnr/ppp2ppp/3p4/4P3/4P1b1/5N2/PPP2PPP/RNBQKB1R b KQkq - 0 4", answer:"e5", range:"200–500"},
   ]
 };
 
@@ -2009,47 +2013,6 @@ function formatTime(seconds) {
   const m = Math.floor(seconds / 60);
   const s = seconds % 60;
   return `${m}:${String(s).padStart(2, '0')}`;
-}
-
-// ============================================================
-// FEN TO BOARD
-// ============================================================
-function fenToBoard(fen) {
-  const board = [];
-  const rows = fen.split(' ')[0].split('/');
-  const pieces = {
-    'p':'♟︎','r':'♜','n':'♞','b':'♝','q':'♛','k':'♚',
-    'P':'♙','R':'♖','N':'♘','B':'♗','Q':'♕','K':'♔'
-  };
-
-  rows.forEach((row,rIdx) => {
-    let col = 0;
-    for (let char of row) {
-      if (isNaN(char)) {
-        board.push({piece: pieces[char] || '', isLight:(rIdx+col)%2===0});
-        col++;
-      } else {
-        for (let i=0; i<parseInt(char,10); i++) {
-          board.push({piece:'', isLight:(rIdx+col)%2===0});
-          col++;
-        }
-      }
-    }
-  });
-  return board;
-}
-
-function renderChessBoard(containerId, fen) {
-  const container = document.getElementById(containerId);
-  if (!container) return;
-  const board = fenToBoard(fen);
-  container.innerHTML = '';
-  board.forEach(sq => {
-    const div = document.createElement('div');
-    div.className = 'chess-square' + (sq.isLight ? '' : ' dark');
-    div.textContent = sq.piece;
-    container.appendChild(div);
-  });
 }
 
 // ============================================================
