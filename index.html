@@ -633,13 +633,10 @@
   firebase.initializeApp(firebaseConfig);
   var db = firebase.firestore();
   var auth = firebase.auth();
-  
-  // Enable offline persistence
-  db.enablePersistence({ synchronizeTabs: true }).catch(err => {
-    if (err.code == 'failed-precondition') {
-      console.warn('Multiple tabs open, persistence can only be enabled in one tab at a time.');
-    }
-  });
+
+  // KHÔNG bật offline persistence — tránh IndexedDB cache stale
+  // gây lỗi đồng bộ giữa tab thường / tab ẩn danh / máy khác
+  // Firestore mặc định luôn đọc từ server khi không có persistence
 </script>
 </head>
 <body>
@@ -1805,13 +1802,7 @@ async function handleRegister() {
     return;
   }
 
-  // Force đọc từ server để tránh stale cache
-  let playerDoc;
-  try {
-    playerDoc = await playersCollection.doc(mssv).get({ source: 'server' });
-  } catch(e) {
-    playerDoc = await playersCollection.doc(mssv).get();
-  }
+  const playerDoc = await playersCollection.doc(mssv).get();
   if (!playerDoc.exists) {
     err.textContent = '⚠ Tài khoản không tồn tại. Vui lòng đăng ký lại.';
     err.style.display = 'block';
