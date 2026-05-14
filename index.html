@@ -1039,11 +1039,15 @@
           </div>
         </div>
         <div class="panel">
-          <div class="panel-title">💰 Đặt Cược Nhóm</div>
-          <div style="font-family:'Space Mono',monospace; font-size:0.7rem; color:var(--muted); margin-bottom:12px;">Thời gian thảo luận: <span id="auction-timer" style="color:var(--gold);">3:00</span></div>
+          <div class="panel-title">👁 Theo Dõi Nhóm</div>
+          <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:14px;">
+            <div style="font-family:'Space Mono',monospace; font-size:0.75rem; color:var(--muted);">Thời gian còn lại</div>
+            <div style="font-family:'Bebas Neue',sans-serif; font-size:1.8rem; color:var(--gold); letter-spacing:0.1em;" id="auction-timer">3:00</div>
+          </div>
           <div id="team-bid-list"></div>
-          <hr class="divider">
-          <div style="font-size:0.85rem; color:var(--muted);">Khi phiên dừng hoặc hết giờ, nhấn "Chốt Kết Quả" để công bố và cập nhật điểm.</div>
+          <div style="margin-top:12px; padding:10px 12px; background:rgba(245,200,66,0.05); border:1px solid rgba(245,200,66,0.15); border-radius:8px; font-size:0.75rem; color:var(--muted); font-family:'Space Mono',monospace; line-height:1.6;">
+            ℹ️ Dữ liệu do người chơi tự nhập — Admin chỉ xem, không chỉnh sửa.
+          </div>
         </div>
       </div>
     </div>
@@ -2581,80 +2585,94 @@ async function renderTeamBidList() {
   const teams = await getTeams();
   const round = auctionState.round;
   const el = document.getElementById('team-bid-list');
-  if (!teams.length) { if(el) el.innerHTML = '<div style="color:var(--muted);font-size:0.8rem;">Chưa có nhóm</div>'; return; }
+  if (!teams.length) { if(el) el.innerHTML = '<div style="color:var(--muted);font-size:0.8rem;padding:12px 0;">Chưa có nhóm</div>'; return; }
+
+  const rd = auctionState.roundData[Math.min(round, auctionState.roundData.length-1)];
 
   if(el) el.innerHTML = teams.map(t => {
     const bid = auctionState.bids[t.name];
     const answer = auctionState.answers[t.name];
-    const review = auctionState.teamReview[t.name] || { status: 'auto', delta: 0 };
-    const rd = auctionState.roundData[round] || auctionState.roundData[0];
-    const parts = rd.range.split('–');
-    const minBet = parseInt(parts[0])||50;
-    const maxBet = Math.min(parseInt(parts[1])||500, t.totalScore);
-    let statusClass = 'pending';
-    let statusText = 'Chờ...';
-    if (auctionState.finalized) {
-      const result = auctionState.finalResults[t.name] || { status: 'pass', delta: 0 };
-      statusClass = result.status === 'correct' ? 'correct' : result.status === 'wrong' ? 'wrong' : 'passed';
-      statusText = result.status === 'correct' ? `✅ +${result.delta}` : result.status === 'wrong' ? `❌ ${result.delta}` : 'PASS';
-    } else if (auctionState.review) {
-      if (review.status === 'pass') {
-        statusClass = 'passed';
-        statusText = 'PASS';
-      } else if (review.status === 'correct') {
-        statusClass = 'correct';
-        statusText = `✅ ${review.delta}`;
-      } else if (review.status === 'wrong') {
-        statusClass = 'wrong';
-        statusText = `❌ ${review.delta}`;
-      } else if (answer) {
-        statusClass = answer.toUpperCase() === rd.answer.toUpperCase() ? 'correct' : 'wrong';
-        statusText = answer.toUpperCase() === rd.answer.toUpperCase() ? `✅ ${answer}` : `❌ ${answer}`;
-      } else if (bid) {
-        statusClass = bid.passed ? 'passed' : 'placed';
-        statusText = bid.passed ? 'PASS' : `💰 ${bid.amount} ĐP`;
+
+    // Xác định trạng thái cược
+    let bidLine = '';
+    let bidColor = 'var(--muted)';
+    if (bid) {
+      if (bid.passed) {
+        bidLine = '⛔ PASS';
+        bidColor = 'var(--muted)';
+      } else if (bid.amount > 0) {
+        bidLine = `💰 Cược ${bid.amount} ĐP`;
+        bidColor = 'var(--blue)';
+      } else {
+        bidLine = '⏳ Đang quyết định...';
+        bidColor = 'var(--gold)';
       }
     } else {
-      if (answer) {
-        statusClass = 'pending';
-        statusText = `Đã nộp: ${answer}`;
-      } else if (bid) {
-        statusClass = bid.passed ? 'passed' : 'placed';
-        statusText = bid.passed ? 'PASS' : `💰 ${bid.amount} ĐP`;
-      }
+      bidLine = '⏳ Đang quyết định...';
+      bidColor = 'var(--gold)';
     }
 
-    const reviewControls = auctionState.review && !auctionState.finalized ? `
-      <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-top:10px;">
-        <select id="review-status-${t.name.replace(/\s+/g,'_')}" style="padding:6px 8px; border-radius:8px; border:1px solid var(--border); background:var(--surface2); color:var(--white);">
-          <option value="auto" ${review.status==='auto'?'selected':''}>Tự động</option>
-          <option value="correct" ${review.status==='correct'?'selected':''}>Đúng</option>
-          <option value="wrong" ${review.status==='wrong'?'selected':''}>Sai</option>
-          <option value="pass" ${review.status==='pass'?'selected':''}>Pass</option>
-        </select>
-        <input type="number" id="review-delta-${t.name.replace(/\s+/g,'_')}" value="${review.delta || 0}" style="width:80px;padding:6px 8px;font-size:0.85rem;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--white);">
-        <button class="btn btn-sm btn-purple" onclick="updateTeamReview('${t.name}')">Lưu sửa</button>
-      </div>` : '';
+    // Nước đi nộp
+    let answerLine = '';
+    let answerColor = 'var(--muted)';
+    if (auctionState.finalized && auctionState.finalResults && auctionState.finalResults[t.name]) {
+      const res = auctionState.finalResults[t.name];
+      if (res.status === 'correct') {
+        answerLine = `✅ ${res.submittedAnswer || answer || '—'} (Đúng +${res.delta} ĐP)`;
+        answerColor = 'var(--green)';
+      } else if (res.status === 'wrong') {
+        answerLine = `❌ ${res.submittedAnswer || answer || '—'} (Sai ${res.delta} ĐP)`;
+        answerColor = 'var(--red)';
+      } else {
+        answerLine = '⊘ Pass';
+        answerColor = 'var(--muted)';
+      }
+    } else if (answer) {
+      answerLine = `📝 Nộp: ${answer}`;
+      answerColor = 'var(--white)';
+    } else if (bid && !bid.passed) {
+      answerLine = '⏳ Chưa nộp nước đi';
+      answerColor = 'var(--muted)';
+    } else if (bid && bid.passed) {
+      answerLine = '';
+    } else {
+      answerLine = '';
+    }
+
+    // Border color theo trạng thái
+    let borderColor = 'var(--border)';
+    if (auctionState.finalized && auctionState.finalResults[t.name]) {
+      const s = auctionState.finalResults[t.name].status;
+      borderColor = s === 'correct' ? 'var(--green)' : s === 'wrong' ? 'var(--red)' : 'var(--border)';
+    } else if (bid) {
+      borderColor = bid.passed ? 'var(--border)' : 'rgba(52,152,219,0.5)';
+    }
 
     return `
-    <div class="team-bid-row" id="bid-row-${t.name.replace(/\s+/g,'_')}">
-      <div>
-        <div class="team-name" style="font-size:0.95rem;">${t.name}</div>
-        <div style="font-family:'Space Mono',monospace;font-size:0.7rem;color:var(--muted);">${t.totalScore} ĐP</div>
+    <div style="background:var(--surface2); border:1px solid ${borderColor}; border-radius:10px; padding:12px 14px; margin-bottom:8px; transition:border-color 0.3s;">
+      <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:8px;">
+        <div>
+          <div style="font-family:'Bebas Neue',sans-serif; font-size:1rem; letter-spacing:0.08em; color:var(--gold);">${t.name}</div>
+          <div style="font-family:'Space Mono',monospace; font-size:0.68rem; color:var(--muted); margin-top:2px;">${t.members.map(m=>m.name).join(' · ')}</div>
+        </div>
+        <div style="text-align:right;">
+          <div style="font-family:'Space Mono',monospace; font-size:0.9rem; font-weight:700; color:var(--white);">${t.totalScore} ĐP</div>
+          <div style="font-size:0.65rem; color:var(--muted); font-family:'Space Mono',monospace;">tổng điểm</div>
+        </div>
       </div>
-      <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
-        <input type="number" class="bet-input" id="bet-${t.name.replace(/\s+/g,'_')}"
-          min="${minBet}" max="${maxBet}" value="${bid ? (bid.passed ? 0 : bid.amount) : minBet}"
-          style="width:80px;padding:6px 8px;font-size:0.85rem;" ${bid && (bid.amount > 0 || bid.passed) ? 'disabled' : ''}>
-        <button class="btn btn-blue btn-sm" id="bet-btn-${t.name.replace(/\s+/g,'_')}" onclick="placeBid('${t.name}')" ${bid && (bid.amount > 0 || bid.passed) ? 'disabled' : ''}>Cược</button>
-        <button class="btn btn-outline btn-sm" id="pass-btn-${t.name.replace(/\s+/g,'_')}" onclick="passRound('${t.name}')" ${bid && (bid.amount > 0 || bid.passed) ? 'disabled' : ''}>Pass</button>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px;">
+        <div style="background:var(--surface); border-radius:6px; padding:7px 10px;">
+          <div style="font-size:0.6rem; color:var(--muted); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:3px;">Cược</div>
+          <div style="font-size:0.82rem; font-weight:600; color:${bidColor}; font-family:'Space Mono',monospace;">${bidLine}</div>
+        </div>
+        <div style="background:var(--surface); border-radius:6px; padding:7px 10px;">
+          <div style="font-size:0.6rem; color:var(--muted); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:3px;">Nước Đi</div>
+          <div style="font-size:0.82rem; font-weight:600; color:${answerColor}; font-family:'Space Mono',monospace;">${answerLine || '—'}</div>
+        </div>
       </div>
-      <span class="bid-status ${statusClass}">${statusText}</span>
-      ${reviewControls}
     </div>`;
   }).join('');
 
-  const rd = auctionState.roundData[Math.min(round, auctionState.roundData.length-1)];
   if(rd) {
     const roundEl = document.getElementById('auction-round-indicator');
     if(roundEl) roundEl.textContent = `VÒNG ${round+1} / ${auctionState.roundData.length}`;
@@ -2949,9 +2967,71 @@ async function computeFinalResult() {
 
 // Called from auction tab button on last round
 async function publishTournamentResult() {
-  if (!confirm('Công bố kết quả giải đấu cho tất cả người chơi?')) return;
+  showLoading(true);
+  try {
+    const teams = await getTeams();
+    const sorted = teams.sort((a,b) => b.totalScore - a.totalScore);
+    const medals = ['🥇','🥈','🥉'];
+    const rankColors = ['var(--gold)', '#c0c0c0', '#cd7f32'];
+    const rankingsEl = document.getElementById('tournament-overlay-rankings');
+    if (rankingsEl) {
+      rankingsEl.innerHTML = sorted.slice(0, 3).map((t, i) => `
+        <div style="background:var(--surface2); border:2px solid ${i===0?'var(--gold)':rankColors[i]}30; border-radius:14px; padding:18px 20px; ${i===0?'background:rgba(245,200,66,0.06);':''}">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+            <div style="display:flex; align-items:center; gap:10px;">
+              <span style="font-size:${i===0?'2rem':'1.5rem'};">${medals[i]}</span>
+              <div>
+                <div style="font-family:'Bebas Neue',sans-serif; font-size:${i===0?'1.4rem':'1.1rem'}; letter-spacing:0.08em; color:${rankColors[i]};">${t.name}</div>
+                <div style="font-size:0.72rem; color:var(--muted); font-family:'Space Mono',monospace;">${t.members.map(m=>m.name).join(' · ')}</div>
+              </div>
+            </div>
+            <div style="text-align:right;">
+              <div style="font-family:'Bebas Neue',sans-serif; font-size:${i===0?'1.8rem':'1.3rem'}; color:${rankColors[i]};">${t.totalScore}</div>
+              <div style="font-size:0.65rem; color:var(--muted); font-family:'Space Mono',monospace;">ĐIỂM</div>
+            </div>
+          </div>
+          <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:6px; font-family:'Space Mono',monospace; font-size:0.72rem; color:var(--muted);">
+            <div style="background:var(--surface); border-radius:6px; padding:6px 8px;">
+              <div style="margin-bottom:2px;">Base</div>
+              <div style="color:var(--white); font-weight:700;">${t.baseScore}</div>
+            </div>
+            <div style="background:var(--surface); border-radius:6px; padding:6px 8px;">
+              <div style="margin-bottom:2px;">Đấu Giá</div>
+              <div style="color:${(t.auctionScore||0)>=0?'var(--green)':'var(--red)'}; font-weight:700;">${(t.auctionScore||0)>=0?'+':''}${t.auctionScore||0}</div>
+            </div>
+            <div style="background:var(--surface); border-radius:6px; padding:6px 8px;">
+              <div style="margin-bottom:2px;">Đúng/Sai</div>
+              <div style="color:var(--white); font-weight:700;">✅${t.correctAnswers||0} ❌${t.wrongAnswers||0}</div>
+            </div>
+          </div>
+        </div>`).join('');
+      
+      // If more than 3 teams, show the rest briefly
+      if (sorted.length > 3) {
+        rankingsEl.innerHTML += `<div style="padding:10px 14px; background:var(--surface2); border-radius:10px; font-family:'Space Mono',monospace; font-size:0.78rem; color:var(--muted);">` +
+          sorted.slice(3).map((t,i) => `<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--border);"><span>#${i+4} ${t.name}</span><span style="color:var(--white);">${t.totalScore} ĐP</span></div>`).join('') +
+          `</div>`;
+      }
+    }
+    document.getElementById('tournament-overlay').style.display = 'flex';
+  } catch(e) {
+    alert('❌ Lỗi: ' + e.message);
+  } finally {
+    showLoading(false);
+  }
+}
+
+async function closeTournamentOverlayAndPublish() {
+  document.getElementById('tournament-overlay').style.display = 'none';
   await confirmPublishTournament();
   adminTab('result');
+}
+
+function closeTournamentOverlay() {
+  document.getElementById('tournament-overlay').style.display = 'none';
+  if (confirm('Xác nhận chơi lại từ Vòng 1?\n\nĐiểm đấu giá sẽ reset, điểm Quiz giữ nguyên.')) {
+    restartTournament();
+  }
 }
 
 async function confirmPublishTournament() {
@@ -3083,6 +3163,8 @@ window.resetAuctionRound = resetAuctionRound;
 window.nextAuctionRound = nextAuctionRound;
 window.computeFinalResult = computeFinalResult;
 window.publishTournamentResult = publishTournamentResult;
+window.closeTournamentOverlayAndPublish = closeTournamentOverlayAndPublish;
+window.closeTournamentOverlay = closeTournamentOverlay;
 window.confirmPublishTournament = confirmPublishTournament;
 window.restartTournament = restartTournament;
 window.updateRoundButtons = updateRoundButtons;
@@ -3127,6 +3209,27 @@ document.addEventListener('DOMContentLoaded', async () => {
   renderTeamBidList();
   updateRoundButtons();
 }); 
+</script>
+<!-- ==================== TOURNAMENT RESULT OVERLAY ==================== -->
+<div id="tournament-overlay" style="display:none; position:fixed; inset:0; z-index:999; background:rgba(0,0,0,0.85); backdrop-filter:blur(6px); overflow-y:auto;">
+  <div style="min-height:100vh; display:flex; align-items:center; justify-content:center; padding:24px;">
+    <div style="width:100%; max-width:600px; background:var(--surface); border:2px solid var(--gold); border-radius:20px; padding:36px 28px; animation:slideDown 0.5s ease;">
+      <div style="text-align:center; margin-bottom:28px;">
+        <div style="font-size:3rem; margin-bottom:8px;">🏆</div>
+        <div class="logo" style="font-size:2.2rem;">Kết Quả Giải Đấu</div>
+        <div style="font-family:'Space Mono',monospace; font-size:0.7rem; color:var(--muted); margin-top:6px; letter-spacing:0.2em;">USSC CHESS TOURNAMENT 2026</div>
+      </div>
+      <div id="tournament-overlay-rankings" style="display:grid; gap:12px; margin-bottom:28px;"></div>
+      <div style="display:flex; gap:10px; flex-wrap:wrap;">
+        <button class="btn btn-gold" onclick="closeTournamentOverlayAndPublish()" style="flex:1;">📢 Công Bố Cho Người Chơi</button>
+        <button class="btn btn-outline" onclick="closeTournamentOverlay()" style="flex:1; border-color:var(--red); color:var(--red);">🔄 Chơi Lại Từ Vòng 1</button>
+      </div>
+      <button class="btn btn-outline" onclick="document.getElementById('tournament-overlay').style.display='none'" style="width:100%; margin-top:8px; font-size:0.85rem;">✕ Đóng</button>
+    </div>
+  </div>
+</div>
+
+<script>
 </script>
 </body>
 </html>
