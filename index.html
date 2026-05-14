@@ -702,7 +702,7 @@
     </div>
     <div class="field">
       <label>Mật Khẩu Nhóm</label>
-      <input type="password" id="reg-password" placeholder="Mật khẩu do Admin cấp" autocomplete="off">
+      <input type="password" id="reg-password" placeholder="xxx" autocomplete="off">
     </div>
     <div id="reg-error" style="color:var(--red);font-size:0.8rem;margin-bottom:12px;font-family:'Space Mono',monospace;display:none;"></div>
     <button class="btn btn-gold" onclick="handleRegister()">Xác Nhận & Bắt Đầu →</button>
@@ -1079,8 +1079,12 @@ let test2PlayersUnsubscribe = null;
 let teamsUnsubscribe = null;
 let auctionUnsubscribe = null;
 let quizUnsubscribe = null;
+let realtimeListenersStarted = false;
 
 function startRealtimeListeners() {
+  if (realtimeListenersStarted) return;
+  realtimeListenersStarted = true;
+
   // Listen to players collection
   playersUnsubscribe = playersCollection.onSnapshot((snapshot) => {
     if (document.getElementById('page-admin')?.classList.contains('active')) {
@@ -1537,7 +1541,7 @@ async function placeAuctionBid() {
   
   auctionState.bids[team] = { amount, passed: false };
   auctionState.teamReview[team] = { status: 'auto', delta: 0 };
-  await auctionStateDoc.set(auctionState);
+  await auctionStateDoc.set(auctionState, { merge: true });
   renderAuctionPlayerState();
 }
 
@@ -1546,7 +1550,7 @@ async function passAuctionBid() {
   const team = currentTest2Player.team;
   auctionState.bids[team] = { amount: 0, passed: true };
   auctionState.teamReview[team] = { status: 'pass', delta: 0 };
-  await auctionStateDoc.set(auctionState);
+  await auctionStateDoc.set(auctionState, { merge: true });
   renderAuctionPlayerState();
 }
 
@@ -1558,7 +1562,7 @@ async function submitAuctionAnswer() {
 
   auctionState.answers[currentTest2Player.team] = answer;
   auctionState.teamReview[currentTest2Player.team] = auctionState.teamReview[currentTest2Player.team] || { status: 'auto', delta: 0 };
-  await auctionStateDoc.set(auctionState);
+  await auctionStateDoc.set(auctionState, { merge: true });
   renderAuctionPlayerState();
   alert('✅ Đã nộp đáp án. Kết quả sẽ hiện khi Admin chốt vòng.');
 }
@@ -1906,7 +1910,7 @@ async function renderTeamBidList() {
       </div>
       <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
         <input type="number" class="bet-input" id="bet-${t.name.replace(/\s+/g,'_')}"
-          min="${minBet}" max="${maxBet}" value="${minBet}"
+          min="${minBet}" max="${maxBet}" value="${bid ? (bid.passed ? 0 : bid.amount) : minBet}"
           style="width:80px;padding:6px 8px;font-size:0.85rem;">
         <button class="btn btn-blue btn-sm" onclick="placeBid('${t.name}')">Cược</button>
         <button class="btn btn-outline btn-sm" onclick="passRound('${t.name}')">Pass</button>
@@ -1964,7 +1968,7 @@ async function placeBid(teamName) {
   }
   auctionState.bids[teamName] = { amount: val, passed: false };
   auctionState.teamReview[teamName] = auctionState.teamReview[teamName] || { status:'auto', delta:0 };
-  await auctionStateDoc.set(auctionState);
+  await auctionStateDoc.set(auctionState, { merge: true });
   renderTeamBidList();
 }
 
@@ -1972,7 +1976,7 @@ async function passRound(teamName) {
   if (!auctionState.running) { alert('⚠ Phiên đấu giá chưa bắt đầu.'); return; }
   auctionState.bids[teamName] = { amount: 0, passed: true };
   auctionState.teamReview[teamName] = { status:'pass', delta:0 };
-  await auctionStateDoc.set(auctionState);
+  await auctionStateDoc.set(auctionState, { merge: true });
   renderTeamBidList();
 }
 
@@ -1983,7 +1987,7 @@ async function updateTeamReview(teamName) {
   const status = statusEl.value;
   const delta = parseInt(deltaEl.value) || 0;
   auctionState.teamReview[teamName] = { status, delta };
-  await auctionStateDoc.set(auctionState);
+  await auctionStateDoc.set(auctionState, { merge: true });
   renderTeamBidList();
 }
 
@@ -2224,6 +2228,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     auctionState = { ...auctionState, ...auctionDoc.data() };
   } else {
     await auctionStateDoc.set(auctionState);
+  }
+  if (isAdminLoggedIn) {
+    startRealtimeListeners();
   }
   
   updateAuctionStatus();
