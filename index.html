@@ -1786,44 +1786,58 @@ async function handleStartTest1() {
 }
 
 async function handleRegister() {
-  if (!isLoggedIn()) {
-    alert('⚠ Vui lòng đăng nhập trước');
-    showPage('page-account-login');
-    return;
-  }
-
-  const mssv = getLoggedInMssv();
+  const btn = document.getElementById('btn-register-test1');
   const err = document.getElementById('reg-error');
+  try {
+    if (!isLoggedIn()) {
+      alert('⚠ Vui lòng đăng nhập trước');
+      showPage('page-account-login');
+      return;
+    }
 
-  // Dùng cachedQuizOpen (realtime listener cập nhật) thay vì get() bị cache stale
-  if (!cachedQuizOpen) {
-    err.textContent = '⏳ Quiz chưa mở. Vui lòng đợi Admin mở.';
+    const mssv = getLoggedInMssv();
+
+    // Luôn fetch thẳng từ server, bypass mọi cache
+    const quizSnap = await quizSettingsDoc.get({ source: 'server' });
+    const quizIsOpen = quizSnap.exists ? quizSnap.data().quizOpen : false;
+    cachedQuizOpen = quizIsOpen; // cập nhật lại cache
+    refreshQuizOpenUI();
+
+    if (!quizIsOpen) {
+      err.textContent = '⏳ Quiz chưa mở. Vui lòng đợi Admin mở.';
+      err.style.display = 'block';
+      return;
+    }
+
+    if (btn) btn.textContent = '⏳ Đang kiểm tra...';
+    if (btn) btn.disabled = true;
+
+    const playerDoc = await playersCollection.doc(mssv).get({ source: 'server' });
+    if (!playerDoc.exists) {
+      err.textContent = '⚠ Tài khoản không tồn tại. Vui lòng đăng ký lại.';
+      err.style.display = 'block';
+      return;
+    }
+
+    const playerData = playerDoc.data();
+
+    if (playerData.finishedAt) {
+      err.textContent = '⚠ Bạn đã hoàn thành Test 1. Mỗi tài khoản chỉ được thi một lần.';
+      err.style.display = 'block';
+      document.getElementById('reg-already-done').style.display = 'block';
+      return;
+    }
+
+    err.style.display = 'none';
+    currentPlayer = { ...playerData, registeredAt: Date.now() };
+    await playersCollection.doc(mssv).set({ ...currentPlayer, test1_registered: true }, { merge: true });
+    startQuiz();
+  } catch(e) {
+    console.error('handleRegister error:', e);
+    err.textContent = '❌ Lỗi: ' + e.message;
     err.style.display = 'block';
-    return;
+    if (btn) { btn.textContent = '🎮 Bắt Đầu Thi Đấu 1 →'; btn.disabled = false; }
   }
-
-  const playerDoc = await playersCollection.doc(mssv).get();
-  if (!playerDoc.exists) {
-    err.textContent = '⚠ Tài khoản không tồn tại. Vui lòng đăng ký lại.';
-    err.style.display = 'block';
-    return;
-  }
-
-  const playerData = playerDoc.data();
-
-  // Check if already finished Test 1
-  if (playerData.finishedAt) {
-    err.textContent = '⚠ Bạn đã hoàn thành Test 1. Mỗi tài khoản chỉ được thi một lần.';
-    err.style.display = 'block';
-    document.getElementById('reg-already-done').style.display = 'block';
-    document.getElementById('btn-register-test1').disabled = true;
-    return;
-  }
-
-  err.style.display = 'none';
-  currentPlayer = { ...playerData, registeredAt: Date.now() };
-  await playersCollection.doc(mssv).set({ ...currentPlayer, test1_registered: true }, { merge: true });
-  startQuiz();
 }
 
 async function handleRegister2() {
@@ -2753,20 +2767,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     refreshHomeUI();
   }
   
-  // Load quiz settings
-  const quizDoc = await quizSettingsDoc.get();
-  if (quizDoc.exists) {
-    cachedQuizOpen = quizDoc.data().quizOpen || false;
-  }
-  refreshQuizOpenUI();
-  
   // Load auction state
-  const auctionDoc = await auctionStateDoc.get();
-  if (auctionDoc.exists) {
-    auctionState = { ...auctionState, ...auctionDoc.data() };
-  } else {
-    await auctionStateDoc.set(auctionState);
-  }
+  // (cachedQuizOpen sẽ được set bởi onSnapshot trong startRealtimeListeners bên dưới)
+  try {
+    const auctionDoc = await auctionStateDoc.get();
+    if (auctionDoc.exists) {
+      auctionState = { ...auctionState, ...auctionDoc.data() };
+    } else if (isAdminLoggedIn) {
+      await auctionStateDoc.set(auctionState); // chỉ admin mới có quyền write
+    }
+  } catch(e) { console.warn('auctionState load error:', e.message); }
 
   // Always start listeners for ALL users (quiz open status + auction state)
   startRealtimeListeners();
