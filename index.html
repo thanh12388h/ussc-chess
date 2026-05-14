@@ -6,6 +6,7 @@
 <title>USSC Chess Tournament - Firebase Sync</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Space+Mono:wght@400;700&family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
 <style>
+  /* ... GIỮ NGUYÊN TOÀN BỘ CSS CŨ CỦA BẠN ... */
   :root {
     --bg: #0a0a0f;
     --surface: #12121a;
@@ -38,10 +39,12 @@
     z-index:0;
   }
 
+  /* ===== LAYOUT ===== */
   .page { display:none; min-height:100vh; position:relative; z-index:1; }
   .page.active { display:flex; flex-direction:column; align-items:center; justify-content:center; }
   .page.active.top { justify-content:flex-start; padding:24px; }
 
+  /* ===== HEADER ===== */
   .logo {
     font-family: 'Bebas Neue', sans-serif;
     font-size: clamp(2.5rem, 6vw, 4rem);
@@ -62,6 +65,7 @@
   }
   .chess-icon { font-size: 3rem; text-align:center; margin-bottom:12px; }
 
+  /* ===== CARD ===== */
   .card {
     background: var(--surface);
     border: 1px solid var(--border);
@@ -72,6 +76,7 @@
     backdrop-filter: blur(8px);
   }
 
+  /* ===== FORM ===== */
   .field { margin-bottom: 20px; }
   .field label {
     display:block;
@@ -96,6 +101,7 @@
   }
   .field input:focus { border-color: var(--gold); }
 
+  /* ===== BUTTONS ===== */
   .btn {
     width:100%;
     padding: 14px 24px;
@@ -106,6 +112,8 @@
     letter-spacing: 0.15em;
     cursor:pointer;
     transition: all 0.2s;
+    position:relative;
+    overflow:hidden;
   }
   .btn-gold {
     background: linear-gradient(135deg, var(--gold) 0%, var(--gold2) 100%);
@@ -129,6 +137,14 @@
   .btn-purple { background: var(--accent); color: #fff; }
   .btn:disabled { opacity:0.4; cursor:not-allowed; transform:none !important; }
 
+  /* ===== QUIZ PAGE ===== */
+  #page-quiz {
+    padding: 24px;
+    max-width: 700px;
+    margin: 0 auto;
+    width:100%;
+    justify-content:flex-start;
+  }
   .quiz-header {
     display:flex;
     justify-content:space-between;
@@ -200,6 +216,7 @@
   .option-btn:hover { border-color:var(--gold); background: rgba(245,200,66,0.08); }
   .option-btn.correct { border-color:var(--green); background:rgba(46,204,113,0.15); color:var(--green); }
   .option-btn.wrong { border-color:var(--red); background:rgba(231,76,60,0.15); color:var(--red); }
+  .option-btn.selected { border-color:var(--blue); background:rgba(52,152,219,0.15); }
   .skip-btn {
     background:transparent;
     border:1px dashed var(--border);
@@ -210,6 +227,7 @@
     font-size:0.75rem;
     cursor:pointer;
     width:100%;
+    transition: all 0.2s;
   }
   .skip-btn:hover { border-color:var(--muted); color:var(--white); }
   .quiz-score-live {
@@ -219,6 +237,7 @@
     letter-spacing:0.1em;
   }
 
+  /* ===== LEADERBOARD ===== */
   .lb-table { width:100%; border-collapse:collapse; }
   .lb-table th {
     font-family:'Space Mono',monospace;
@@ -235,6 +254,7 @@
     border-bottom:1px solid rgba(42,42,58,0.5);
     font-size:0.9rem;
   }
+  .lb-table tr:hover td { background:rgba(245,200,66,0.04); }
   .rank-1 { color:var(--gold); font-weight:700; }
   .rank-2 { color:#c0c0c0; }
   .rank-3 { color:#cd7f32; }
@@ -250,6 +270,7 @@
     color:var(--muted);
   }
 
+  /* ===== ADMIN PAGE ===== */
   .admin-grid {
     display:grid;
     grid-template-columns: 1fr 1fr;
@@ -284,6 +305,7 @@
     display:flex;
     justify-content:space-between;
     align-items:center;
+    transition: border-color 0.2s;
   }
   .team-card.winner { border-color:var(--gold); background:rgba(245,200,66,0.06); }
   .team-name {
@@ -305,13 +327,10 @@
     color:var(--white);
   }
 
-  .auction-player-card {
-    background:var(--surface);
-    border:1px solid var(--border);
-    border-radius:16px;
-    padding:32px;
-    width:100%;
-    max-width:500px;
+  /* ===== AUCTION PAGE ===== */
+  .auction-header {
+    text-align:center;
+    margin-bottom:24px;
   }
   .round-badge {
     display:inline-block;
@@ -325,6 +344,17 @@
     letter-spacing:0.2em;
     margin-bottom:12px;
   }
+  .chess-position {
+    background:var(--surface2);
+    border:1px solid var(--border);
+    border-radius:12px;
+    padding:20px;
+    text-align:center;
+    margin-bottom:16px;
+    font-size:0.9rem;
+    line-height:1.6;
+    color:var(--muted);
+  }
   .chess-board {
     width:100%;
     max-width:320px;
@@ -337,6 +367,7 @@
     grid-template-rows: repeat(8,1fr);
     border:2px solid var(--border);
   }
+  .chess-board.dark { background: #baca44; }
   .chess-square {
     display:flex;
     align-items:center;
@@ -344,8 +375,10 @@
     font-size:2.3rem;
     font-family: 'Segoe UI Symbol', 'Apple Color Emoji', 'Noto Color Emoji', sans-serif;
     line-height:1;
+    background: transparent;
+    cursor:default;
   }
-  .chess-square.dark { background: #baca44; }
+  .chess-square.dark { background: #8f8f47; }
   .bet-controls {
     display:flex;
     gap:8px;
@@ -365,6 +398,43 @@
     width:120px;
     text-align:center;
     outline:none;
+  }
+  .team-bid-row {
+    background:var(--surface2);
+    border:1px solid var(--border);
+    border-radius:10px;
+    padding:12px 16px;
+    margin-bottom:8px;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    flex-wrap:wrap;
+    gap:8px;
+  }
+  .bid-status {
+    font-family:'Space Mono',monospace;
+    font-size:0.75rem;
+    padding:4px 10px;
+    border-radius:12px;
+  }
+  .bid-status.placed { background:rgba(52,152,219,0.2); color:var(--blue); }
+  .bid-status.passed { background:rgba(42,42,58,0.8); color:var(--muted); }
+  .bid-status.pending { background:rgba(245,200,66,0.1); color:var(--gold); }
+  .bid-status.correct { background:rgba(46,204,113,0.2); color:var(--green); }
+  .bid-status.wrong { background:rgba(231,76,60,0.2); color:var(--red); }
+
+  /* ===== AUCTION PLAYER PAGE ===== */
+  .auction-player-card {
+    background:var(--surface);
+    border:1px solid var(--border);
+    border-radius:16px;
+    padding:32px;
+    width:100%;
+    max-width:500px;
+  }
+  .auction-board-container {
+    margin-bottom:20px;
+    text-align:center;
   }
   .answer-input-group {
     margin-bottom:16px;
@@ -389,9 +459,13 @@
     outline:none;
     text-transform:uppercase;
     text-align:center;
+    letter-spacing:0.1em;
   }
   .answer-input:focus { border-color:var(--gold); }
+  .answer-input.correct { border-color:var(--green); background:rgba(46,204,113,0.08); }
+  .answer-input.wrong { border-color:var(--red); background:rgba(231,76,60,0.08); }
 
+  /* ===== RESULT REVEAL ===== */
   .result-card {
     background:var(--surface);
     border-radius:16px;
@@ -416,7 +490,9 @@
   }
   .delta-pos { color:var(--green); font-weight:700; }
   .delta-neg { color:var(--red); font-weight:700; }
+  .delta-zero { color:var(--muted); }
 
+  /* ===== LOGIN ===== */
   .login-card {
     background:var(--surface);
     border:1px solid var(--border);
@@ -437,11 +513,23 @@
     display:none;
     font-family:'Space Mono',monospace;
   }
+
+  /* ===== MISC ===== */
   .divider { border:none; border-top:1px solid var(--border); margin:20px 0; }
   .flex-row { display:flex; gap:10px; }
   .text-center { text-align:center; }
   .mt-16 { margin-top:16px; }
   .mt-8 { margin-top:8px; }
+  .tag {
+    display:inline-block;
+    background:rgba(124,58,237,0.15);
+    border:1px solid rgba(124,58,237,0.4);
+    border-radius:4px;
+    padding:2px 8px;
+    font-size:0.7rem;
+    color:#a78bfa;
+    font-family:'Space Mono',monospace;
+  }
   .alert {
     background:rgba(245,200,66,0.08);
     border:1px solid rgba(245,200,66,0.3);
@@ -450,8 +538,21 @@
     font-size:0.85rem;
     color:var(--gold);
     margin-bottom:16px;
+    font-family:'Space Mono',monospace;
   }
   .scroll-area { max-height:400px; overflow-y:auto; }
+  .scroll-area::-webkit-scrollbar { width:4px; }
+  .scroll-area::-webkit-scrollbar-track { background:transparent; }
+  .scroll-area::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
+
+  /* Animations */
+  @keyframes fadeIn { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:none} }
+  @keyframes slideIn { from{opacity:0;transform:translateX(-16px)} to{opacity:1;transform:none} }
+  @keyframes scoreUp { from{transform:scale(1)} 50%{transform:scale(1.3)} to{transform:scale(1)} }
+  .anim-fade { animation: fadeIn 0.4s ease both; }
+  .anim-slide { animation: slideIn 0.3s ease both; }
+
+  /* Nav */
   .nav-pills {
     display:flex;
     gap:8px;
@@ -471,8 +572,12 @@
     font-family:'Space Mono',monospace;
     font-size:0.7rem;
     cursor:pointer;
+    letter-spacing:0.1em;
+    transition:all 0.2s;
   }
   .nav-pill.active { background:var(--gold); color:#0a0a0f; font-weight:700; }
+
+  /* Loading overlay */
   .loading-overlay {
     position:fixed;
     top:0;
@@ -485,7 +590,9 @@
     justify-content:center;
     z-index:1000;
     font-family:'Space Mono',monospace;
+    font-size:0.9rem;
     color:var(--gold);
+    backdrop-filter:blur(4px);
   }
   .online-badge {
     position:fixed;
@@ -497,19 +604,21 @@
     padding:4px 12px;
     font-size:0.7rem;
     font-family:'Space Mono',monospace;
+    color:var(--muted);
     z-index:100;
   }
   .online-badge.online { color:var(--green); border-color:var(--green); }
   .online-badge.offline { color:var(--red); border-color:var(--red); }
-  @keyframes fadeIn { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:none} }
-  .anim-fade { animation: fadeIn 0.4s ease both; }
 </style>
 
+<!-- Firebase SDKs -->
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
 
 <script>
+  // Your web app's Firebase configuration
   const firebaseConfig = {
     apiKey: "AIzaSyB43pT1Jfe4fKEmoadWZPtUsPhupHMNV6E",
     authDomain: "ussc-chess.firebaseapp.com",
@@ -520,632 +629,48 @@
     measurementId: "G-FN7NB2S1XY"
   };
 
+  // Initialize Firebase
   firebase.initializeApp(firebaseConfig);
   const db = firebase.firestore();
   const auth = firebase.auth();
   
+  // Enable offline persistence
   db.enablePersistence({ synchronizeTabs: true }).catch(err => {
-    if (err.code == 'failed-precondition') console.warn('Multiple tabs open');
-  });
-
-  // Collections
-  const playersCollection = db.collection('players');
-  const test2PlayersCollection = db.collection('test2_players');
-  const teamsCollection = db.collection('teams');
-  const auctionStateDoc = db.collection('settings').doc('auction_state');
-  const quizSettingsDoc = db.collection('settings').doc('quiz');
-
-  // State
-  let currentPlayer = null;
-  let isAdminLoggedIn = false;
-  let cachedQuizOpen = false;
-  let quizState = null;
-  let auctionState = {
-    round: 0, running: false, review: false, finalized: false,
-    timeLeft: 180, bids: {}, answers: {}, teamReview: {}, finalResults: {},
-    roundData: [
-      {gm:"Bobby Fischer vs Boris Spassky", ctx:"World Championship 1972", fen:"rnbqkbnr/pp1ppppp/8/2p5/4P3/5N2/PPPP1PPP/RNBQKB1R b KQkq - 1 2", answer:"Nc6", range:"50–200"},
-      {gm:"Capablanca vs Alekhine", ctx:"Buenos Aires 1927", fen:"r1bqkbnr/pppp1ppp/2n5/1B2p3/4P3/5N2/PPPP1PPP/RNBQK2R b KQkq - 3 3", answer:"a6", range:"50–200"},
-      {gm:"Steinitz vs Zukertort", ctx:"World Championship 1886", fen:"rnbqkbnr/ppp1pppp/8/3p4/2PP4/8/PP2PPPP/RNBQKBNR b KQkq - 0 2", answer:"dxc4", range:"100–400"},
-      {gm:"Kasparov vs Karpov", ctx:"World Championship 1985", fen:"rnbq1rk1/ppp1ppbp/3p1np1/8/2PPP3/2N2N2/PP3PPP/R1BQKB1R w KQ - 1 7", answer:"dxe5", range:"100–400"},
-      {gm:"Carlsen vs Caruana", ctx:"World Championship 2018", fen:"rnbqkbnr/pppp1ppp/4p3/8/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2", answer:"d4", range:"200–500"},
-    ]
-  };
-
-  const CHESS_QUESTIONS = [
-    {q:"Con Hậu có thể di chuyển bao nhiêu ô?", opts:["Tối đa 8","Không giới hạn theo đường thẳng","3 ô","Chỉ chéo"], ans:1},
-    {q:"Cờ vua bắt nguồn từ quốc gia nào?", opts:["Trung Quốc","Hy Lạp","Ấn Độ","Ba Tư"], ans:2},
-    {q:"'En passant' là gì?", opts:["Chiếu hết bằng Tốt","Nhập thành đặc biệt","Bắt Tốt qua đường","Phong cấp Tốt"], ans:2},
-    {q:"Quân nào duy nhất đi theo hình chữ L?", opts:["Tượng","Mã","Xe","Hậu"], ans:1},
-    {q:"2 con Mã có thể một mình chiếu hết không?", opts:["Có, dễ dàng","Không thể về mặt lý thuyết","Chỉ khi đối thủ sai lầm","Chỉ với Tốt hỗ trợ"], ans:2},
-    {q:"Magnus Carlsen đăng quang Vô địch Thế giới lần đầu năm nào?", opts:["2010","2011","2013","2015"], ans:2},
-    {q:"Thế cờ 'fork' (nĩa) nghĩa là?", opts:["Chiếu đôi","Một quân tấn công 2 quân cùng lúc","Bẫy Tốt","Phong tỏa quân"], ans:1},
-    {q:"Bobby Fischer là người Mỹ đầu tiên vô địch thế giới năm nào?", opts:["1968","1970","1972","1975"], ans:2},
-    {q:"Số ô trên bàn cờ là bao nhiêu?", opts:["32","48","64","81"], ans:2},
-    {q:"'Zugzwang' có nghĩa là gì?", opts:["Chiếu liên tục","Bắt buộc di chuyển nhưng mọi nước đều bất lợi","Hòa cờ","Tấn công đôi"], ans:1},
-  ];
-
-  function shuffleArray(arr) { const a = [...arr]; for (let i=a.length-1; i>0; i--) { const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; }
-  function showPage(id) { document.querySelectorAll('.page').forEach(p => p.classList.remove('active')); const target = document.getElementById(id); if(target) target.classList.add('active'); if(id === 'page-leaderboard') renderLeaderboard(); if(id === 'page-history' && isLoggedIn()) renderHistory(); }
-  function isLoggedIn() { return sessionStorage.getItem('loggedInMssv') !== null; }
-  function getLoggedInMssv() { return sessionStorage.getItem('loggedInMssv'); }
-  function formatTime(seconds) { const m = Math.floor(seconds/60); const s = seconds%60; return `${m}:${String(s).padStart(2,'0')}`; }
-  function fenToBoard(fen) { const board = []; const rows = fen.split(' ')[0].split('/'); const pieces = {'p':'♟︎','r':'♜','n':'♞','b':'♝','q':'♛','k':'♚','P':'♙','R':'♖','N':'♘','B':'♗','Q':'♕','K':'♔'}; rows.forEach((row,rIdx) => { let col = 0; for (let char of row) { if (isNaN(char)) { board.push({piece: pieces[char] || '', isLight:(rIdx+col)%2===0}); col++; } else { for (let i=0; i<parseInt(char,10); i++) { board.push({piece:'', isLight:(rIdx+col)%2===0}); col++; } } } }); return board; }
-  function renderChessBoard(containerId, fen) { const container = document.getElementById(containerId); if(!container) return; const board = fenToBoard(fen); container.innerHTML = ''; board.forEach(sq => { const div = document.createElement('div'); div.className = 'chess-square' + (sq.isLight ? '' : ' dark'); div.textContent = sq.piece; container.appendChild(div); }); }
-
-  // ========== TẠO TÀI KHOẢN THI ĐẤU ==========
-  async function handleAccountRegister() {
-    const mssv = document.getElementById('acc-reg-mssv').value.trim();
-    const name = document.getElementById('acc-reg-name').value.trim();
-    const email = document.getElementById('acc-reg-email').value.trim();
-    const password = document.getElementById('acc-reg-password').value;
-    const confirm = document.getElementById('acc-reg-confirm').value;
-    const err = document.getElementById('acc-reg-error');
-
-    if (!mssv || !name || !email || !password || !confirm) { err.textContent = '⚠ Vui lòng điền đầy đủ thông tin'; err.style.display='block'; return; }
-    if (password !== confirm) { err.textContent = '⚠ Mật khẩu xác nhận không khớp'; err.style.display='block'; return; }
-    if (password.length < 4) { err.textContent = '⚠ Mật khẩu phải có ít nhất 4 ký tự'; err.style.display='block'; return; }
-    if (!/^\d{8,10}$/.test(mssv)) { err.textContent = '⚠ MSSV không hợp lệ (8-10 chữ số)'; err.style.display='block'; return; }
-
-    try {
-      const existing = await playersCollection.doc(mssv).get();
-      if (existing.exists) { err.textContent = '⚠ MSSV này đã được đăng ký'; err.style.display='block'; return; }
-
-      await playersCollection.doc(mssv).set({
-        mssv, name, email, password,
-        createdAt: Date.now(),
-        score: 0, correct: 0, finishedAt: null, responseTime: 0,
-        test1_registered: false, test2_registered: false
-      });
-
-      err.style.display = 'none';
-      alert(`✅ Tài khoản '${name}' (${mssv}) đã tạo thành công!\n\nVui lòng đăng nhập để bắt đầu thi.`);
-      document.getElementById('acc-reg-mssv').value = '';
-      document.getElementById('acc-reg-name').value = '';
-      document.getElementById('acc-reg-email').value = '';
-      document.getElementById('acc-reg-password').value = '';
-      document.getElementById('acc-reg-confirm').value = '';
-      showPage('page-account-login');
-    } catch (error) {
-      err.textContent = '❌ Lỗi: ' + error.message;
-      err.style.display = 'block';
+    if (err.code == 'failed-precondition') {
+      console.warn('Multiple tabs open, persistence can only be enabled in one tab at a time.');
     }
-  }
-
-  // ========== ĐĂNG NHẬP TÀI KHOẢN ==========
-  async function handleAccountLogin() {
-    const mssv = document.getElementById('acc-login-mssv').value.trim();
-    const password = document.getElementById('acc-login-password').value;
-    const err = document.getElementById('acc-login-error');
-
-    if (!mssv || !password) { err.textContent = '⚠ Vui lòng nhập MSSV và mật khẩu'; err.style.display='block'; return; }
-
-    try {
-      const playerDoc = await playersCollection.doc(mssv).get();
-      if (!playerDoc.exists) { err.textContent = '⚠ MSSV không tồn tại'; err.style.display='block'; return; }
-
-      const playerData = playerDoc.data();
-      if (playerData.password !== password) { err.textContent = '⚠ Mật khẩu không chính xác'; err.style.display='block'; return; }
-
-      sessionStorage.setItem('loggedInMssv', mssv);
-      currentPlayer = playerData;
-      err.style.display = 'none';
-      document.getElementById('acc-login-mssv').value = '';
-      document.getElementById('acc-login-password').value = '';
-      
-      refreshHomeUI();
-      alert(`✅ Đăng nhập thành công! Chào ${playerData.name}`);
-      showPage('page-home');
-    } catch (error) {
-      err.textContent = '❌ Lỗi: ' + error.message;
-      err.style.display = 'block';
-    }
-  }
-
-  // ========== ĐĂNG KÝ THI TEST 1 ==========
-  async function handleRegisterTest1() {
-    const mssv = getLoggedInMssv();
-    if (!mssv) { alert('⚠ Vui lòng đăng nhập trước'); showPage('page-account-login'); return; }
-
-    try {
-      const playerDoc = await playersCollection.doc(mssv).get();
-      if (!playerDoc.exists) { alert('⚠ Không tìm thấy tài khoản'); return; }
-      
-      const player = playerDoc.data();
-      
-      // Kiểm tra đã thi chưa
-      if (player.finishedAt) {
-        alert('⚠ Bạn đã hoàn thành bài thi Test 1 rồi! Mỗi tài khoản chỉ được thi một lần duy nhất.');
-        return;
-      }
-
-      const quizDoc = await quizSettingsDoc.get();
-      const quizIsOpen = quizDoc.exists ? quizDoc.data().quizOpen : false;
-      
-      if (!quizIsOpen) {
-        alert('⏳ Quiz chưa mở. Vui lòng đợi Admin mở.');
-        return;
-      }
-
-      currentPlayer = player;
-      startQuiz();
-    } catch (error) {
-      alert('❌ Lỗi: ' + error.message);
-    }
-  }
-
-  // ========== ĐĂNG KÝ THI TEST 2 ==========
-  async function handleRegisterTest2() {
-    const mssv = getLoggedInMssv();
-    if (!mssv) { alert('⚠ Vui lòng đăng nhập trước'); showPage('page-account-login'); return; }
-
-    const team = document.getElementById('reg2-team').value.trim();
-    const err = document.getElementById('reg2-error');
-
-    if (!team) { err.textContent = '⚠ Vui lòng nhập mã nhóm'; err.style.display='block'; return; }
-
-    try {
-      const playerDoc = await playersCollection.doc(mssv).get();
-      if (!playerDoc.exists) { err.textContent = '⚠ Không tìm thấy tài khoản'; err.style.display='block'; return; }
-      
-      const player = playerDoc.data();
-
-      const existingTest2 = await test2PlayersCollection.doc(mssv).get();
-      if (existingTest2.exists) { err.textContent = '⚠ Bạn đã đăng ký Test 2 rồi!'; err.style.display='block'; return; }
-
-      const teamDoc = await teamsCollection.doc(team).get();
-      if (!teamDoc.exists) { err.textContent = '⚠ Mã nhóm không tồn tại! Liên hệ Admin để được cấp nhóm.'; err.style.display='block'; return; }
-
-      const teamData = teamDoc.data();
-      const member = teamData.members.find(m => m.mssv === mssv);
-      if (!member) { err.textContent = '⚠ MSSV của bạn không nằm trong nhóm này! Vui lòng kiểm tra lại mã nhóm từ Admin.'; err.style.display='block'; return; }
-
-      err.style.display = 'none';
-      await test2PlayersCollection.doc(mssv).set({ mssv, name: player.name, team, registeredAt: Date.now() });
-      
-      alert(`✅ Đăng ký Test 2 thành công! Nhóm: ${team}`);
-      startAuctionPlayer(mssv, player.name, team);
-    } catch (error) {
-      err.textContent = '❌ Lỗi: ' + error.message;
-      err.style.display = 'block';
-    }
-  }
-
-  // ========== XEM LỊCH SỬ ==========
-  async function renderHistory() {
-    const mssv = getLoggedInMssv();
-    if (!mssv) { alert('⚠ Vui lòng đăng nhập'); showPage('page-home'); return; }
-
-    try {
-      const playerDoc = await playersCollection.doc(mssv).get();
-      if (!playerDoc.exists) { document.getElementById('history-content').innerHTML = '<p style="text-align:center; color:var(--muted);">Không tìm thấy dữ liệu</p>'; return; }
-
-      const player = playerDoc.data();
-      const players = await playersCollection.orderBy('score', 'desc').get();
-      const sorted = players.docs.map(d => d.data()).sort((a,b) => {
-        if (b.score !== a.score) return b.score - a.score;
-        return (a.responseTime||0) - (b.responseTime||0);
-      });
-      const rank = sorted.findIndex(p => p.mssv === mssv) + 1;
-      const totalPlayers = sorted.length;
-
-      const historyHTML = `
-        <div class="card" style="text-align:center;">
-          <div style="margin-bottom:20px;">
-            <div style="font-size:0.85rem; color:var(--muted); margin-bottom:8px;">THÔNG TIN TÀI KHOẢN</div>
-            <div style="font-size:1.2rem; color:var(--gold);">${player.name}</div>
-            <div style="font-size:0.85rem; color:var(--muted); margin-top:4px;">${player.mssv}</div>
-          </div>
-          <hr class="divider">
-          <div style="margin-top:20px;">
-            <div style="font-size:0.75rem; color:var(--muted); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:8px;">Kết Quả Test 1 - Quiz Chess</div>
-            <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px; margin-bottom:20px;">
-              <div><div style="font-size:2rem; color:var(--gold);">${player.score || 0}</div><div style="font-size:0.7rem; color:var(--muted);">Điểm</div></div>
-              <div><div style="font-size:2rem; color:var(--blue);">${player.correct || 0}</div><div style="font-size:0.7rem; color:var(--muted);">Câu Đúng / 10</div></div>
-              <div><div style="font-size:2rem; color:var(--green);">${player.responseTime || 0}s</div><div style="font-size:0.7rem; color:var(--muted);">Thời Gian</div></div>
-            </div>
-            <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:20px;">
-              <div><div style="font-size:1.5rem; color:var(--accent);">#${rank}</div><div style="font-size:0.7rem; color:var(--muted);">Xếp Hạng</div></div>
-              <div><div style="font-size:1.5rem; color:var(--gold);">${totalPlayers}</div><div style="font-size:0.7rem; color:var(--muted);">Tổng Số Thí Sinh</div></div>
-            </div>
-            ${player.finishedAt ? `<div style="font-size:0.8rem; color:var(--muted); padding:12px; background:var(--surface2); border-radius:8px;">✅ Hoàn thành lúc: ${new Date(player.finishedAt).toLocaleString('vi-VN')}</div>` : `<div style="font-size:0.8rem; color:var(--muted); padding:12px; background:var(--surface2); border-radius:8px;">⏳ Chưa hoàn thành Test 1</div>`}
-          </div>
-        </div>
-      `;
-      document.getElementById('history-content').innerHTML = historyHTML;
-    } catch (error) {
-      document.getElementById('history-content').innerHTML = '<p style="text-align:center; color:var(--red);">❌ Lỗi tải dữ liệu</p>';
-    }
-  }
-
-  // ========== BẮT ĐẦU QUIZ ==========
-  function startQuiz() {
-    quizState = {
-      questions: shuffleArray(CHESS_QUESTIONS).slice(0, 10),
-      current: 0, score: 0, correct: 0,
-      timerInterval: null, timeLeft: 180, finished: false,
-      startTime: Date.now()
-    };
-    showPage('page-quiz');
-    document.getElementById('quiz-player-name').textContent = '♟ ' + currentPlayer.name;
-    renderQuestion();
-    startQuizTimer();
-  }
-
-  function renderQuestion() {
-    if (quizState.finished || quizState.current >= quizState.questions.length) { endQuiz(); return; }
-    const q = quizState.questions[quizState.current];
-    const n = quizState.current + 1;
-
-    document.getElementById('quiz-q-num').textContent = `CÂU ${String(n).padStart(2,'0')}`;
-    document.getElementById('quiz-q-text').textContent = q.q;
-    document.getElementById('quiz-q-counter').textContent = `Câu ${n} / ${quizState.questions.length}`;
-    document.getElementById('quiz-progress-fill').style.width = ((n-1)/quizState.questions.length*100) + '%';
-    document.getElementById('quiz-score-live').textContent = quizState.score + ' ĐP';
-
-    const optsEl = document.getElementById('quiz-options');
-    optsEl.innerHTML = '';
-    q.opts.forEach((opt, i) => {
-      const btn = document.createElement('button');
-      btn.className = 'option-btn';
-      btn.textContent = ['A','B','C','D'][i] + '. ' + opt;
-      btn.onclick = () => selectAnswer(i, q.ans, btn);
-      optsEl.appendChild(btn);
-    });
-  }
-
-  function selectAnswer(idx, correct, btn) {
-    const allBtns = document.querySelectorAll('.option-btn');
-    allBtns.forEach(b => b.onclick = null);
-
-    if (idx === correct) {
-      btn.classList.add('correct');
-      quizState.score += 100;
-      quizState.correct++;
-      document.getElementById('quiz-score-live').textContent = quizState.score + ' ĐP';
-    } else {
-      btn.classList.add('wrong');
-      allBtns[correct].classList.add('correct');
-    }
-
-    setTimeout(() => { quizState.current++; renderQuestion(); }, 600);
-  }
-
-  function skipQuestion() { quizState.current++; renderQuestion(); }
-
-  function startQuizTimer() {
-    quizState.timerInterval = setInterval(() => {
-      quizState.timeLeft--;
-      const m = Math.floor(quizState.timeLeft/60);
-      const s = quizState.timeLeft%60;
-      const el = document.getElementById('quiz-timer');
-      el.textContent = `${m}:${String(s).padStart(2,'0')}`;
-      el.classList.toggle('danger', quizState.timeLeft <= 30);
-      if (quizState.timeLeft <= 0) endQuiz();
-    }, 1000);
-  }
-
-  async function endQuiz() {
-    quizState.finished = true;
-    clearInterval(quizState.timerInterval);
-
-    currentPlayer.score = quizState.score;
-    currentPlayer.correct = quizState.correct;
-    currentPlayer.finishedAt = Date.now();
-    currentPlayer.responseTime = Math.round((currentPlayer.finishedAt - quizState.startTime) / 1000);
-
-    await playersCollection.doc(currentPlayer.mssv).set(currentPlayer);
-
-    document.getElementById('done-score').textContent = quizState.score;
-    document.getElementById('done-correct').textContent = `${quizState.correct} / 10 câu đúng`;
-
-    const players = await playersCollection.orderBy('score', 'desc').get();
-    const sorted = players.docs.map(d => d.data()).sort((a,b) => {
-      if (b.score !== a.score) return b.score - a.score;
-      return (a.responseTime||0) - (b.responseTime||0);
-    });
-    const rank = sorted.findIndex(p => p.mssv === currentPlayer.mssv) + 1;
-    document.getElementById('done-rank-info').textContent = `🏅 Xếp hạng hiện tại: #${rank} / ${sorted.length} người`;
-
-    showPage('page-quiz-done');
-  }
-
-  // ========== BẮT ĐẦU AUCTION ==========
-  async function startAuctionPlayer(mssv, name, team) {
-    if (auctionState.round >= auctionState.roundData.length) {
-      alert('🏁 Đã kết thúc tất cả vòng đấu giá!');
-      showPage('page-home');
-      return;
-    }
-    const rd = auctionState.roundData[auctionState.round];
-    document.getElementById('player-round-badge').textContent = `VÒNG ${auctionState.round + 1} / ${auctionState.roundData.length}`;
-    document.getElementById('player-team-info').textContent = `Nhóm: ${team}`;
-    document.getElementById('player-answer-input').value = '';
-    renderChessBoard('player-chess-board', rd.fen);
-    showPage('page-auction-player');
-    renderAuctionPlayerState(team);
-  }
-
-  function renderAuctionPlayerState(team) {
-    const timerEl = document.getElementById('player-auction-timer');
-    const statusEl = document.getElementById('player-bid-status');
-    const resultCard = document.getElementById('player-round-result');
-    const rd = auctionState.roundData[auctionState.round];
-    const answerInput = document.getElementById('player-answer-input');
-    const bidInput = document.getElementById('player-bet-input');
-    
-    if (timerEl) timerEl.textContent = formatTime(auctionState.timeLeft);
-
-    if (auctionState.finalized) {
-      statusEl.textContent = 'Phiên đấu giá đã chốt.';
-      if (answerInput) answerInput.disabled = true;
-      if (bidInput) bidInput.disabled = true;
-      if (auctionState.finalResults && auctionState.finalResults[team]) {
-        const result = auctionState.finalResults[team];
-        resultCard.style.display = 'block';
-        document.getElementById('player-round-result-text').textContent = `Vòng ${auctionState.round + 1}`;
-        document.getElementById('player-correct-answer').textContent = result.correctAnswer || rd.answer;
-        document.getElementById('player-round-result-status').textContent = result.status === 'correct' ? 'ĐÚNG' : result.status === 'pass' ? 'PASS' : 'SAI';
-        document.getElementById('player-round-result-delta').textContent = `${result.delta >= 0 ? '+' : ''}${result.delta} ĐP`;
-      }
-    } else if (auctionState.running) {
-      statusEl.textContent = 'Phiên đấu giá đang diễn ra. Vui lòng đặt cược và nộp đáp án.';
-      if (answerInput) answerInput.disabled = false;
-      if (bidInput) bidInput.disabled = false;
-      resultCard.style.display = 'none';
-    } else {
-      statusEl.textContent = 'Chờ Admin bắt đầu phiên đấu giá.';
-      if (answerInput) answerInput.disabled = true;
-      if (bidInput) bidInput.disabled = true;
-    }
-  }
-
-  async function placeAuctionBid() {
-    if (!auctionState.running) { alert('⚠ Phiên đấu giá chưa bắt đầu.'); return; }
-    const team = currentPlayer?.team || sessionStorage.getItem('currentAuctionTeam');
-    if (!team) return;
-    const amount = parseInt(document.getElementById('player-bet-input').value) || 0;
-    const rd = auctionState.roundData[auctionState.round];
-    const parts = rd.range.split('–');
-    const minBet = parseInt(parts[0]) || 50;
-    
-    const teamsSnapshot = await teamsCollection.get();
-    const teamData = teamsSnapshot.docs.find(d => d.id === team)?.data();
-    const maxBet = Math.min(parseInt(parts[1]) || 500, teamData?.totalScore || 0);
-    
-    if (amount < minBet || amount > maxBet) { alert(`Cược phải từ ${minBet} đến ${maxBet} ĐP`); return; }
-    
-    auctionState.bids[team] = { amount, passed: false };
-    await auctionStateDoc.set(auctionState, { merge: true });
-    alert(`✅ Đã đặt cược ${amount} ĐP`);
-  }
-
-  async function passAuctionBid() {
-    if (!auctionState.running) { alert('⚠ Phiên đấu giá chưa bắt đầu.'); return; }
-    const team = currentPlayer?.team || sessionStorage.getItem('currentAuctionTeam');
-    if (!team) return;
-    auctionState.bids[team] = { amount: 0, passed: true };
-    await auctionStateDoc.set(auctionState, { merge: true });
-    alert('✅ Đã PASS');
-  }
-
-  async function submitAuctionAnswer() {
-    if (!auctionState.running) { alert('⚠ Phiên đấu giá chưa bắt đầu.'); return; }
-    const team = currentPlayer?.team || sessionStorage.getItem('currentAuctionTeam');
-    if (!team) return;
-    const input = document.getElementById('player-answer-input');
-    const answer = input.value.trim().toUpperCase();
-    if (!answer) { alert('⚠ Vui lòng nhập đáp án'); return; }
-
-    auctionState.answers[team] = answer;
-    await auctionStateDoc.set(auctionState, { merge: true });
-    alert('✅ Đã nộp đáp án.');
-  }
-
-  // ========== BẢNG XẾP HẠNG ==========
-  async function renderLeaderboard() {
-    const players = await playersCollection.orderBy('score', 'desc').get();
-    const sorted = players.docs.map(d => d.data()).sort((a,b) => {
-      if (b.score !== a.score) return b.score - a.score;
-      return (a.responseTime||0) - (b.responseTime||0);
-    }).filter(p => p.finishedAt);
-    
-    const el = document.getElementById('lb-individual');
-    if (!sorted.length) { el.innerHTML = '<div style="color:var(--muted);text-align:center;padding:24px;">Chưa có người chơi nào</div>'; return; }
-
-    const medals = ['🥇','🥈','🥉'];
-    el.innerHTML = `<table class="lb-table"><thead><tr><th>#</th><th>Người Chơi</th><th>Điểm</th><th>Thời Gian</th></tr></thead><tbody>` +
-      sorted.map((p,i) => `<tr><td class="${i<3?'rank-'+(i+1):''}">${medals[i]||i+1}</td><td><div style="font-weight:600">${p.name}</div><div class="mssv-tag">${p.mssv}</div></td><td class="score-badge">${p.score}</td><td style="color:var(--muted);font-size:0.8rem">${p.responseTime || 0}s</td></tr>`).join('') + '</tbody></table>';
-
-    const teams = await teamsCollection.get();
-    const teamsData = teams.docs.map(d => d.data()).sort((a,b) => b.totalScore - a.totalScore);
-    const teamPanel = document.getElementById('lb-teams');
-    if (!teamsData.length) { teamPanel.innerHTML = '<div style="color:var(--muted);font-size:0.8rem;">Chưa ghép nhóm</div>'; return; }
-    teamPanel.innerHTML = teamsData.map((t,i) => `<div class="team-card ${i===0?'winner':''}"><div><div class="team-name">${i===0?'👑 ':''}${t.name}</div><div class="team-members">${t.members?.map(m=>m.name).join(' · ') || ''}</div></div><div class="team-score">${t.totalScore} ĐP</div></div>`).join('');
-  }
-
-  // ========== UI HELPERS ==========
-  function refreshHomeUI() {
-    const notLoggedIn = document.getElementById('home-not-logged-in');
-    const loggedIn = document.getElementById('home-logged-in');
-    const loginStatus = document.getElementById('home-login-status');
-    
-    if (isLoggedIn()) {
-      const mssv = getLoggedInMssv();
-      if (notLoggedIn) notLoggedIn.style.display = 'none';
-      if (loggedIn) loggedIn.style.display = 'block';
-      if (loginStatus) { loginStatus.textContent = `✅ Đã đăng nhập: ${mssv}`; loginStatus.style.display = 'block'; }
-    } else {
-      if (notLoggedIn) notLoggedIn.style.display = 'block';
-      if (loggedIn) loggedIn.style.display = 'none';
-      if (loginStatus) loginStatus.style.display = 'none';
-    }
-  }
-
-  function handleLogout() {
-    if (confirm('⚠ Bạn có chắc muốn đăng xuất?')) {
-      sessionStorage.removeItem('loggedInMssv');
-      sessionStorage.removeItem('currentAuctionTeam');
-      currentPlayer = null;
-      refreshHomeUI();
-      alert('✅ Đã đăng xuất');
-      showPage('page-home');
-    }
-  }
-
-  // ========== ADMIN FUNCTIONS ==========
-  const ADMIN_EMAIL = "admin@ussc-chess.com";
-  const ADMIN_PASSWORD = "admin123";
-
-  async function handleAdminLogin() {
-    const username = document.getElementById('login-username').value.trim();
-    const password = document.getElementById('login-password').value;
-    const errEl = document.getElementById('login-error');
-
-    if (username !== 'admin' || password !== ADMIN_PASSWORD) {
-      errEl.textContent = '❌ Tên đăng nhập hoặc mật khẩu không chính xác';
-      errEl.style.display = 'block';
-      return;
-    }
-
-    isAdminLoggedIn = true;
-    sessionStorage.setItem('admin_logged_in', '1');
-    errEl.style.display = 'none';
-    showPage('page-admin');
-    await adminRefreshPlayers();
-    await adminRefreshTeams();
-  }
-
-  function handleAdminLogout() {
-    isAdminLoggedIn = false;
-    sessionStorage.removeItem('admin_logged_in');
-    showPage('page-home');
-  }
-
-  async function adminRefreshPlayers() {
-    const players = await playersCollection.orderBy('score', 'desc').get();
-    const sorted = players.docs.map(d => d.data()).sort((a,b) => b.score - a.score);
-    const el = document.getElementById('admin-player-list');
-    if (!sorted.length) { el.innerHTML = '<div style="color:var(--muted);text-align:center;padding:16px;">Chưa có người đăng ký</div>'; return; }
-    el.innerHTML = sorted.map((p,i) => `<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border);"><div><span style="color:var(--gold);margin-right:8px;">#${i+1}</span><strong>${p.name}</strong><span class="mssv-tag" style="margin-left:6px;">${p.mssv}</span></div><div style="text-align:right;"><span style="color:var(--gold);">${p.score} ĐP</span><br><span style="font-size:0.7rem;color:var(--muted);">${p.finishedAt ? 'Đã thi' : 'Chưa thi'}</span></div></div>`).join('');
-  }
-
-  async function adminRefreshTeams() {
-    const teams = await teamsCollection.get();
-    const sorted = teams.docs.map(d => d.data()).sort((a,b) => b.totalScore - a.totalScore);
-    const el = document.getElementById('admin-team-list');
-    if (!sorted.length) { el.innerHTML = '<div style="color:var(--muted);text-align:center;padding:16px;">Chưa có nhóm</div>'; return; }
-    el.innerHTML = sorted.map((t,i) => `<div class="team-card ${i===0?'winner':''}"><div><div class="team-name">${t.name}</div><div class="team-members">${t.members?.map(m=>m.name+' ('+m.score+')').join(' · ')}</div></div><div class="team-score">${t.totalScore} ĐP</div></div>`).join('');
-  }
-
-  async function autoGroupTeams() {
-    const players = await playersCollection.get();
-    const sorted = players.docs.map(d => d.data()).filter(p => p.finishedAt).sort((a,b) => b.score - a.score);
-    if (sorted.length < 3) { alert('⚠ Cần ít nhất 3 người đã thi để ghép nhóm!'); return; }
-
-    const teams = [];
-    const used = new Set();
-    let teamNum = 1;
-
-    for (let i = 0; i < sorted.length; i++) {
-      if (used.has(sorted[i].mssv)) continue;
-      const group = [sorted[i]];
-      used.add(sorted[i].mssv);
-      for (let j = i+1; j < sorted.length && group.length < 3; j++) {
-        if (!used.has(sorted[j].mssv) && Math.abs(sorted[i].score - sorted[j].score) <= 300) {
-          group.push(sorted[j]);
-          used.add(sorted[j].mssv);
-        }
-      }
-      if (group.length >= 1) {
-        const teamName = `USSC ${teamNum++}`;
-        await teamsCollection.doc(teamName).set({
-          name: teamName,
-          members: group.map(p => ({ name: p.name, mssv: p.mssv, score: p.score })),
-          baseScore: group.reduce((s,p)=>s+p.score,0),
-          totalScore: group.reduce((s,p)=>s+p.score,0),
-          auctionScore: 0
-        });
-      }
-    }
-    alert(`✅ Đã ghép ${teamNum-1} nhóm thành công!`);
-    adminRefreshTeams();
-  }
-
-  async function clearTeams() {
-    const snapshot = await teamsCollection.get();
-    const batch = db.batch();
-    snapshot.docs.forEach(doc => batch.delete(doc.ref));
-    await batch.commit();
-    adminRefreshTeams();
-  }
-
-  async function adminOpenQuiz() { await quizSettingsDoc.set({ quizOpen: true }); alert('✅ Đã mở Quiz'); }
-  async function adminCloseQuiz() { await quizSettingsDoc.set({ quizOpen: false }); alert('🔒 Đã đóng Quiz'); }
-
-  function adminTab(tab) {
-    ['players','teams','auction','result'].forEach(t => {
-      const el = document.getElementById('admin-tab-'+t);
-      if (el) el.style.display = t === tab ? 'block' : 'none';
-      const btn = document.getElementById('tab-'+t);
-      if (btn) btn.classList.toggle('active', t === tab);
-    });
-    if (tab === 'teams') adminRefreshTeams();
-  }
-
-  // ========== EXPOSE GLOBALS ==========
-  window.showPage = showPage;
-  window.handleAccountRegister = handleAccountRegister;
-  window.handleAccountLogin = handleAccountLogin;
-  window.handleRegisterTest1 = handleRegisterTest1;
-  window.handleRegisterTest2 = handleRegisterTest2;
-  window.handleLogout = handleLogout;
-  window.skipQuestion = skipQuestion;
-  window.placeAuctionBid = placeAuctionBid;
-  window.passAuctionBid = passAuctionBid;
-  window.submitAuctionAnswer = submitAuctionAnswer;
-  window.renderLeaderboard = renderLeaderboard;
-  window.handleAdminLogin = handleAdminLogin;
-  window.handleAdminLogout = handleAdminLogout;
-  window.adminRefreshPlayers = adminRefreshPlayers;
-  window.adminRefreshTeams = adminRefreshTeams;
-  window.autoGroupTeams = autoGroupTeams;
-  window.clearTeams = clearTeams;
-  window.adminOpenQuiz = adminOpenQuiz;
-  window.adminCloseQuiz = adminCloseQuiz;
-  window.adminTab = adminTab;
-
-  document.addEventListener('DOMContentLoaded', async () => {
-    if (sessionStorage.getItem('admin_logged_in') === '1') isAdminLoggedIn = true;
-    const quizDoc = await quizSettingsDoc.get();
-    if (quizDoc.exists) cachedQuizOpen = quizDoc.data().quizOpen || false;
-    const auctionDoc = await auctionStateDoc.get();
-    if (auctionDoc.exists) auctionState = { ...auctionState, ...auctionDoc.data() };
-    else await auctionStateDoc.set(auctionState);
-    refreshHomeUI();
   });
 </script>
 </head>
 <body>
 
-<div id="loading-overlay" class="loading-overlay" style="display:none;">⏳ Đang đồng bộ...</div>
-<div id="online-badge" class="online-badge online">🟢 Online</div>
+<div id="loading-overlay" class="loading-overlay" style="display:none;">
+  <div>⏳ Đang đồng bộ dữ liệu...</div>
+</div>
+<div id="online-badge" class="online-badge">🟢 Online</div>
 
-<!-- PAGE: LOGIN ADMIN -->
+<!-- ==================== LOGIN PAGE ==================== -->
 <div class="page" id="page-login">
   <div class="login-card anim-fade">
     <div class="chess-icon">🔐</div>
     <div class="logo" style="font-size:2rem;">Admin Login</div>
+    <div class="subtitle">USSC Chess Tournament</div>
     <hr class="divider">
     <div class="login-error" id="login-error"></div>
-    <div class="field"><label>Tên Đăng Nhập</label><input type="text" id="login-username" placeholder="admin"></div>
-    <div class="field"><label>Mật Khẩu</label><input type="password" id="login-password" placeholder="••••••"></div>
-    <button class="btn btn-gold" onclick="handleAdminLogin()">🔓 Đăng Nhập</button>
-    <button class="btn btn-outline" onclick="showPage('page-home')" style="margin-top:8px;">← Trang Chủ</button>
+    <div class="field">
+      <label>Tên Đăng Nhập</label>
+      <input type="text" id="login-username" placeholder="admin" autocomplete="off">
+    </div>
+    <div class="field">
+      <label>Mật Khẩu</label>
+      <input type="password" id="login-password" placeholder="••••••" autocomplete="off">
+    </div>
+    <button type="button" class="btn btn-gold" onclick="handleAdminLogin()">🔓 Đăng Nhập</button>
+    <button type="button" class="btn btn-outline" onclick="showPage('page-home')" style="margin-top:8px;">← Trang Chủ</button>
   </div>
 </div>
 
-<!-- PAGE: HOME -->
+<!-- ==================== PAGE: HOME ==================== -->
 <div class="page active" id="page-home">
   <div class="card anim-fade" style="text-align:center;">
     <div class="chess-icon">♟️</div>
@@ -1154,88 +679,170 @@
     <div id="home-login-status" style="font-size:0.75rem; color:var(--muted); margin-top:8px; display:none;"></div>
     <hr class="divider">
     <div id="home-not-logged-in">
-      <button class="btn btn-gold mt-16" onclick="showPage('page-account-register')">📝 Tạo Tài Khoản</button>
-      <button class="btn btn-gold mt-16" onclick="showPage('page-account-login')" style="margin-top:10px">🔐 Đăng Nhập</button>
+      <button class="btn btn-gold mt-16" onclick="showPage('page-account-register')">✏️ Tạo Tài Khoản</button>
+      <button class="btn btn-outline mt-16" onclick="showPage('page-account-login')" style="margin-top:10px">🔐 Đăng Nhập Tài Khoản</button>
     </div>
     <div id="home-logged-in" style="display:none;">
-      <button class="btn btn-gold mt-16" onclick="handleRegisterTest1()">🎮 Đăng Ký Thi Đấu 1 (Quiz)</button>
-      <button class="btn btn-gold mt-16" onclick="showPage('page-register2')" style="margin-top:10px">💰 Đăng Ký Thi Đấu 2 (Đấu Giá)</button>
+      <div id="home-test1-section">
+        <button class="btn btn-gold mt-16" id="btn-start-test1" onclick="handleStartTest1()">🎮 Bắt Đầu Thi Đấu 1</button>
+      </div>
+      <div id="home-test2-section" style="margin-top:10px;">
+        <button class="btn btn-gold mt-16" id="btn-start-test2" onclick="showPage('page-register2')">💰 Đăng Ký Thi Đấu 2 (Đấu Giá)</button>
+      </div>
       <button class="btn btn-outline mt-16" onclick="showPage('page-history')" style="margin-top:10px">📈 Lịch Sử Thi Đấu</button>
       <button class="btn btn-outline mt-16" onclick="handleLogout()" style="margin-top:10px; border-color:#e74c3c; color:#ff8c7a;">🚪 Đăng Xuất</button>
     </div>
     <button class="btn btn-outline mt-16" onclick="showPage('page-leaderboard')" style="margin-top:10px">📊 Bảng Xếp Hạng</button>
-    <button class="btn btn-outline mt-16" onclick="showPage('page-login')" style="margin-top:10px; border-color:#7c3aed;">⚙️ Admin Panel</button>
+    <p style="font-size:0.7rem; color:var(--muted); margin-top:20px; font-family:'Space Mono',monospace;">IT STUDENT SCIENTIFIC CLUB</p>
+    <p style="font-size:0.65rem; color:rgba(106,106,138,0.4); margin-top:8px; font-family:'Space Mono',monospace; cursor:pointer;" onclick="showPage('page-login')" title="Admin">v2.0</p>
   </div>
 </div>
 
-<!-- PAGE: ACCOUNT REGISTER -->
+<!-- ==================== PAGE: ACCOUNT REGISTER ==================== -->
 <div class="page" id="page-account-register">
   <div class="card anim-fade">
-    <div class="logo" style="font-size:2rem;">Tạo Tài Khoản</div>
-    <div class="subtitle">Đăng Ký Tham Gia Thi Đấu</div>
-    <div class="field"><label>Mã Số Sinh Viên</label><input type="text" id="acc-reg-mssv" placeholder="22XXXXXXX" maxlength="10"></div>
-    <div class="field"><label>Họ và Tên</label><input type="text" id="acc-reg-name" placeholder="Nguyễn Văn A"></div>
-    <div class="field"><label>Email</label><input type="email" id="acc-reg-email" placeholder="email@student.hcmus.edu.vn"></div>
-    <div class="field"><label>Mật Khẩu</label><input type="password" id="acc-reg-password" placeholder="Mật khẩu an toàn"></div>
-    <div class="field"><label>Xác Nhận Mật Khẩu</label><input type="password" id="acc-reg-confirm" placeholder="Nhập lại mật khẩu"></div>
-    <div id="acc-reg-error" style="color:var(--red);font-size:0.8rem;margin-bottom:12px;display:none;"></div>
+    <div style="margin-bottom:20px;">
+      <div class="logo" style="font-size:2rem;">Tạo Tài Khoản</div>
+      <div class="subtitle">Đăng Ký Tham Gia Thi Đấu</div>
+    </div>
+    <div class="field">
+      <label>Mã Số Sinh Viên</label>
+      <input type="text" id="acc-reg-mssv" placeholder="22XXXXXXX" autocomplete="off" maxlength="10">
+    </div>
+    <div class="field">
+      <label>Họ và Tên</label>
+      <input type="text" id="acc-reg-name" placeholder="Nguyễn Văn A" autocomplete="off">
+    </div>
+    <div class="field">
+      <label>Email</label>
+      <input type="email" id="acc-reg-email" placeholder="email@student.hcmus.edu.vn" autocomplete="off">
+    </div>
+    <div class="field">
+      <label>Mật Khẩu</label>
+      <input type="password" id="acc-reg-password" placeholder="Mật khẩu an toàn" autocomplete="off">
+    </div>
+    <div class="field">
+      <label>Xác Nhận Mật Khẩu</label>
+      <input type="password" id="acc-reg-confirm" placeholder="Nhập lại mật khẩu" autocomplete="off">
+    </div>
+    <div id="acc-reg-error" style="color:var(--red);font-size:0.8rem;margin-bottom:12px;font-family:'Space Mono',monospace;display:none;"></div>
     <button class="btn btn-gold" onclick="handleAccountRegister()">✓ Tạo Tài Khoản</button>
     <button class="btn btn-outline" onclick="showPage('page-home')" style="margin-top:8px;">← Quay Lại</button>
   </div>
 </div>
 
-<!-- PAGE: ACCOUNT LOGIN -->
+<!-- ==================== PAGE: ACCOUNT LOGIN ==================== -->
 <div class="page" id="page-account-login">
   <div class="card anim-fade">
-    <div class="logo" style="font-size:2rem;">Đăng Nhập</div>
-    <div class="subtitle">Tài Khoản Thi Đấu</div>
-    <div class="field"><label>Mã Số Sinh Viên</label><input type="text" id="acc-login-mssv" placeholder="22XXXXXXX" maxlength="10"></div>
-    <div class="field"><label>Mật Khẩu</label><input type="password" id="acc-login-password" placeholder="Mật khẩu"></div>
-    <div id="acc-login-error" style="color:var(--red);font-size:0.8rem;margin-bottom:12px;display:none;"></div>
+    <div style="margin-bottom:20px;">
+      <div class="logo" style="font-size:2rem;">Đăng Nhập</div>
+      <div class="subtitle">Tài Khoản Thi Đấu</div>
+    </div>
+    <div class="field">
+      <label>Mã Số Sinh Viên</label>
+      <input type="text" id="acc-login-mssv" placeholder="22XXXXXXX" autocomplete="off" maxlength="10">
+    </div>
+    <div class="field">
+      <label>Mật Khẩu</label>
+      <input type="password" id="acc-login-password" placeholder="Mật khẩu" autocomplete="off">
+    </div>
+    <div id="acc-login-error" style="color:var(--red);font-size:0.8rem;margin-bottom:12px;font-family:'Space Mono',monospace;display:none;"></div>
     <button class="btn btn-gold" onclick="handleAccountLogin()">✓ Đăng Nhập</button>
     <button class="btn btn-outline" onclick="showPage('page-home')" style="margin-top:8px;">← Quay Lại</button>
   </div>
 </div>
 
-<!-- PAGE: REGISTER TEST 2 -->
-<div class="page" id="page-register2">
+<!-- ==================== PAGE: HISTORY ==================== -->
+<div class="page top" id="page-history">
+  <div style="width:100%; max-width:900px; padding:24px;">
+    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:24px;">
+      <div>
+        <div class="logo" style="font-size:2rem;">Lịch Sử Thi Đấu</div>
+        <div class="subtitle">Thành Tích Của Bạn</div>
+      </div>
+      <button class="btn btn-outline" onclick="showPage('page-home')" style="width:auto;">← Quay Lại</button>
+    </div>
+    <div id="history-content" style="display:grid; gap:20px;">
+      <p style="text-align:center; color:var(--muted);">Đang tải...</p>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== PAGE: REGISTER TEST 1 ==================== -->
+<div class="page" id="page-register">
   <div class="card anim-fade">
-    <div class="logo" style="font-size:2rem;">Đăng Ký</div>
-    <div class="subtitle">Thi Đấu 2 - Đấu Giá</div>
-    <div class="field"><label>Mã Nhóm (từ Admin)</label><input type="text" id="reg2-team" placeholder="Ví dụ: USSC 1"></div>
-    <div id="reg2-error" style="color:var(--red);font-size:0.8rem;margin-bottom:12px;display:none;"></div>
-    <button class="btn btn-gold" onclick="handleRegisterTest2()">💰 Đăng Ký Thi Đấu 2 →</button>
+    <div style="margin-bottom:20px;">
+      <div class="logo" style="font-size:2rem;">Thi Đấu 1</div>
+      <div class="subtitle">Quiz Chess · 30 Câu · 3 Phút</div>
+    </div>
+    <div id="reg-player-info" style="background:var(--surface2); border:1px solid var(--border); border-radius:10px; padding:16px; margin-bottom:20px; font-family:'Space Mono',monospace; font-size:0.85rem; color:var(--muted);">
+      <div style="color:var(--white); font-size:1rem; font-weight:600; margin-bottom:4px;" id="reg-display-name">Họ và Tên</div>
+      <div id="reg-display-mssv">MSSV: ...</div>
+    </div>
+    <div id="reg-already-done" style="display:none; padding:12px; background:rgba(231,76,60,0.1); border:1px solid var(--red); border-radius:8px; font-family:'Space Mono',monospace; font-size:0.8rem; color:var(--red); margin-bottom:16px;">
+      ⚠ Bạn đã hoàn thành Test 1. Mỗi tài khoản chỉ được thi một lần.
+    </div>
+    <p style="font-size:0.85rem; color:var(--muted); margin-bottom:16px; font-style:italic;">Bạn sẽ bắt đầu vòng quiz Chess với 30 câu hỏi trong 3 phút. Lưu ý: chỉ được thi <strong style="color:var(--gold);">một lần duy nhất</strong>.</p>
+    <div id="reg-error" style="color:var(--red);font-size:0.8rem;margin-bottom:12px;font-family:'Space Mono',monospace;display:none;"></div>
+    <button class="btn btn-gold" id="btn-register-test1" onclick="handleRegister()">🎮 Bắt Đầu Thi Đấu 1 →</button>
     <button class="btn btn-outline" onclick="showPage('page-home')" style="margin-top:8px;">← Quay Lại</button>
   </div>
 </div>
 
-<!-- PAGE: QUIZ -->
+<!-- ==================== PAGE: REGISTER TEST 2 ==================== -->
+<div class="page" id="page-register2">
+  <div class="card anim-fade">
+    <div style="margin-bottom:20px;">
+      <div class="logo" style="font-size:2rem;">Thi Đấu 2</div>
+      <div class="subtitle">Đấu Giá Cờ Vua</div>
+    </div>
+    <div id="reg2-player-info" style="background:var(--surface2); border:1px solid var(--border); border-radius:10px; padding:16px; margin-bottom:20px; font-family:'Space Mono',monospace; font-size:0.85rem; color:var(--muted);">
+      <div style="color:var(--white); font-size:1rem; font-weight:600; margin-bottom:4px;" id="reg2-display-name">Họ và Tên</div>
+      <div id="reg2-display-mssv">MSSV: ...</div>
+    </div>
+    <div class="field">
+      <label>Tên Nhóm (mã nhóm do Admin cấp)</label>
+      <input type="text" id="reg2-team" placeholder="Vd: USSC 1" autocomplete="off">
+    </div>
+    <div id="reg2-error" style="color:var(--red);font-size:0.8rem;margin-bottom:12px;font-family:'Space Mono',monospace;display:none;"></div>
+    <button class="btn btn-gold" onclick="handleRegister2()">💰 Bắt Đầu Thi Đấu 2 →</button>
+    <button class="btn btn-outline" onclick="showPage('page-home')" style="margin-top:8px;">← Quay Lại</button>
+  </div>
+</div>
+
+<!-- ==================== PAGE: QUIZ ==================== -->
 <div class="page top" id="page-quiz" style="max-width:700px;margin:0 auto;">
   <div style="width:100%;">
     <div class="quiz-header">
-      <div><div id="quiz-player-name" style="font-weight:600;"></div><div class="quiz-progress" id="quiz-q-counter">Câu 1 / 10</div></div>
+      <div>
+        <div id="quiz-player-name" style="font-weight:600; font-size:1rem;"></div>
+        <div class="quiz-progress" id="quiz-q-counter">Câu 1 / 30</div>
+      </div>
       <div class="quiz-timer" id="quiz-timer">3:00</div>
-      <div><div class="quiz-score-live" id="quiz-score-live">0 ĐP</div><div class="quiz-progress" style="text-align:right;">điểm</div></div>
+      <div>
+        <div class="quiz-score-live" id="quiz-score-live">0 ĐP</div>
+        <div class="quiz-progress" style="text-align:right;">điểm hiện tại</div>
+      </div>
     </div>
     <div class="progress-bar"><div class="progress-fill" id="quiz-progress-fill" style="width:0%"></div></div>
-    <div class="question-box" id="quiz-question-box">
+    <div class="question-box anim-fade" id="quiz-question-box">
       <div class="question-num" id="quiz-q-num">CÂU 01</div>
       <div class="question-text" id="quiz-q-text">Loading...</div>
       <div class="options" id="quiz-options"></div>
     </div>
-    <button class="skip-btn" onclick="skipQuestion()">⏭ Bỏ qua → câu tiếp theo</button>
+    <button class="skip-btn" id="quiz-skip-btn" onclick="skipQuestion()">⏭ Bỏ qua câu này → câu tiếp theo (không được quay lại)</button>
   </div>
 </div>
 
-<!-- PAGE: QUIZ DONE -->
+<!-- ==================== PAGE: QUIZ DONE ==================== -->
 <div class="page" id="page-quiz-done">
   <div class="card anim-fade" style="text-align:center;">
-    <div style="font-size:3rem;">🏁</div>
+    <div style="font-size:3rem; margin-bottom:12px;">🏁</div>
     <div class="logo" style="font-size:2rem;">Hoàn Thành!</div>
     <div style="margin:20px 0;">
-      <div style="font-size:0.8rem; color:var(--muted);">TỔNG ĐIỂM CỦA BẠN</div>
-      <div style="font-size:4rem; color:var(--gold);" id="done-score">0</div>
-      <div style="font-size:0.75rem; color:var(--muted);" id="done-correct">0 / 10 câu đúng</div>
+      <div style="font-size:0.8rem; color:var(--muted); font-family:'Space Mono',monospace; margin-bottom:6px;">TỔNG ĐIỂM CỦA BẠN</div>
+      <div style="font-family:'Bebas Neue',sans-serif; font-size:4rem; color:var(--gold);" id="done-score">0</div>
+      <div style="font-family:'Space Mono',monospace; font-size:0.75rem; color:var(--muted);" id="done-correct">0 / 30 câu đúng</div>
     </div>
     <div id="done-rank-info" style="font-size:0.85rem; color:var(--muted); margin-bottom:20px;"></div>
     <button class="btn btn-gold" onclick="showPage('page-leaderboard')">📊 Xem Bảng Xếp Hạng</button>
@@ -1243,81 +850,1905 @@
   </div>
 </div>
 
-<!-- PAGE: HISTORY -->
-<div class="page top" id="page-history">
-  <div style="width:100%; max-width:900px; padding:24px;">
-    <div style="display:flex; justify-content:space-between; margin-bottom:24px;">
-      <div><div class="logo" style="font-size:2rem;">Lịch Sử Thi Đấu</div><div class="subtitle">Thành Tích Của Bạn</div></div>
-      <button class="btn btn-outline" onclick="showPage('page-home')" style="width:auto;">← Quay Lại</button>
-    </div>
-    <div id="history-content"></div>
-  </div>
-</div>
-
-<!-- PAGE: AUCTION PLAYER -->
+<!-- ==================== PAGE: AUCTION PLAYER ==================== -->
 <div class="page" id="page-auction-player">
   <div class="auction-player-card anim-fade">
-    <div style="text-align:center;">
+    <div style="text-align:center; margin-bottom:20px;">
       <div class="round-badge" id="player-round-badge">VÒNG 1 / 5</div>
-      <div class="logo" style="font-size:1.4rem;">Thế Cờ Đấu Giá</div>
+      <div class="logo" style="font-size:1.4rem; margin-bottom:8px;">Thế Cờ Đấu Giá</div>
       <div style="font-family:'Space Mono',monospace; font-size:0.8rem; color:var(--muted);" id="player-team-info">Nhóm: ?</div>
     </div>
-    <div class="chess-board" id="player-chess-board"></div>
-    <div style="text-align:center; margin:12px 0;">Thời gian: <span id="player-auction-timer" style="color:var(--gold);">3:00</span></div>
+    
+    <div class="auction-board-container">
+      <div style="font-size:0.75rem; color:var(--muted); font-family:'Space Mono',monospace; margin-bottom:8px;">BÀN CỜ</div>
+      <div class="chess-board" id="player-chess-board"></div>
+    </div>
+
+    <div style="font-size:0.9rem; color:var(--muted); font-family:'Space Mono',monospace; margin-bottom:14px; text-align:center;">
+      Thời gian còn lại: <span id="player-auction-timer" style="color:var(--gold);">3:00</span>
+    </div>
     <div class="bet-controls">
-      <input type="number" id="player-bet-input" class="bet-input" min="50" max="500" value="50">
+      <input type="number" id="player-bet-input" class="bet-input" min="50" max="500" value="50" placeholder="Số tiền cược">
       <button class="btn btn-blue btn-sm" onclick="placeAuctionBid()">💰 Cược</button>
       <button class="btn btn-outline btn-sm" onclick="passAuctionBid()">⛔ Pass</button>
     </div>
-    <div id="player-bid-status" style="font-size:0.85rem; color:var(--muted); text-align:center; margin-bottom:16px;">Chưa đặt cược</div>
-    <hr class="divider">
-    <div class="answer-input-group">
-      <label>🎯 NHẬP ĐÁP ÁN (Ký hiệu cờ vua, vd: e4, Nf3, O-O)</label>
-      <input type="text" id="player-answer-input" class="answer-input" placeholder="Vd: e4" maxlength="8">
+    <div id="player-bid-status" style="font-size:0.85rem; color:var(--muted); font-family:'Space Mono',monospace; margin-bottom:16px; text-align:center;">
+      Chưa đặt cược. Vui lòng bet hoặc pass khi phiên đấu giá bắt đầu.
     </div>
-    <button class="btn btn-gold" onclick="submitAuctionAnswer()">✅ Nộp Đáp Án</button>
+
+    <hr class="divider">
+
+    <div class="answer-input-group">
+      <label>🎯 NHẬP ĐÁP ÁN (Ký hiệu cờ vua, vd: e4, Nf3, O-O, Kh8, ...)</label>
+      <input type="text" id="player-answer-input" class="answer-input" placeholder="Vd: e4" autocomplete="off" maxlength="8">
+      <div style="font-size:0.7rem; color:var(--muted); margin-top:6px; font-family:'Space Mono',monospace;">
+        ✓ Nước đi hợp lệ: e4, e5, Nf3, Nf6, O-O (nhập thành), O-O-O (nhập thành dài), Kh8, Qd4, ...
+      </div>
+    </div>
+
+    <button class="btn btn-gold" onclick="submitAuctionAnswer()" style="margin-top:16px;">✅ Nộp Đáp Án</button>
+
     <div id="player-round-result" class="result-card" style="display:none; margin-top:20px;">
+      <div style="font-size:0.9rem; color:var(--muted); text-transform:uppercase; letter-spacing:0.15em;">Kết quả vòng</div>
       <div class="result-answer" id="player-round-result-text">...</div>
       <div class="result-item"><span>Đáp án chính xác</span><strong id="player-correct-answer"></strong></div>
-      <div class="result-item"><span>Kết quả</span><strong id="player-round-result-status"></strong></div>
+      <div class="result-item"><span>Kết quả nhóm</span><strong id="player-round-result-status"></strong></div>
       <div class="result-item"><span>Điểm thay đổi</span><strong id="player-round-result-delta"></strong></div>
     </div>
+
     <button class="btn btn-outline" onclick="showPage('page-home')" style="margin-top:8px;">← Trang Chủ</button>
   </div>
 </div>
 
-<!-- PAGE: LEADERBOARD -->
+<!-- ==================== PAGE: LEADERBOARD ==================== -->
 <div class="page top" id="page-leaderboard">
   <div style="width:100%; max-width:700px;">
-    <div style="text-align:center;"><div class="logo" style="font-size:2.2rem;">Bảng Xếp Hạng</div><div class="subtitle">Cá Nhân</div></div>
-    <div class="panel"><div class="panel-title">👑 Top Người Chơi</div><div class="scroll-area" id="lb-individual"></div></div>
-    <div class="panel" style="margin-top:16px;"><div class="panel-title">🏆 Bảng Xếp Hạng Nhóm</div><div id="lb-teams"></div></div>
-    <button class="btn btn-outline btn-sm" onclick="showPage('page-home')" style="margin-top:16px;">← Trang Chủ</button>
+    <div style="text-align:center; margin-bottom:20px;">
+      <div class="logo" style="font-size:2.2rem;">Bảng Xếp Hạng</div>
+      <div class="subtitle">Cá Nhân · Cập Nhật Trực Tiếp</div>
+    </div>
+    <div class="panel">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+        <div class="panel-title" style="margin:0;">👑 Top Người Chơi</div>
+        <button class="btn btn-outline btn-sm" onclick="renderLeaderboard()">🔄 Refresh</button>
+      </div>
+      <div class="scroll-area" id="lb-individual"></div>
+    </div>
+    <div class="panel" style="margin-top:16px;" id="lb-team-panel">
+      <div class="panel-title">🏆 Bảng Xếp Hạng Nhóm</div>
+      <div id="lb-teams"></div>
+    </div>
+    <div style="text-align:center; margin-top:16px;">
+      <button class="btn btn-outline btn-sm" onclick="showPage('page-home')">← Trang Chủ</button>
+    </div>
   </div>
 </div>
 
-<!-- PAGE: ADMIN -->
+<!-- ==================== PAGE: ADMIN ==================== -->
 <div class="page top" id="page-admin">
-  <div style="width:100%; max-width:1100px; padding:16px;">
-    <div style="text-align:center;"><div class="logo" style="font-size:2rem;">Admin Panel</div><button class="btn btn-outline btn-sm" onclick="showPage('page-home')">← Trang Chủ</button><button class="btn btn-outline btn-sm" onclick="handleAdminLogout()" style="margin-left:8px;">🚪 Đăng Xuất</button></div>
+  <div style="width:100%; max-width:1100px; padding:0 16px;">
+    <div style="text-align:center; margin-bottom:20px;">
+      <div class="logo" style="font-size:2rem;">Admin Panel</div>
+      <div class="subtitle">USSC Chess Tournament</div>
+      <div style="display:flex; justify-content:center; gap:10px; flex-wrap:wrap; margin-top:12px;">
+        <button type="button" class="btn btn-outline btn-sm" onclick="showPage('page-home')">← Trang Chủ</button>
+        <button type="button" class="btn btn-sm btn-outline" onclick="handleAdminLogout()">🚪 Đăng Xuất</button>
+      </div>
+    </div>
     <div class="nav-pills">
       <button class="nav-pill active" onclick="adminTab('players')" id="tab-players">👥 Người Chơi</button>
       <button class="nav-pill" onclick="adminTab('teams')" id="tab-teams">🏆 Nhóm</button>
+      <button class="nav-pill" onclick="adminTab('auction')" id="tab-auction">⚡ Đấu Giá</button>
+      <button class="nav-pill" onclick="adminTab('result')" id="tab-result">🎯 Kết Quả</button>
     </div>
+
+    <!-- TAB: PLAYERS -->
     <div id="admin-tab-players">
       <div class="admin-grid">
-        <div class="panel"><div class="panel-title">📋 Danh Sách Người Chơi</div><button class="btn btn-outline btn-sm" onclick="adminRefreshPlayers()">🔄 Refresh</button><div class="scroll-area" id="admin-player-list"></div></div>
-        <div class="panel"><div class="panel-title">⚙️ Điều Khiển Quiz</div><div class="alert" id="admin-quiz-status">Quiz chưa bắt đầu</div><button class="btn btn-gold" onclick="adminOpenQuiz()">✅ Mở Quiz</button><button class="btn btn-outline" onclick="adminCloseQuiz()" style="margin-top:8px;">🔒 Đóng Quiz</button></div>
+        <div class="panel">
+          <div class="panel-title">📋 Danh Sách Người Chơi</div>
+          <div style="margin-bottom:12px; display:flex; gap:8px; flex-wrap:wrap;">
+            <button class="btn btn-outline btn-sm" onclick="adminRefreshPlayers()">🔄 Refresh</button>
+            <button class="btn btn-sm" style="background:var(--red);color:#fff" onclick="clearAllData()">🗑 Reset All</button>
+          </div>
+          <div style="margin-bottom:16px;">
+            <div style="font-family:'Space Mono',monospace;font-size:0.8rem;color:var(--muted);margin-bottom:8px;">Xóa hàng loạt thành viên (MSSV). Nhập MSSV mỗi dòng hoặc cách nhau bằng dấu phẩy.</div>
+            <textarea id="admin-delete-members" rows="4" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px;color:var(--white);font-family:'Space Mono',monospace;font-size:0.9rem;resize:vertical;" placeholder="221234567, 221234568, 221234569"></textarea>
+            <button class="btn btn-sm" style="background:var(--red);color:#fff;margin-top:10px;" onclick="deletePlayersByMssvList()">🗑 Xóa danh sách thành viên</button>
+          </div>
+          <div class="scroll-area" id="admin-player-list"></div>
+        </div>
+        <div class="panel">
+          <div class="panel-title">⚙️ Điều Khiển Quiz</div>
+          <div class="alert" id="admin-quiz-status">Quiz chưa bắt đầu</div>
+          <button class="btn btn-gold" onclick="adminOpenQuiz()" style="margin-bottom:8px">✅ Mở Quiz (Thi Đấu 1)</button>
+          <button class="btn btn-outline" onclick="adminCloseQuiz()" style="margin-bottom:8px">🔒 Đóng Quiz</button>
+          <button class="btn btn-sm" style="background:#4CAF50;color:#fff;margin-bottom:8px;width:100%" onclick="shareQuizLink()" title="Sao chép liên kết">📋 Sao Chép Link Quiz</button>
+          <hr class="divider">
+          <div class="panel-title" style="font-size:1rem;">📊 Thống Kê</div>
+          <div id="admin-stats" style="font-family:'Space Mono',monospace; font-size:0.8rem; line-height:2; color:var(--muted);"></div>
+        </div>
       </div>
     </div>
+
+    <!-- TAB: TEAMS -->
     <div id="admin-tab-teams" style="display:none;">
       <div class="admin-grid">
-        <div class="panel"><div class="panel-title">🎲 Ghép Nhóm</div><button class="btn btn-gold" onclick="autoGroupTeams()">⚡ Ghép Nhóm (theo điểm)</button><button class="btn btn-outline" onclick="clearTeams()" style="margin-top:8px;">🗑 Xóa Nhóm</button></div>
-        <div class="panel"><div class="panel-title">🏅 Các Nhóm</div><div class="scroll-area" id="admin-team-list"></div></div>
+        <div class="panel">
+          <div class="panel-title">🎲 Ghép Nhóm Tự Động</div>
+          <div style="font-size:0.85rem; color:var(--muted); margin-bottom:16px; line-height:1.6;">
+            Hệ thống sẽ ghép nhóm 3 người có điểm tương đương (±300 điểm). Mỗi nhóm được đặt tên USSC 1, 2, 3...
+          </div>
+          <button class="btn btn-gold" onclick="autoGroupTeams()" style="margin-bottom:8px">⚡ Ghép Nhóm Ngẫu Nhiên</button>
+          <button class="btn btn-outline" onclick="clearTeams()" style="margin-bottom:8px">🗑 Xóa Nhóm</button>
+          <div id="group-result" style="margin-top:12px; font-family:'Space Mono',monospace; font-size:0.8rem; color:var(--green);"></div>
+        </div>
+        <div class="panel">
+          <div class="panel-title">🏅 Các Nhóm Hiện Tại</div>
+          <div class="scroll-area" id="admin-team-list"></div>
+        </div>
       </div>
+    </div>
+
+    <!-- TAB: AUCTION -->
+    <div id="admin-tab-auction" style="display:none;">
+      <div class="admin-grid" style="grid-template-columns: 1.4fr 1fr;">
+        <div class="panel">
+          <div class="panel-title">♟️ Thế Cờ Đấu Giá</div>
+          <div id="auction-round-indicator" class="round-badge">VÒNG 1 / 5</div>
+          <div class="chess-position" id="auction-position-info" style="display:none;">
+            <div style="font-size:1.5rem; margin-bottom:8px;" id="auction-gm-name">Kasparov vs Topalov</div>
+            <div style="font-size:0.75rem; letter-spacing:0.1em;" id="auction-context">Wijk aan Zee, 1999 · Nước đi số 24</div>
+          </div>
+          <div style="text-align:center; margin-bottom:12px;">
+            <div style="font-size:0.75rem; color:var(--muted); font-family:'Space Mono',monospace; margin-bottom:6px;">GIỚI HẠN CƯỢC VÒNG NÀY</div>
+            <div style="font-family:'Bebas Neue',sans-serif; font-size:2rem; color:var(--gold);" id="auction-bet-range">50 – 200 ĐP</div>
+          </div>
+          <div class="chess-board" id="auction-board-display"></div>
+          <div id="auction-round-status" class="alert" style="margin-top:12px;">Phiên đấu giá chưa bắt đầu</div>
+          <div style="margin-top:12px; display:flex; gap:8px; flex-wrap:wrap; justify-content:center;">
+            <button class="btn btn-green btn-sm" onclick="startAuctionTimer()">▶ Bắt Đầu</button>
+            <button class="btn btn-outline btn-sm" onclick="stopAuctionTimer()">⏸ Dừng</button>
+            <button class="btn btn-purple btn-sm" onclick="publishAuctionResults()">🔒 Chốt Kết Quả</button>
+            <button class="btn btn-outline btn-sm" onclick="resetAuctionRound()">🔄 Reset</button>
+            <button class="btn btn-outline btn-sm" onclick="nextAuctionRound()">⏩ Vòng Tiếp</button>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-title">💰 Đặt Cược Nhóm</div>
+          <div style="font-family:'Space Mono',monospace; font-size:0.7rem; color:var(--muted); margin-bottom:12px;">Thời gian thảo luận: <span id="auction-timer" style="color:var(--gold);">3:00</span></div>
+          <div id="team-bid-list"></div>
+          <hr class="divider">
+          <div style="font-size:0.85rem; color:var(--muted);">Khi phiên dừng hoặc hết giờ, nhấn "Chốt Kết Quả" để công bố và cập nhật điểm.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB: RESULT -->
+    <div id="admin-tab-result" style="display:none;">
+      <div class="panel" style="max-width:700px; margin:0 auto;">
+        <div class="panel-title">🏆 Kết Quả Cuối Cùng</div>
+        <div id="final-result-list"></div>
+        <hr class="divider">
+        <button class="btn btn-gold" onclick="computeFinalResult()">🎯 Tính Kết Quả & Công Bố</button>
+      </div>
+    </div>
+
+    <div style="text-align:center; margin-top:16px; padding-bottom:32px;">
+      <button class="btn btn-outline btn-sm" onclick="showPage('page-home')">← Trang Chủ</button>
     </div>
   </div>
 </div>
 
+<script>
+// ============================================================
+// FIREBASE REAL-TIME SYNC
+// ============================================================
+let currentPlayer = null;
+let currentTest2Player = null;
+let isAdminLoggedIn = false;
+let onlineStatus = true;
+
+// Collections
+const playersCollection = db.collection('players');
+const test2PlayersCollection = db.collection('test2_players');
+const teamsCollection = db.collection('teams');
+const auctionStateDoc = db.collection('settings').doc('auction_state');
+const quizSettingsDoc = db.collection('settings').doc('quiz');
+
+// Monitor connection status
+firebase.firestore().enableNetwork().then(() => {
+  updateOnlineStatus(true);
+}).catch(() => {
+  updateOnlineStatus(false);
+});
+
+db.collection('settings').onSnapshot((snapshot) => {
+  updateOnlineStatus(true);
+}, (error) => {
+  updateOnlineStatus(false);
+});
+
+function updateOnlineStatus(isOnline) {
+  onlineStatus = isOnline;
+  const badge = document.getElementById('online-badge');
+  if (badge) {
+    if (isOnline) {
+      badge.textContent = '🟢 Online • Đồng bộ realtime';
+      badge.className = 'online-badge online';
+    } else {
+      badge.textContent = '🔴 Offline • Đang dùng cache';
+      badge.className = 'online-badge offline';
+    }
+  }
+}
+
+function showLoading(show) {
+  const overlay = document.getElementById('loading-overlay');
+  if (overlay) overlay.style.display = show ? 'flex' : 'none';
+}
+
+// ============================================================
+// ADMIN LOGIN (Firebase Auth)
+// ============================================================
+const ADMIN_EMAIL = "admin@ussc-chess.com";
+const ADMIN_PASSWORD = "admin123";
+
+async function handleAdminLogin() {
+  const username = document.getElementById('login-username').value.trim();
+  const password = document.getElementById('login-password').value;
+  const errEl = document.getElementById('login-error');
+
+  if (!username || !password) {
+    errEl.textContent = '⚠ Vui lòng điền tên đăng nhập và mật khẩu';
+    errEl.style.display = 'block';
+    return;
+  }
+
+  try {
+    showLoading(true);
+    // Sign in with Firebase Auth
+    await auth.signInWithEmailAndPassword(ADMIN_EMAIL, ADMIN_PASSWORD);
+    isAdminLoggedIn = true;
+    sessionStorage.setItem('admin_logged_in', '1');
+    errEl.style.display = 'none';
+    document.getElementById('login-username').value = '';
+    document.getElementById('login-password').value = '';
+    showPage('page-admin');
+    adminRefreshPlayers();
+    adminRefreshTeams();
+    updateAdminStats();
+    
+    // Start listening to real-time updates
+    startRealtimeListeners();
+  } catch (error) {
+    console.error('Login error:', error);
+    errEl.textContent = '❌ Tên đăng nhập hoặc mật khẩu không chính xác';
+    errEl.style.display = 'block';
+  } finally {
+    showLoading(false);
+  }
+}
+
+async function handleAdminLogout() {
+  await auth.signOut();
+  isAdminLoggedIn = false;
+  sessionStorage.removeItem('admin_logged_in');
+  stopRealtimeListeners();
+  showPage('page-home');
+}
+
+function checkAdminAccess() {
+  if (!isAdminLoggedIn && sessionStorage.getItem('admin_logged_in') !== '1') {
+    showPage('page-login');
+    return false;
+  }
+  isAdminLoggedIn = true;
+  return true;
+}
+
+// ============================================================
+// REAL-TIME LISTENERS
+// ============================================================
+let playersUnsubscribe = null;
+let test2PlayersUnsubscribe = null;
+let teamsUnsubscribe = null;
+let auctionUnsubscribe = null;
+let quizUnsubscribe = null;
+let realtimeListenersStarted = false;
+
+function startRealtimeListeners() {
+  if (realtimeListenersStarted) return;
+  realtimeListenersStarted = true;
+
+  // Listen to quiz settings - for all users
+  if (!quizUnsubscribe) {
+    quizUnsubscribe = quizSettingsDoc.onSnapshot((doc) => {
+      if (doc.exists) {
+        cachedQuizOpen = doc.data().quizOpen || false;
+      }
+      refreshQuizOpenUI();
+    });
+  }
+
+  // Only start other listeners if admin is logged in
+  if (!isAdminLoggedIn) return;
+
+  // Listen to players collection
+  playersUnsubscribe = playersCollection.onSnapshot((snapshot) => {
+
+    if (document.getElementById('page-admin')?.classList.contains('active')) {
+      adminRefreshPlayers();
+    }
+    if (document.getElementById('page-leaderboard')?.classList.contains('active')) {
+      renderLeaderboard();
+    }
+    updateAdminStats();
+  });
+  
+  // Listen to teams collection
+  teamsUnsubscribe = teamsCollection.onSnapshot((snapshot) => {
+    if (document.getElementById('page-admin')?.classList.contains('active')) {
+      adminRefreshTeams();
+    }
+    if (document.getElementById('page-leaderboard')?.classList.contains('active')) {
+      renderLeaderboard();
+    }
+    if (document.getElementById('admin-tab-auction')?.style.display !== 'none') {
+      renderTeamBidList();
+    }
+  });
+  
+  // Listen to auction state
+  auctionUnsubscribe = auctionStateDoc.onSnapshot((doc) => {
+    if (doc.exists) {
+      auctionState = doc.data();
+    }
+    renderTeamBidList();
+    updateAuctionStatus();
+    if (document.getElementById('page-auction-player')?.classList.contains('active')) {
+      renderAuctionPlayerState();
+    }
+  });
+}
+
+function stopRealtimeListeners() {
+  if (playersUnsubscribe) playersUnsubscribe();
+  if (test2PlayersUnsubscribe) test2PlayersUnsubscribe();
+  if (teamsUnsubscribe) teamsUnsubscribe();
+  if (auctionUnsubscribe) auctionUnsubscribe();
+  if (quizUnsubscribe) quizUnsubscribe();
+}
+
+// ============================================================
+// DATA OPERATIONS
+// ============================================================
+async function getPlayers() {
+  const snapshot = await playersCollection.orderBy('score', 'desc').get();
+  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+}
+
+async function getTeams() {
+  const snapshot = await teamsCollection.orderBy('totalScore', 'desc').get();
+  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+}
+
+async function getTest2Players() {
+  const snapshot = await test2PlayersCollection.get();
+  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+}
+
+async function savePlayer(playerData) {
+  await playersCollection.doc(playerData.mssv).set(playerData);
+}
+
+async function saveTeam(teamData) {
+  await teamsCollection.doc(teamData.name).set(teamData);
+}
+
+async function deleteTeam(teamName) {
+  await teamsCollection.doc(teamName).delete();
+}
+
+async function deleteAllTeams() {
+  const snapshot = await teamsCollection.get();
+  const batch = db.batch();
+  snapshot.docs.forEach(doc => batch.delete(doc.ref));
+  await batch.commit();
+}
+
+async function deletePlayersByMssv(ids, askConfirm = true) {
+  const uniqueIds = [...new Set(ids.map(id => id.trim()).filter(Boolean))];
+  if (!uniqueIds.length) {
+    alert('⚠ Không có MSSV hợp lệ để xóa.');
+    return;
+  }
+  if (askConfirm && !confirm(`Bạn có chắc muốn xóa ${uniqueIds.length} thành viên này khỏi mọi nền tảng?`)) return;
+
+  const batch = db.batch();
+  const playersSnapshot = await playersCollection.get();
+  playersSnapshot.docs.forEach(doc => {
+    if (uniqueIds.includes(doc.id)) {
+      batch.delete(doc.ref);
+    }
+  });
+
+  const test2Snapshot = await test2PlayersCollection.get();
+  test2Snapshot.docs.forEach(doc => {
+    if (uniqueIds.includes(doc.id)) {
+      batch.delete(doc.ref);
+    }
+  });
+
+  const teamsSnapshot = await teamsCollection.get();
+  teamsSnapshot.docs.forEach(doc => {
+    const teamData = doc.data();
+    const members = Array.isArray(teamData.members) ? teamData.members : [];
+    const filtered = members.filter(member => !uniqueIds.includes(member.mssv));
+    if (filtered.length !== members.length) {
+      if (filtered.length === 0) {
+        batch.delete(doc.ref);
+      } else {
+        const updatedTeam = {
+          ...teamData,
+          members: filtered,
+          baseScore: filtered.reduce((sum, member) => sum + (member.score || 0), 0),
+          totalScore: Math.max(0, filtered.reduce((sum, member) => sum + (member.score || 0), 0) + (teamData.auctionScore || 0))
+        };
+        batch.set(doc.ref, updatedTeam);
+      }
+    }
+  });
+
+  await batch.commit();
+  adminRefreshPlayers();
+  adminRefreshTeams();
+  updateAdminStats();
+  return uniqueIds.length;
+}
+
+async function deletePlayersByMssvList() {
+  const raw = document.getElementById('admin-delete-members')?.value || '';
+  const ids = raw.split(/[\s,;]+/).map(item => item.trim()).filter(Boolean);
+  const removed = await deletePlayersByMssv(ids, true);
+  if (removed) {
+    document.getElementById('admin-delete-members').value = '';
+    alert(`✅ Đã xóa ${removed} thành viên và cập nhật nhóm.`);
+  }
+}
+
+async function deletePlayerByMssv(mssv) {
+  const removed = await deletePlayersByMssv([mssv], true);
+  if (removed) {
+    alert(`✅ Đã xóa thành viên ${mssv} thành công.`);
+  }
+}
+
+// ============================================================
+// ACCOUNT MANAGEMENT
+// ============================================================
+function isLoggedIn() {
+  return sessionStorage.getItem('loggedInMssv') !== null;
+}
+
+function getLoggedInMssv() {
+  return sessionStorage.getItem('loggedInMssv');
+}
+
+function refreshHomeUI() {
+  const notLoggedIn = document.getElementById('home-not-logged-in');
+  const loggedIn = document.getElementById('home-logged-in');
+  const loginStatus = document.getElementById('home-login-status');
+  const btnTest1 = document.getElementById('btn-start-test1');
+  
+  if (isLoggedIn()) {
+    const mssv = getLoggedInMssv();
+    if (notLoggedIn) notLoggedIn.style.display = 'none';
+    if (loggedIn) loggedIn.style.display = 'block';
+    if (loginStatus) {
+      const name = currentPlayer ? currentPlayer.name : mssv;
+      loginStatus.textContent = `✅ Đã đăng nhập: ${name} (${mssv})`;
+      loginStatus.style.display = 'block';
+    }
+    // Update Test 1 button status
+    if (btnTest1 && currentPlayer) {
+      if (currentPlayer.finishedAt) {
+        btnTest1.textContent = '✅ Đã Hoàn Thành Test 1';
+        btnTest1.style.background = 'var(--surface2)';
+        btnTest1.style.color = 'var(--green)';
+        btnTest1.style.border = '1px solid var(--green)';
+      } else {
+        btnTest1.textContent = '🎮 Bắt Đầu Thi Đấu 1';
+        btnTest1.style.background = '';
+        btnTest1.style.color = '';
+        btnTest1.style.border = '';
+      }
+    }
+  } else {
+    if (notLoggedIn) notLoggedIn.style.display = 'block';
+    if (loggedIn) loggedIn.style.display = 'none';
+    if (loginStatus) loginStatus.style.display = 'none';
+  }
+}
+
+async function handleAccountRegister() {
+  const mssv = document.getElementById('acc-reg-mssv').value.trim();
+  const name = document.getElementById('acc-reg-name').value.trim();
+  const email = document.getElementById('acc-reg-email').value.trim();
+  const password = document.getElementById('acc-reg-password').value;
+  const confirm = document.getElementById('acc-reg-confirm').value;
+  const err = document.getElementById('acc-reg-error');
+
+  if (!mssv || !name || !email || !password || !confirm) {
+    err.textContent = '⚠ Vui lòng điền đầy đủ thông tin';
+    err.style.display = 'block';
+    return;
+  }
+
+  if (password !== confirm) {
+    err.textContent = '⚠ Mật khẩu xác nhận không khớp';
+    err.style.display = 'block';
+    return;
+  }
+
+  if (password.length < 4) {
+    err.textContent = '⚠ Mật khẩu phải có ít nhất 4 ký tự';
+    err.style.display = 'block';
+    return;
+  }
+
+  try {
+    const existing = await playersCollection.doc(mssv).get();
+    if (existing.exists) {
+      err.textContent = '⚠ MSSV này đã được đăng ký';
+      err.style.display = 'block';
+      return;
+    }
+
+    const accountData = {
+      mssv, name, email, password,
+      createdAt: Date.now(),
+      score: 0, correct: 0,
+      finishedAt: null,
+      responseTime: 0,
+      registeredAt: null,
+      test1_registered: false,
+      test2_registered: false
+    };
+
+    await playersCollection.doc(mssv).set(accountData);
+    err.style.display = 'none';
+    
+    alert(`✅ Tài khoản '${name}' (${mssv}) đã tạo thành công!\\n\\nVui lòng đăng nhập để bắt đầu.`);
+    document.getElementById('acc-reg-mssv').value = '';
+    document.getElementById('acc-reg-name').value = '';
+    document.getElementById('acc-reg-email').value = '';
+    document.getElementById('acc-reg-password').value = '';
+    document.getElementById('acc-reg-confirm').value = '';
+    showPage('page-account-login');
+  } catch (error) {
+    console.error('Account register error:', error);
+    err.textContent = '❌ Lỗi: ' + error.message;
+    err.style.display = 'block';
+  }
+}
+
+async function handleAccountLogin() {
+  const mssv = document.getElementById('acc-login-mssv').value.trim();
+  const password = document.getElementById('acc-login-password').value;
+  const err = document.getElementById('acc-login-error');
+
+  if (!mssv || !password) {
+    err.textContent = '⚠ Vui lòng nhập MSSV và mật khẩu';
+    err.style.display = 'block';
+    return;
+  }
+
+  try {
+    const playerDoc = await playersCollection.doc(mssv).get();
+    if (!playerDoc.exists) {
+      err.textContent = '⚠ MSSV không tồn tại';
+      err.style.display = 'block';
+      return;
+    }
+
+    const playerData = playerDoc.data();
+    if (playerData.password !== password) {
+      err.textContent = '⚠ Mật khẩu không chính xác';
+      err.style.display = 'block';
+      return;
+    }
+
+    sessionStorage.setItem('loggedInMssv', mssv);
+    currentPlayer = playerData;
+    err.style.display = 'none';
+
+    document.getElementById('acc-login-mssv').value = '';
+    document.getElementById('acc-login-password').value = '';
+    
+    refreshHomeUI();
+    showPage('page-home');
+    // Show welcome after navigation
+    setTimeout(() => alert(`✅ Đăng nhập thành công! Chào ${playerData.name} 👋`), 100);
+  } catch (error) {
+    console.error('Account login error:', error);
+    err.textContent = '❌ Lỗi: ' + error.message;
+    err.style.display = 'block';
+  }
+}
+
+function handleLogout() {
+  if (confirm('⚠ Bạn có chắc muốn đăng xuất?')) {
+    sessionStorage.removeItem('loggedInMssv');
+    currentPlayer = null;
+    currentTest2Player = null;
+    quizState = {};
+    refreshHomeUI();
+    alert('✅ Đã đăng xuất');
+    showPage('page-home');
+  }
+}
+
+async function renderHistory() {
+  const mssv = getLoggedInMssv();
+  if (!mssv) {
+    alert('⚠ Vui lòng đăng nhập trước');
+    showPage('page-home');
+    return;
+  }
+
+  const historyEl = document.getElementById('history-content');
+  historyEl.innerHTML = '<p style="text-align:center; color:var(--muted); font-family:\'Space Mono\',monospace; font-size:0.85rem;">⏳ Đang tải...</p>';
+
+  try {
+    const playerDoc = await playersCollection.doc(mssv).get();
+    if (!playerDoc.exists) {
+      historyEl.innerHTML = '<p style="text-align:center; color:var(--muted);">Không tìm thấy dữ liệu</p>';
+      return;
+    }
+
+    const player = playerDoc.data();
+
+    // Compute rank
+    let rank = '—';
+    let totalPlayers = 0;
+    if (player.finishedAt) {
+      const players = await getPlayers();
+      const finished = players.filter(p => p.finishedAt);
+      const sorted = finished.sort((a, b) => {
+        if (b.score !== a.score) return b.score - a.score;
+        return (a.responseTime || 0) - (b.responseTime || 0);
+      });
+      totalPlayers = sorted.length;
+      const rankIdx = sorted.findIndex(p => p.mssv === mssv);
+      rank = rankIdx >= 0 ? rankIdx + 1 : '—';
+    }
+
+    const rankColor = rank === 1 ? 'var(--gold)' : rank <= 3 ? '#c0c0c0' : 'var(--green)';
+    const rankMedal = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : '🏅';
+
+    const historyHTML = `
+      <div class="card" style="text-align:center;">
+        <div style="margin-bottom:20px;">
+          <div style="font-size:0.75rem; color:var(--muted); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:6px;">Tài Khoản Thi Đấu</div>
+          <div style="font-size:1.3rem; font-weight:700; color:var(--white);">${player.name}</div>
+          <div style="font-size:0.85rem; color:var(--muted); font-family:'Space Mono',monospace; margin-top:4px;">${player.mssv} · ${player.email || ''}</div>
+        </div>
+        <hr class="divider">
+        <div style="margin-top:20px;">
+          <div style="font-size:0.75rem; color:var(--muted); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:16px;">Kết Quả Test 1 — Quiz Chess</div>
+          ${player.finishedAt ? `
+          <div style="display:grid; grid-template-columns:1fr 1fr 1fr 1fr; gap:12px; margin-bottom:20px;">
+            <div style="background:var(--surface2); border-radius:10px; padding:14px 8px;">
+              <div style="font-family:'Bebas Neue',sans-serif; font-size:2.2rem; color:var(--gold);">${player.score || 0}</div>
+              <div style="font-size:0.65rem; color:var(--muted); text-transform:uppercase; letter-spacing:0.1em;">Điểm</div>
+            </div>
+            <div style="background:var(--surface2); border-radius:10px; padding:14px 8px;">
+              <div style="font-family:'Bebas Neue',sans-serif; font-size:2.2rem; color:var(--blue);">${player.correct || 0}<span style="font-size:1rem;">/30</span></div>
+              <div style="font-size:0.65rem; color:var(--muted); text-transform:uppercase; letter-spacing:0.1em;">Câu Đúng</div>
+            </div>
+            <div style="background:var(--surface2); border-radius:10px; padding:14px 8px;">
+              <div style="font-family:'Bebas Neue',sans-serif; font-size:2.2rem; color:var(--green);">${player.responseTime || 0}<span style="font-size:1rem;">s</span></div>
+              <div style="font-size:0.65rem; color:var(--muted); text-transform:uppercase; letter-spacing:0.1em;">Thời Gian</div>
+            </div>
+            <div style="background:var(--surface2); border-radius:10px; padding:14px 8px; border:1px solid ${rankColor}30;">
+              <div style="font-family:'Bebas Neue',sans-serif; font-size:2.2rem; color:${rankColor};">${rankMedal} #${rank}</div>
+              <div style="font-size:0.65rem; color:var(--muted); text-transform:uppercase; letter-spacing:0.1em;">Xếp Hạng / ${totalPlayers}</div>
+            </div>
+          </div>
+          <div style="font-size:0.8rem; color:var(--muted); padding:12px; background:var(--surface2); border-radius:8px; font-family:'Space Mono',monospace;">
+            ✅ Hoàn thành lúc: ${new Date(player.finishedAt).toLocaleString('vi-VN')}
+          </div>
+          ` : `
+          <div style="font-size:0.9rem; color:var(--muted); padding:20px; background:var(--surface2); border-radius:8px; font-family:'Space Mono',monospace; margin-bottom:16px;">
+            ⏳ Chưa tham gia Test 1
+          </div>
+          <button class="btn btn-gold" onclick="showPage('page-register')" style="max-width:280px; margin:0 auto;">🎮 Tham Gia Thi Đấu 1 Ngay</button>
+          `}
+        </div>
+      </div>
+    `;
+    historyEl.innerHTML = historyHTML;
+  } catch (error) {
+    console.error('Render history error:', error);
+    historyEl.innerHTML = '<p style="text-align:center; color:var(--red);">❌ Lỗi tải dữ liệu</p>';
+  }
+}
+
+// ============================================================
+// STATE
+// ============================================================
+let cachedQuizOpen = false;
+
+const CHESS_QUESTIONS = [
+  {q:"Con Hậu có thể di chuyển bao nhiêu ô?", opts:["Tối đa 8","Không giới hạn theo đường thẳng","3 ô","Chỉ chéo"], ans:1},
+  {q:"Cờ vua bắt nguồn từ quốc gia nào?", opts:["Trung Quốc","Hy Lạp","Ấn Độ","Ba Tư"], ans:2},
+  {q:"'En passant' là gì?", opts:["Chiếu hết bằng Tốt","Nhập thành đặc biệt","Bắt Tốt qua đường","Phong cấp Tốt"], ans:2},
+  {q:"Quân nào duy nhất đi theo hình chữ L?", opts:["Tượng","Mã","Xe","Hậu"], ans:1},
+  {q:"2 con Mã có thể một mình chiếu hết không?", opts:["Có, dễ dàng","Không thể về mặt lý thuyết","Chỉ khi đối thủ sai lầm","Chỉ với Tốt hỗ trợ"], ans:2},
+  {q:"Magnus Carlsen đăng quang Vô địch Thế giới lần đầu năm nào?", opts:["2010","2011","2013","2015"], ans:2},
+  {q:"Thế cờ 'fork' (nĩa) nghĩa là?", opts:["Chiếu đôi","Một quân tấn công 2 quân cùng lúc","Bẫy Tốt","Phong tỏa quân"], ans:1},
+  {q:"Bobby Fischer là người Mỹ đầu tiên vô địch thế giới năm nào?", opts:["1968","1970","1972","1975"], ans:2},
+  {q:"Số ô trên bàn cờ là bao nhiêu?", opts:["32","48","64","81"], ans:2},
+  {q:"'Zugzwang' có nghĩa là gì?", opts:["Chiếu liên tục","Bắt buộc di chuyển nhưng mọi nước đều bất lợi","Hòa cờ","Tấn công đôi"], ans:1},
+  {q:"Quân Tốt phong cấp khi đến hàng mấy?", opts:["Hàng 7","Hàng 8","Hàng cuối của đối thủ","Cả B và C"], ans:3},
+  {q:"'Stalemate' xảy ra khi?", opts:["Vua bị chiếu không thoát","Không còn quân","Không bị chiếu nhưng không có nước đi","Hết giờ"], ans:2},
+  {q:"Giải cờ vua mạnh nhất thế giới là?", opts:["Tata Steel","Candidates","FIDE World Championship","Sinquefield Cup"], ans:2},
+  {q:"'Discovered check' là gì?", opts:["Chiếu bằng Tốt","Chiếu hết","Quân A di chuyển để lộ chiếu từ quân B","Chiếu đôi"], ans:2},
+  {q:"Luật '50 nước' trong cờ vua quy định?", opts:["Hòa sau 50 nước không bắt quân và không đi Tốt","Thắng sau 50 nước","Giới hạn thời gian","Số nước tối đa"], ans:0},
+  {q:"Quân cờ nào có giá trị cao nhất (trừ Vua)?", opts:["Xe","Tượng","Hậu","Mã"], ans:2},
+  {q:"Thể thức 'Bullet Chess' có thời gian là?", opts:["30 giây","1 phút","3 phút","5 phút"], ans:1},
+  {q:"'Pin' trong cờ vua là?", opts:["Quân bị kẹt vì di chuyển sẽ lộ Vua","Bắt quân bằng Tốt","Chiếu liên hoàn","Bẫy lật cờ"], ans:0},
+  {q:"FIDE viết tắt của?", opts:["Federation Internationale Des Echecs","French International Digital Event","Fédération Internationale des Échecs","Cả A và C"], ans:3},
+  {q:"Kasparov thua AI lần đầu vào năm?", opts:["1994","1996","1997","2000"], ans:2},
+  {q:"Chess 960 (Fischer Random) có bao nhiêu vị trí xuất phát?", opts:["360","480","960","1024"], ans:2},
+  {q:"Giá trị tương đối của Tượng so với Mã?", opts:["Tượng yếu hơn","Tượng mạnh hơn","Bằng nhau khoảng 3 điểm","Không thể so"], ans:2},
+  {q:"'Tempo' trong cờ vua nghĩa là?", opts:["Tốc độ đi cờ","Lượt đi / lợi thế về thời gian","Kiểu khai cuộc","Phong cách phòng thủ"], ans:1},
+  {q:"Khai cuộc nào được gọi là 'Fried Liver Attack'?", opts:["1.e4 e5 2.Nf3 Nc6 3.Bc4","1.d4 d5","1.e4 c5","1.Nf3 d5 2.g3"], ans:0},
+  {q:"Quân Xe có giá trị bao nhiêu điểm theo thang chuẩn?", opts:["3","4","5","6"], ans:2},
+  {q:"'Double check' xảy ra khi?", opts:["2 quân cùng chiếu Vua","Chiếu 2 lần liên tiếp","Tốt phong cấp chiếu","Nhập thành tạo chiếu"], ans:0},
+  {q:"Judith Polgar là?", opts:["GM nam vĩ đại nhất","Nữ kỳ thủ mạnh nhất lịch sử","Nhà phát minh Chess960","Cựu vô địch thế giới"], ans:1},
+  {q:"'Perpetual check' dẫn đến?", opts:["Chiếu hết","Hòa cờ","Thắng về điểm","Trắng thắng"], ans:1},
+  {q:"Trong nhập thành, Vua di chuyển mấy ô?", opts:["1 ô","2 ô","3 ô","Tùy loại nhập thành"], ans:1},
+  {q:"Elo rating 2700+ được gọi là?", opts:["Kiện tướng","Đại kiện tướng","Super Grandmaster","FM"], ans:2},
+];
+
+let quizState = {
+  questions: [],
+  current: 0,
+  score: 0,
+  correct: 0,
+  timerInterval: null,
+  timeLeft: 180,
+  finished: false,
+};
+
+let auctionState = {
+  round: 0,
+  running: false,
+  review: false,
+  finalized: false,
+  timerInterval: null,
+  timeLeft: 180,
+  bids: {},
+  answers: {},
+  teamReview: {},
+  finalResults: {},
+  roundData: [
+    {gm:"Bobby Fischer vs Boris Spassky", ctx:"World Championship 1972 · Sicilian Defense", fen:"rnbqkbnr/pp1ppppp/8/2p5/4P3/5N2/PPPP1PPP/RNBQKB1R b KQkq - 1 2", answer:"Nc6", range:"50–200"},
+    {gm:"José Raúl Capablanca vs Alexander Alekhine", ctx:"Buenos Aires 1927 · Ruy Lopez", fen:"r1bqkbnr/pppp1ppp/2n5/1B2p3/4P3/5N2/PPPP1PPP/RNBQK2R b KQkq - 3 3", answer:"a6", range:"50–200"},
+    {gm:"Wilhelm Steinitz vs Johannes Zukertort", ctx:"World Championship 1886 · Queen's Gambit", fen:"rnbqkbnr/ppp1pppp/8/3p4/2PP4/8/PP2PPPP/RNBQKBNR b KQkq - 0 2", answer:"dxc4", range:"100–400"},
+    {gm:"Garry Kasparov vs Anatoly Karpov", ctx:"World Championship 1985 · King's Indian", fen:"rnbq1rk1/ppp1ppbp/3p1np1/8/2PPP3/2N2N2/PP3PPP/R1BQKB1R w KQ - 1 7", answer:"dxe5", range:"100–400"},
+    {gm:"Magnus Carlsen vs Fabiano Caruana", ctx:"World Championship 2018 · French Defense", fen:"rnbqkbnr/pppp1ppp/4p3/8/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2", answer:"d4", range:"200–500"},
+  ]
+};
+
+// ============================================================
+// UTILS
+// ============================================================
+function shuffleArray(arr) {
+  const a = [...arr]; for (let i=a.length-1; i>0; i--) { const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a;
+}
+
+function showPage(id) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  const target = document.getElementById(id);
+  if (!target) return;
+  target.classList.add('active');
+  if (id === 'page-leaderboard') renderLeaderboard();
+  if (id === 'page-admin') { if (!checkAdminAccess()) return; adminRefreshPlayers(); adminRefreshTeams(); updateAdminStats(); updateAuctionStatus(); refreshQuizOpenUI(); startRealtimeListeners(); }
+  if (id === 'page-auction-player') { renderAuctionPlayerState(); }
+  if (id === 'page-history') { renderHistory(); }
+  if (id === 'page-register') { populateRegisterPage(); }
+  if (id === 'page-register2') { populateRegister2Page(); }
+}
+
+function populateRegisterPage() {
+  if (!isLoggedIn()) return;
+  const mssv = getLoggedInMssv();
+  const nameEl = document.getElementById('reg-display-name');
+  const mssvEl = document.getElementById('reg-display-mssv');
+  const alreadyDoneEl = document.getElementById('reg-already-done');
+  const btn = document.getElementById('btn-register-test1');
+  const err = document.getElementById('reg-error');
+  if (err) err.style.display = 'none';
+  if (alreadyDoneEl) alreadyDoneEl.style.display = 'none';
+  if (btn) btn.disabled = false;
+  if (currentPlayer) {
+    if (nameEl) nameEl.textContent = currentPlayer.name || mssv;
+    if (mssvEl) mssvEl.textContent = 'MSSV: ' + (currentPlayer.mssv || mssv);
+    if (currentPlayer.finishedAt) {
+      if (alreadyDoneEl) alreadyDoneEl.style.display = 'block';
+      if (btn) btn.disabled = true;
+    }
+  } else {
+    playersCollection.doc(mssv).get().then(doc => {
+      if (doc.exists) {
+        const data = doc.data();
+        if (nameEl) nameEl.textContent = data.name || mssv;
+        if (mssvEl) mssvEl.textContent = 'MSSV: ' + mssv;
+        if (data.finishedAt) {
+          if (alreadyDoneEl) alreadyDoneEl.style.display = 'block';
+          if (btn) btn.disabled = true;
+        }
+      }
+    });
+  }
+}
+
+function populateRegister2Page() {
+  if (!isLoggedIn()) return;
+  const mssv = getLoggedInMssv();
+  const nameEl = document.getElementById('reg2-display-name');
+  const mssvEl = document.getElementById('reg2-display-mssv');
+  const err = document.getElementById('reg2-error');
+  if (err) err.style.display = 'none';
+  if (currentPlayer) {
+    if (nameEl) nameEl.textContent = currentPlayer.name || mssv;
+    if (mssvEl) mssvEl.textContent = 'MSSV: ' + (currentPlayer.mssv || mssv);
+  } else {
+    playersCollection.doc(mssv).get().then(doc => {
+      if (doc.exists) {
+        const data = doc.data();
+        if (nameEl) nameEl.textContent = data.name || mssv;
+        if (mssvEl) mssvEl.textContent = 'MSSV: ' + mssv;
+      }
+    });
+  }
+}
+
+function formatTime(seconds) {
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  return `${m}:${String(s).padStart(2, '0')}`;
+}
+
+// ============================================================
+// FEN TO BOARD
+// ============================================================
+function fenToBoard(fen) {
+  const board = [];
+  const rows = fen.split(' ')[0].split('/');
+  const pieces = {
+    'p':'♟︎','r':'♜','n':'♞','b':'♝','q':'♛','k':'♚',
+    'P':'♙','R':'♖','N':'♘','B':'♗','Q':'♕','K':'♔'
+  };
+
+  rows.forEach((row,rIdx) => {
+    let col = 0;
+    for (let char of row) {
+      if (isNaN(char)) {
+        board.push({piece: pieces[char] || '', isLight:(rIdx+col)%2===0});
+        col++;
+      } else {
+        for (let i=0; i<parseInt(char,10); i++) {
+          board.push({piece:'', isLight:(rIdx+col)%2===0});
+          col++;
+        }
+      }
+    }
+  });
+  return board;
+}
+
+function renderChessBoard(containerId, fen) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+  const board = fenToBoard(fen);
+  container.innerHTML = '';
+  board.forEach(sq => {
+    const div = document.createElement('div');
+    div.className = 'chess-square' + (sq.isLight ? '' : ' dark');
+    div.textContent = sq.piece;
+    container.appendChild(div);
+  });
+}
+
+// ============================================================
+// REGISTER
+// ============================================================
+async function handleStartTest1() {
+  if (!isLoggedIn()) {
+    alert('⚠ Vui lòng đăng nhập trước');
+    showPage('page-account-login');
+    return;
+  }
+  showPage('page-register');
+}
+
+async function handleRegister() {
+  if (!isLoggedIn()) {
+    alert('⚠ Vui lòng đăng nhập trước');
+    showPage('page-account-login');
+    return;
+  }
+
+  const mssv = getLoggedInMssv();
+  const err = document.getElementById('reg-error');
+
+  const quizDoc = await quizSettingsDoc.get();
+  const quizIsOpen = quizDoc.exists ? quizDoc.data().quizOpen : false;
+  
+  if (!quizIsOpen) {
+    err.textContent = '⏳ Quiz chưa mở. Vui lòng đợi Admin mở.';
+    err.style.display = 'block';
+    return;
+  }
+
+  // Get latest player data from Firestore
+  const playerDoc = await playersCollection.doc(mssv).get();
+  if (!playerDoc.exists) {
+    err.textContent = '⚠ Tài khoản không tồn tại. Vui lòng đăng ký lại.';
+    err.style.display = 'block';
+    return;
+  }
+
+  const playerData = playerDoc.data();
+
+  // Check if already finished Test 1
+  if (playerData.finishedAt) {
+    err.textContent = '⚠ Bạn đã hoàn thành Test 1. Mỗi tài khoản chỉ được thi một lần.';
+    err.style.display = 'block';
+    document.getElementById('reg-already-done').style.display = 'block';
+    document.getElementById('btn-register-test1').disabled = true;
+    return;
+  }
+
+  err.style.display = 'none';
+  currentPlayer = { ...playerData, registeredAt: Date.now() };
+  await playersCollection.doc(mssv).set({ ...currentPlayer, test1_registered: true }, { merge: true });
+  startQuiz();
+}
+
+async function handleRegister2() {
+  if (!isLoggedIn()) {
+    alert('⚠ Vui lòng đăng nhập trước');
+    showPage('page-account-login');
+    return;
+  }
+
+  const mssv = getLoggedInMssv();
+  const team = document.getElementById('reg2-team').value.trim();
+  const err = document.getElementById('reg2-error');
+
+  if (!team) { err.textContent = '⚠ Vui lòng nhập tên nhóm được cấp'; err.style.display='block'; return; }
+
+  // Get player data from Firestore
+  const playerDoc = await playersCollection.doc(mssv).get();
+  if (!playerDoc.exists) {
+    err.textContent = '⚠ Tài khoản không tồn tại.';
+    err.style.display='block';
+    return;
+  }
+
+  const playerData = playerDoc.data();
+  const name = playerData.name;
+
+  // Check if registered for test2
+  const existingPlayer = await test2PlayersCollection.doc(mssv).get();
+  if (existingPlayer.exists) {
+    err.textContent = '⚠ MSSV này đã đăng ký đấu giá!';
+    err.style.display='block';
+    return;
+  }
+
+  const teamDoc = await teamsCollection.doc(team).get();
+  if (!teamDoc.exists) {
+    err.textContent = '⚠ Tên nhóm không tồn tại! Liên hệ Admin để được cấp nhóm.';
+    err.style.display='block';
+    return;
+  }
+
+  const teamData = teamDoc.data();
+  const member = teamData.members.find(m => m.mssv === mssv);
+  if (!member) {
+    err.textContent = '⚠ MSSV của bạn không thuộc nhóm này! Kiểm tra lại tên nhóm.';
+    err.style.display='block';
+    return;
+  }
+
+  err.style.display='none';
+  currentTest2Player = { name, mssv, team, registeredAt: Date.now() };
+  await test2PlayersCollection.doc(mssv).set(currentTest2Player);
+  startAuctionPlayer();
+}
+
+// ============================================================
+// QUIZ
+// ============================================================
+function startQuiz() {
+  quizState = {
+    questions: shuffleArray(CHESS_QUESTIONS),
+    current: 0, score: 0, correct: 0,
+    timerInterval: null, timeLeft: 180, finished: false,
+  };
+  currentPlayer.startTime = Date.now();
+  startRealtimeListeners();
+  showPage('page-quiz');
+  document.getElementById('quiz-player-name').textContent = '♟ ' + currentPlayer.name;
+  renderQuestion();
+  startQuizTimer();
+}
+
+function renderQuestion() {
+  if (quizState.finished || quizState.current >= quizState.questions.length) { endQuiz(); return; }
+  const q = quizState.questions[quizState.current];
+  const n = quizState.current + 1;
+
+  document.getElementById('quiz-q-num').textContent = `CÂU ${String(n).padStart(2,'0')}`;
+  document.getElementById('quiz-q-text').textContent = q.q;
+  document.getElementById('quiz-q-counter').textContent = `Câu ${n} / ${quizState.questions.length}`;
+  document.getElementById('quiz-progress-fill').style.width = ((n-1)/30*100) + '%';
+  document.getElementById('quiz-score-live').textContent = quizState.score + ' ĐP';
+
+  const optsEl = document.getElementById('quiz-options');
+  optsEl.innerHTML = '';
+  q.opts.forEach((opt, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'option-btn';
+    btn.textContent = ['A','B','C','D'][i] + '. ' + opt;
+    btn.onclick = () => selectAnswer(i, q.ans, btn);
+    optsEl.appendChild(btn);
+  });
+
+  document.getElementById('quiz-question-box').style.animation = 'none';
+  setTimeout(() => document.getElementById('quiz-question-box').style.animation = 'fadeIn 0.3s ease both', 10);
+}
+
+function selectAnswer(idx, correct, btn) {
+  const allBtns = document.querySelectorAll('.option-btn');
+  allBtns.forEach(b => b.onclick = null);
+
+  if (idx === correct) {
+    btn.classList.add('correct');
+    quizState.score += 100;
+    quizState.correct++;
+    document.getElementById('quiz-score-live').textContent = quizState.score + ' ĐP';
+  } else {
+    btn.classList.add('wrong');
+    allBtns[correct].classList.add('correct');
+  }
+
+  setTimeout(() => {
+    quizState.current++;
+    renderQuestion();
+  }, 600);
+}
+
+function skipQuestion() {
+  quizState.current++;
+  renderQuestion();
+}
+
+function startQuizTimer() {
+  quizState.timerInterval = setInterval(() => {
+    quizState.timeLeft--;
+    const m = Math.floor(quizState.timeLeft/60);
+    const s = quizState.timeLeft%60;
+    const el = document.getElementById('quiz-timer');
+    el.textContent = `${m}:${String(s).padStart(2,'0')}`;
+    el.classList.toggle('danger', quizState.timeLeft <= 30);
+    if (quizState.timeLeft <= 0) endQuiz();
+  }, 1000);
+}
+
+async function endQuiz() {
+  try {
+    quizState.finished = true;
+    clearInterval(quizState.timerInterval);
+
+    currentPlayer.score = quizState.score;
+    currentPlayer.correct = quizState.correct;
+    currentPlayer.finishedAt = Date.now();
+    currentPlayer.responseTime = Math.round((currentPlayer.finishedAt - currentPlayer.startTime) / 1000);
+
+    await savePlayer(currentPlayer);
+
+    const scoreEl = document.getElementById('done-score');
+    const correctEl = document.getElementById('done-correct');
+    const rankEl = document.getElementById('done-rank-info');
+    
+    if (scoreEl) scoreEl.textContent = quizState.score;
+    if (correctEl) correctEl.textContent = `${quizState.correct} / 30 câu đúng`;
+
+    const players = await getPlayers();
+    if (players && Array.isArray(players)) {
+      const sorted = players.sort((a,b) => {
+        if (b.score !== a.score) return b.score - a.score;
+        return (a.responseTime||0) - (b.responseTime||0);
+      });
+      const rank = sorted.findIndex(p => p.mssv === currentPlayer.mssv) + 1;
+      if (rankEl) rankEl.textContent = `🏅 Xếp hạng hiện tại: #${rank} / ${players.length} người`;
+    }
+  } catch (error) {
+    console.error('Error in endQuiz:', error);
+    const scoreEl = document.getElementById('done-score');
+    const correctEl = document.getElementById('done-correct');
+    if (scoreEl) scoreEl.textContent = quizState.score;
+    if (correctEl) correctEl.textContent = `${quizState.correct} / 30 câu đúng`;
+  }
+  
+  showPage('page-quiz-done');
+}
+
+// ============================================================
+// AUCTION PLAYER
+// ============================================================
+function startAuctionPlayer() {
+  if (auctionState.round >= auctionState.roundData.length) {
+    alert('🏁 Đã kết thúc tất cả vòng đấu giá!');
+    showPage('page-home');
+    return;
+  }
+  const rd = auctionState.roundData[auctionState.round];
+  const badge = document.getElementById('player-round-badge');
+  if (badge) badge.textContent = `VÒNG ${auctionState.round + 1} / ${auctionState.roundData.length}`;
+  
+  const teamInfo = document.getElementById('player-team-info');
+  if (teamInfo) teamInfo.textContent = `Nhóm: ${currentTest2Player.team}`;
+  
+  document.getElementById('player-answer-input').value = '';
+  document.getElementById('player-answer-input').className = 'answer-input';
+  renderChessBoard('player-chess-board', rd.fen);
+  showPage('page-auction-player');
+  renderAuctionPlayerState();
+}
+
+async function placeAuctionBid() {
+  if (!auctionState.running) { alert('⚠ Phiên đấu giá chưa bắt đầu hoặc đã dừng.'); return; }
+  const amount = parseInt(document.getElementById('player-bet-input').value) || 0;
+  const team = currentTest2Player.team;
+  const rd = auctionState.roundData[auctionState.round];
+  const parts = rd.range.split('–');
+  const minBet = parseInt(parts[0]) || 50;
+  
+  const teams = await getTeams();
+  const teamData = teams.find(t => t.name === team);
+  const maxBet = Math.min(parseInt(parts[1]) || 500, teamData?.totalScore || 0);
+  
+  if (amount < minBet || amount > maxBet) {
+    alert(`Cược phải từ ${minBet} đến ${maxBet} ĐP`);
+    return;
+  }
+  
+  auctionState.bids[team] = { amount, passed: false };
+  auctionState.teamReview[team] = { status: 'auto', delta: 0 };
+  await auctionStateDoc.set(auctionState, { merge: true });
+  renderAuctionPlayerState();
+}
+
+async function passAuctionBid() {
+  if (!auctionState.running) { alert('⚠ Phiên đấu giá chưa bắt đầu hoặc đã dừng.'); return; }
+  const team = currentTest2Player.team;
+  auctionState.bids[team] = { amount: 0, passed: true };
+  auctionState.teamReview[team] = { status: 'pass', delta: 0 };
+  await auctionStateDoc.set(auctionState, { merge: true });
+  renderAuctionPlayerState();
+}
+
+async function submitAuctionAnswer() {
+  if (!auctionState.running) { alert('⚠ Phiên đấu giá chưa bắt đầu hoặc đã dừng.'); return; }
+  const input = document.getElementById('player-answer-input');
+  const answer = input.value.trim().toUpperCase();
+  if (!answer) { alert('⚠ Vui lòng nhập đáp án'); return; }
+
+  auctionState.answers[currentTest2Player.team] = answer;
+  auctionState.teamReview[currentTest2Player.team] = auctionState.teamReview[currentTest2Player.team] || { status: 'auto', delta: 0 };
+  await auctionStateDoc.set(auctionState, { merge: true });
+  renderAuctionPlayerState();
+  alert('✅ Đã nộp đáp án. Kết quả sẽ hiện khi Admin chốt vòng.');
+}
+
+function renderAuctionPlayerState() {
+  const timerEl = document.getElementById('player-auction-timer');
+  const statusEl = document.getElementById('player-bid-status');
+  const resultCard = document.getElementById('player-round-result');
+  const rd = auctionState.roundData[auctionState.round] || auctionState.roundData[0];
+  const answerInput = document.getElementById('player-answer-input');
+  const bidInput = document.getElementById('player-bet-input');
+  const team = currentTest2Player?.team;
+  
+  if (timerEl) timerEl.textContent = formatTime(auctionState.timeLeft);
+
+  if (!team) return;
+  const bid = auctionState.bids[team];
+  if (auctionState.finalized) {
+    statusEl.textContent = 'Phiên đấu giá đã chốt. Kết quả được hiển thị bên dưới.';
+    if (answerInput) answerInput.disabled = true;
+    if (bidInput) bidInput.disabled = true;
+  } else if (auctionState.running) {
+    statusEl.textContent = bid ? (bid.passed ? 'Bạn đã chọn PASS.' : `Bạn đã cược ${bid.amount} ĐP.`) : 'Phiên đấu giá đang diễn ra. Vui lòng đặt cược và nộp đáp án.';
+    if (answerInput) answerInput.disabled = false;
+    if (bidInput) bidInput.disabled = false;
+  } else if (auctionState.review) {
+    statusEl.textContent = 'Phiên đã dừng, chờ Admin chốt kết quả.';
+    if (answerInput) answerInput.disabled = true;
+    if (bidInput) bidInput.disabled = true;
+  } else {
+    statusEl.textContent = 'Chờ Admin bắt đầu phiên đấu giá.';
+    if (answerInput) answerInput.disabled = true;
+    if (bidInput) bidInput.disabled = true;
+  }
+
+  if (auctionState.finalized && auctionState.finalResults && auctionState.finalResults[team]) {
+    const result = auctionState.finalResults[team];
+    resultCard.style.display = 'block';
+    document.getElementById('player-round-result-text').textContent = `Vòng ${auctionState.round + 1}`;
+    document.getElementById('player-correct-answer').textContent = result.correctAnswer || rd.answer;
+    document.getElementById('player-round-result-status').textContent = result.status === 'correct' ? 'ĐÚNG' : result.status === 'pass' ? 'PASS' : 'SAI';
+    document.getElementById('player-round-result-delta').textContent = `${result.delta >= 0 ? '+' : ''}${result.delta} ĐP`;
+  } else {
+    if (resultCard) resultCard.style.display = 'none';
+  }
+}
+
+// ============================================================
+// LEADERBOARD
+// ============================================================
+async function renderLeaderboard() {
+  const players = await getPlayers();
+  const sorted = players.sort((a,b) => {
+    if (b.score !== a.score) return b.score - a.score;
+    return (a.responseTime||0) - (b.responseTime||0);
+  });
+  
+  const el = document.getElementById('lb-individual');
+  if (!sorted.length) { el.innerHTML = '<div style="color:var(--muted);text-align:center;padding:24px;font-family:Space Mono,monospace;font-size:0.8rem;">Chưa có người chơi nào</div>'; return; }
+
+  const medals = ['🥇','🥈','🥉'];
+  el.innerHTML = `<table class="lb-table"><thead><th>#</th><th>Người Chơi</th><th>Điểm</th><th>Thời Gian</th></thead><tbody>` +
+    sorted.map((p,i) => `<tr class="anim-slide" style="animation-delay:${i*0.03}s">
+      <td class="${i<3?'rank-'+(i+1):''}">${medals[i]||i+1}</td>
+      <td><div style="font-weight:600">${p.name}</div><div class="mssv-tag">${p.mssv}</div></td>
+      <td class="score-badge">${p.score}</td>
+      <td style="color:var(--muted);font-family:'Space Mono',monospace;font-size:0.8rem">${p.responseTime || 0}s</td>
+     </tr>`).join('') + '</tbody></table>';
+
+  const teams = await getTeams();
+  const teamPanel = document.getElementById('lb-teams');
+  if (!teams.length) { teamPanel.innerHTML = '<div style="color:var(--muted);font-size:0.8rem;font-family:Space Mono,monospace;">Chưa ghép nhóm</div>'; return; }
+  const sortedTeams = [...teams].sort((a,b) => b.totalScore-a.totalScore);
+  teamPanel.innerHTML = sortedTeams.map((t,i) => `
+    <div class="team-card ${i===0?'winner':''}">
+      <div>
+        <div class="team-name">${i===0?'👑 ':''}${t.name}</div>
+        <div class="team-members">${t.members.map(m=>m.name).join(' · ')}</div>
+      </div>
+      <div class="team-score">${t.totalScore} ĐP</div>
+    </div>`).join('');
+}
+
+// ============================================================
+// ADMIN – PLAYERS
+// ============================================================
+async function adminRefreshPlayers() {
+  const players = await getPlayers();
+  const sorted = players.sort((a,b) => {
+    if (b.score !== a.score) return b.score - a.score;
+    return (a.responseTime||0) - (b.responseTime||0);
+  });
+  const el = document.getElementById('admin-player-list');
+  if (!sorted.length) { el.innerHTML = '<div style="color:var(--muted);text-align:center;padding:16px;font-size:0.8rem;">Chưa có người đăng ký</div>'; return; }
+  el.innerHTML = sorted.map((p,i) => `
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;padding:8px 0;border-bottom:1px solid var(--border);font-size:0.85rem;">
+      <div>
+        <span style="color:var(--gold);font-family:'Space Mono',monospace;margin-right:8px;">#${i+1}</span>
+        <strong>${p.name}</strong>
+        <span class="mssv-tag" style="margin-left:6px;">${p.mssv}</span>
+      </div>
+      <div style="text-align:right;">
+        <span style="font-family:'Space Mono',monospace;color:var(--gold);display:block;">${p.score} ĐP</span>
+        <span style="font-family:'Space Mono',monospace;color:var(--muted);font-size:0.75rem;">${p.responseTime||0}s</span>
+        <button class="btn btn-sm" style="background:#e74c3c;color:#fff;margin-top:8px;" onclick="deletePlayerByMssv('${p.mssv}')">Xóa</button>
+      </div>
+    </div>`).join('');
+  updateAdminStats();
+}
+
+async function updateAdminStats() {
+  const players = await getPlayers();
+  const teams = await getTeams();
+  const total = players.length;
+  const avg = total ? Math.round(players.reduce((s,p)=>s+p.score,0)/total) : 0;
+  const max = total ? Math.max(...players.map(p=>p.score)) : 0;
+  document.getElementById('admin-stats').innerHTML =
+    `Tổng người chơi: <span style="color:var(--white)">${total}</span><br>` +
+    `Điểm TB: <span style="color:var(--white)">${avg}</span><br>` +
+    `Điểm cao nhất: <span style="color:var(--gold)">${max}</span><br>` +
+    `Số nhóm: <span style="color:var(--white)">${teams.length}</span>`;
+}
+
+async function adminOpenQuiz() {
+  await quizSettingsDoc.set({ quizOpen: true });
+  refreshQuizOpenUI();
+}
+
+async function adminCloseQuiz() {
+  await quizSettingsDoc.set({ quizOpen: false });
+  refreshQuizOpenUI();
+}
+
+function refreshQuizOpenUI() {
+  const status = document.getElementById('admin-quiz-status');
+  if (!status) return;
+  if (cachedQuizOpen) {
+    status.textContent = '✅ Quiz đang MỞ – Người chơi có thể đăng ký';
+    status.style.borderColor = 'var(--green)';
+    status.style.color = 'var(--green)';
+  } else {
+    status.textContent = '🔒 Quiz đã ĐÓNG';
+    status.style.borderColor = 'rgba(245,200,66,0.3)';
+    status.style.color = 'var(--gold)';
+  }
+}
+
+function shareQuizLink() {
+  const baseUrl = window.location.origin + window.location.pathname;
+  navigator.clipboard.writeText(baseUrl).then(() => {
+    alert('✅ Đã sao chép link!\nGửi link này cho những người tham gia.');
+  }).catch(() => {
+    alert('Link: ' + baseUrl);
+  });
+}
+
+async function clearAllData() {
+  if (!confirm('Xóa TẤT CẢ dữ liệu? Không thể hoàn tác!')) return;
+  
+  showLoading(true);
+  try {
+    // Delete all players
+    const playersSnapshot = await playersCollection.get();
+    const batch = db.batch();
+    playersSnapshot.docs.forEach(doc => batch.delete(doc.ref));
+    
+    // Delete all test2 players
+    const test2Snapshot = await test2PlayersCollection.get();
+    test2Snapshot.docs.forEach(doc => batch.delete(doc.ref));
+    
+    // Delete all teams
+    const teamsSnapshot = await teamsCollection.get();
+    teamsSnapshot.docs.forEach(doc => batch.delete(doc.ref));
+    
+    await batch.commit();
+    
+    // Reset auction state
+    auctionState = {
+      round: 0,
+      running: false,
+      review: false,
+      finalized: false,
+      timerInterval: null,
+      timeLeft: 180,
+      bids: {},
+      answers: {},
+      teamReview: {},
+      finalResults: {},
+      roundData: auctionState.roundData
+    };
+    await auctionStateDoc.set(auctionState);
+    
+    alert('✅ Đã xóa toàn bộ dữ liệu!');
+    adminRefreshPlayers();
+    adminRefreshTeams();
+    updateAdminStats();
+  } catch (error) {
+    console.error('Clear data error:', error);
+    alert('❌ Lỗi khi xóa dữ liệu: ' + error.message);
+  } finally {
+    showLoading(false);
+  }
+}
+
+// ============================================================
+// ADMIN – TEAMS
+// ============================================================
+async function autoGroupTeams() {
+  const players = await getPlayers();
+  const sorted = players.sort((a,b) => b.score-a.score);
+  if (sorted.length < 3) { document.getElementById('group-result').textContent = '⚠ Cần ít nhất 3 người chơi!'; return; }
+
+  const teams = [];
+  const used = new Set();
+  let teamNum = 1;
+
+  for (let i = 0; i < sorted.length; i++) {
+    if (used.has(sorted[i].mssv)) continue;
+    const group = [sorted[i]];
+    used.add(sorted[i].mssv);
+    for (let j = i+1; j < sorted.length && group.length < 3; j++) {
+      if (used.has(sorted[j].mssv)) continue;
+      if (Math.abs(sorted[i].score - sorted[j].score) <= 300) {
+        group.push(sorted[j]);
+        used.add(sorted[j].mssv);
+      }
+    }
+    for (let j = 0; j < sorted.length && group.length < 3; j++) {
+      if (!used.has(sorted[j].mssv)) { 
+        group.push(sorted[j]); 
+        used.add(sorted[j].mssv); 
+      }
+    }
+    if (group.length >= 1) {
+      const teamName = `USSC ${teamNum++}`;
+      const teamData = {
+        name: teamName,
+        members: group.map(p => ({ name: p.name, mssv: p.mssv, score: p.score })),
+        baseScore: group.reduce((s,p)=>s+p.score,0),
+        totalScore: group.reduce((s,p)=>s+p.score,0),
+        auctionScore: 0,
+        correctAnswers: 0,
+        wrongAnswers: 0,
+      };
+      await saveTeam(teamData);
+      teams.push(teamData);
+    }
+  }
+
+  document.getElementById('group-result').textContent = `✅ Đã ghép ${teams.length} nhóm thành công!`;
+  adminRefreshTeams();
+  renderTeamBidList();
+}
+
+async function clearTeams() {
+  await deleteAllTeams();
+  adminRefreshTeams();
+  renderTeamBidList();
+}
+
+async function adminRefreshTeams() {
+  const teams = await getTeams();
+  const sorted = teams.sort((a,b) => b.totalScore-a.totalScore);
+  const el = document.getElementById('admin-team-list');
+  if (!sorted.length) { el.innerHTML = '<div style="color:var(--muted);font-size:0.8rem;text-align:center;padding:16px;">Chưa có nhóm</div>'; return; }
+  el.innerHTML = sorted.map((t,i) => `
+    <div class="team-card ${i===0?'winner':''}">
+      <div>
+        <div class="team-name">${t.name}</div>
+        <div class="team-members">${t.members.map(m=>m.name+' ('+m.score+')').join(' · ')}</div>
+      </div>
+      <div>
+        <div class="team-score">${t.totalScore} ĐP</div>
+        <div style="font-size:0.7rem;color:var(--muted);text-align:right;font-family:'Space Mono',monospace;">base: ${t.baseScore}</div>
+      </div>
+    </div>`).join('');
+}
+
+// ============================================================
+// AUCTION ADMIN
+// ============================================================
+async function renderTeamBidList() {
+  const teams = await getTeams();
+  const round = auctionState.round;
+  const el = document.getElementById('team-bid-list');
+  if (!teams.length) { if(el) el.innerHTML = '<div style="color:var(--muted);font-size:0.8rem;">Chưa có nhóm</div>'; return; }
+
+  if(el) el.innerHTML = teams.map(t => {
+    const bid = auctionState.bids[t.name];
+    const answer = auctionState.answers[t.name];
+    const review = auctionState.teamReview[t.name] || { status: 'auto', delta: 0 };
+    const rd = auctionState.roundData[round] || auctionState.roundData[0];
+    const parts = rd.range.split('–');
+    const minBet = parseInt(parts[0])||50;
+    const maxBet = Math.min(parseInt(parts[1])||500, t.totalScore);
+    let statusClass = 'pending';
+    let statusText = 'Chờ...';
+    if (auctionState.finalized) {
+      const result = auctionState.finalResults[t.name] || { status: 'pass', delta: 0 };
+      statusClass = result.status === 'correct' ? 'correct' : result.status === 'wrong' ? 'wrong' : 'passed';
+      statusText = result.status === 'correct' ? `✅ +${result.delta}` : result.status === 'wrong' ? `❌ ${result.delta}` : 'PASS';
+    } else if (auctionState.review) {
+      if (review.status === 'pass') {
+        statusClass = 'passed';
+        statusText = 'PASS';
+      } else if (review.status === 'correct') {
+        statusClass = 'correct';
+        statusText = `✅ ${review.delta}`;
+      } else if (review.status === 'wrong') {
+        statusClass = 'wrong';
+        statusText = `❌ ${review.delta}`;
+      } else if (answer) {
+        statusClass = answer.toUpperCase() === rd.answer.toUpperCase() ? 'correct' : 'wrong';
+        statusText = answer.toUpperCase() === rd.answer.toUpperCase() ? `✅ ${answer}` : `❌ ${answer}`;
+      } else if (bid) {
+        statusClass = bid.passed ? 'passed' : 'placed';
+        statusText = bid.passed ? 'PASS' : `💰 ${bid.amount} ĐP`;
+      }
+    } else {
+      if (answer) {
+        statusClass = 'pending';
+        statusText = `Đã nộp: ${answer}`;
+      } else if (bid) {
+        statusClass = bid.passed ? 'passed' : 'placed';
+        statusText = bid.passed ? 'PASS' : `💰 ${bid.amount} ĐP`;
+      }
+    }
+
+    const reviewControls = auctionState.review && !auctionState.finalized ? `
+      <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-top:10px;">
+        <select id="review-status-${t.name.replace(/\s+/g,'_')}" style="padding:6px 8px; border-radius:8px; border:1px solid var(--border); background:var(--surface2); color:var(--white);">
+          <option value="auto" ${review.status==='auto'?'selected':''}>Tự động</option>
+          <option value="correct" ${review.status==='correct'?'selected':''}>Đúng</option>
+          <option value="wrong" ${review.status==='wrong'?'selected':''}>Sai</option>
+          <option value="pass" ${review.status==='pass'?'selected':''}>Pass</option>
+        </select>
+        <input type="number" id="review-delta-${t.name.replace(/\s+/g,'_')}" value="${review.delta || 0}" style="width:80px;padding:6px 8px;font-size:0.85rem;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--white);">
+        <button class="btn btn-sm btn-purple" onclick="updateTeamReview('${t.name}')">Lưu sửa</button>
+      </div>` : '';
+
+    return `
+    <div class="team-bid-row" id="bid-row-${t.name.replace(/\s+/g,'_')}">
+      <div>
+        <div class="team-name" style="font-size:0.95rem;">${t.name}</div>
+        <div style="font-family:'Space Mono',monospace;font-size:0.7rem;color:var(--muted);">${t.totalScore} ĐP</div>
+      </div>
+      <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
+        <input type="number" class="bet-input" id="bet-${t.name.replace(/\s+/g,'_')}"
+          min="${minBet}" max="${maxBet}" value="${bid ? (bid.passed ? 0 : bid.amount) : minBet}"
+          style="width:80px;padding:6px 8px;font-size:0.85rem;">
+        <button class="btn btn-blue btn-sm" onclick="placeBid('${t.name}')">Cược</button>
+        <button class="btn btn-outline btn-sm" onclick="passRound('${t.name}')">Pass</button>
+      </div>
+      <span class="bid-status ${statusClass}">${statusText}</span>
+      ${reviewControls}
+    </div>`;
+  }).join('');
+
+  const rd = auctionState.roundData[Math.min(round, auctionState.roundData.length-1)];
+  if(rd) {
+    const roundEl = document.getElementById('auction-round-indicator');
+    if(roundEl) roundEl.textContent = `VÒNG ${round+1} / ${auctionState.roundData.length}`;
+    const rangeEl = document.getElementById('auction-bet-range');
+    if(rangeEl) rangeEl.textContent = rd.range + ' ĐP';
+    renderChessBoard('auction-board-display', rd.fen);
+  }
+}
+
+function updateAuctionStatus() {
+  const statusEl = document.getElementById('auction-round-status');
+  if (!statusEl) return;
+  if (auctionState.running) {
+    statusEl.textContent = '⏱ Phiên đấu giá đang chạy. Người chơi có thể đặt cược và nộp đáp án.';
+    statusEl.style.borderColor = 'var(--green)';
+    statusEl.style.color = 'var(--green)';
+  } else if (auctionState.review) {
+    statusEl.textContent = '⏳ Phiên đã dừng. Chờ Admin chốt kết quả.';
+    statusEl.style.borderColor = 'var(--gold)';
+    statusEl.style.color = 'var(--gold)';
+  } else if (auctionState.finalized) {
+    statusEl.textContent = '✅ Kết quả đã chốt. Sẵn sàng vòng tiếp theo.';
+    statusEl.style.borderColor = 'var(--blue)';
+    statusEl.style.color = 'var(--blue)';
+  } else {
+    statusEl.textContent = 'Phiên đấu giá chưa bắt đầu.';
+    statusEl.style.borderColor = 'var(--border)';
+    statusEl.style.color = 'var(--muted)';
+  }
+}
+
+async function placeBid(teamName) {
+  if (!auctionState.running) { alert('⚠ Phiên đấu giá chưa bắt đầu.'); return; }
+  const key = teamName.replace(/\s+/g,'_');
+  const val = parseInt(document.getElementById('bet-'+key).value) || 0;
+  const teams = await getTeams();
+  const team = teams.find(t=>t.name===teamName);
+  if (!team) return;
+  const rd = auctionState.roundData[auctionState.round] || auctionState.roundData[0];
+  const parts = rd.range.split('–');
+  const minBet = parseInt(parts[0])||50;
+  const maxBet = Math.min(parseInt(parts[1])||500, team.totalScore);
+  if (val < minBet || val > maxBet) {
+    alert(`Cược phải từ ${minBet} đến ${maxBet} ĐP`); return;
+  }
+  auctionState.bids[teamName] = { amount: val, passed: false };
+  auctionState.teamReview[teamName] = auctionState.teamReview[teamName] || { status:'auto', delta:0 };
+  await auctionStateDoc.set(auctionState, { merge: true });
+  renderTeamBidList();
+}
+
+async function passRound(teamName) {
+  if (!auctionState.running) { alert('⚠ Phiên đấu giá chưa bắt đầu.'); return; }
+  auctionState.bids[teamName] = { amount: 0, passed: true };
+  auctionState.teamReview[teamName] = { status:'pass', delta:0 };
+  await auctionStateDoc.set(auctionState, { merge: true });
+  renderTeamBidList();
+}
+
+async function updateTeamReview(teamName) {
+  const statusEl = document.getElementById(`review-status-${teamName.replace(/\s+/g,'_')}`);
+  const deltaEl = document.getElementById(`review-delta-${teamName.replace(/\s+/g,'_')}`);
+  if (!statusEl || !deltaEl) return;
+  const status = statusEl.value;
+  const delta = parseInt(deltaEl.value) || 0;
+  auctionState.teamReview[teamName] = { status, delta };
+  await auctionStateDoc.set(auctionState, { merge: true });
+  renderTeamBidList();
+}
+
+async function publishAuctionResults() {
+  if (!auctionState.review) { alert('⚠ Vui lòng dừng phiên đấu giá trước khi chốt kết quả.'); return; }
+  const rd = auctionState.roundData[auctionState.round] || auctionState.roundData[0];
+  const teams = await getTeams();
+  auctionState.finalResults = {};
+
+  for (const t of teams) {
+    const bid = auctionState.bids[t.name];
+    const answer = auctionState.answers[t.name] ? auctionState.answers[t.name].toUpperCase() : '';
+    const review = auctionState.teamReview[t.name] || { status:'auto', delta:0 };
+    let status = 'pass';
+    let delta = 0;
+
+    if (!bid || bid.passed) {
+      status = 'pass';
+      delta = 0;
+    } else {
+      const autoCorrect = answer === rd.answer.toUpperCase();
+      if (review.status === 'auto') {
+        status = autoCorrect ? 'correct' : 'wrong';
+      } else {
+        status = review.status;
+      }
+      if (review.status !== 'auto') {
+        delta = review.delta;
+      } else if (status === 'correct') {
+        delta = bid.amount * 2;
+      } else if (status === 'wrong') {
+        delta = -bid.amount;
+      }
+    }
+
+    if (status !== 'pass') {
+      t.totalScore += delta;
+      t.auctionScore = (t.auctionScore||0) + delta;
+      if (status === 'correct') t.correctAnswers = (t.correctAnswers||0) + 1;
+      if (status === 'wrong') t.wrongAnswers = (t.wrongAnswers||0) + 1;
+    }
+    if (t.totalScore < 0) t.totalScore = 0;
+
+    await saveTeam(t);
+
+    auctionState.finalResults[t.name] = {
+      status,
+      delta,
+      correctAnswer: rd.answer,
+      submittedAnswer: answer,
+    };
+  }
+
+  auctionState.finalized = true;
+  auctionState.review = false;
+  await auctionStateDoc.set(auctionState);
+  adminRefreshTeams();
+  renderTeamBidList();
+  updateAdminStats();
+  alert('✅ Đã chốt kết quả vòng đấu giá. Người chơi có thể xem điểm cập nhật.');
+}
+
+async function nextAuctionRound() {
+  if (auctionState.round < auctionState.roundData.length - 1) {
+    auctionState.round++;
+    auctionState.running = false;
+    auctionState.review = false;
+    auctionState.finalized = false;
+    auctionState.timeLeft = 180;
+    if (auctionState.timerInterval) clearInterval(auctionState.timerInterval);
+    auctionState.timerInterval = null;
+    auctionState.bids = {};
+    auctionState.answers = {};
+    auctionState.teamReview = {};
+    auctionState.finalResults = {};
+    await auctionStateDoc.set(auctionState);
+    stopAuctionTimer();
+    renderTeamBidList();
+    updateAuctionStatus();
+  } else {
+    alert('🏁 Đã kết thúc tất cả ' + auctionState.roundData.length + ' vòng đấu giá!');
+    adminTab('result');
+  }
+}
+
+let auctionTimerInterval = null;
+
+function startAuctionTimer() {
+  if (auctionState.running) return;
+  auctionState.running = true;
+  auctionState.review = false;
+  auctionState.finalized = false;
+  auctionState.timeLeft = 180;
+  auctionState.finalResults = {};
+  if (auctionState.timerInterval) clearInterval(auctionState.timerInterval);
+  auctionState.timerInterval = null;
+  auctionStateDoc.set(auctionState);
+  renderTeamBidList();
+  updateAuctionStatus();
+
+  auctionTimerInterval = setInterval(async () => {
+    if (!auctionState.running) {
+      clearInterval(auctionTimerInterval);
+      return;
+    }
+    auctionState.timeLeft--;
+    const m = Math.floor(auctionState.timeLeft/60);
+    const s = auctionState.timeLeft%60;
+    const el = document.getElementById('auction-timer');
+    if(el) { el.textContent = `${m}:${String(s).padStart(2,'0')}`; el.style.color = auctionState.timeLeft<=30?'var(--red)':'var(--gold)'; }
+    await auctionStateDoc.set(auctionState);
+    if (auctionState.timeLeft <= 0) {
+      clearInterval(auctionTimerInterval);
+      auctionState.running = false;
+      auctionState.review = true;
+      await auctionStateDoc.set(auctionState);
+      updateAuctionStatus();
+      renderTeamBidList();
+      alert('⏰ Hết giờ thảo luận! Hãy chốt kết quả.');
+    }
+  }, 1000);
+}
+
+function stopAuctionTimer() {
+  clearInterval(auctionTimerInterval);
+  auctionTimerInterval = null;
+  auctionState.running = false;
+  auctionState.review = true;
+  auctionStateDoc.set(auctionState);
+  updateAuctionStatus();
+  renderTeamBidList();
+}
+
+async function resetAuctionRound() {
+  stopAuctionTimer();
+  auctionState.running = false;
+  auctionState.review = false;
+  auctionState.finalized = false;
+  auctionState.timeLeft = 180;
+  auctionState.bids = {};
+  auctionState.answers = {};
+  auctionState.teamReview = {};
+  auctionState.finalResults = {};
+  await auctionStateDoc.set(auctionState);
+  const el = document.getElementById('auction-timer');
+  if(el) { el.textContent='3:00'; el.style.color='var(--gold)'; }
+  renderTeamBidList();
+  updateAuctionStatus();
+}
+
+// ============================================================
+// FINAL RESULT
+// ============================================================
+async function renderFinalResult() {
+  const teams = await getTeams();
+  const sorted = teams.sort((a,b)=>b.totalScore-a.totalScore);
+  const el = document.getElementById('final-result-list');
+  if (!sorted.length) { el.innerHTML='<div style="color:var(--muted);font-size:0.8rem;">Chưa có dữ liệu nhóm</div>'; return; }
+  const medals = ['🥇','🥈','🥉'];
+  el.innerHTML = sorted.map((t,i) => `
+    <div class="team-card ${i===0?'winner':''}">
+      <div>
+        <div class="team-name">${medals[i]||'#'+(i+1)} ${t.name}</div>
+        <div class="team-members">${t.members.map(m=>m.name).join(' · ')}</div>
+        <div style="font-size:0.7rem;color:var(--muted);font-family:'Space Mono',monospace;margin-top:2px;">
+          Base: ${t.baseScore} ĐP | Đấu giá: <span style="color:${(t.auctionScore||0)>=0?'var(--green)':'var(--red)'}">${(t.auctionScore||0)>=0?'+':''}${t.auctionScore||0}</span> | Đúng: ${t.correctAnswers||0} | Sai: ${t.wrongAnswers||0}
+        </div>
+      </div>
+      <div class="team-score" style="font-size:1.4rem;">${t.totalScore} ĐP</div>
+    </div>`).join('');
+}
+
+async function computeFinalResult() {
+  await renderFinalResult();
+  const teams = await getTeams();
+  const sorted = teams.sort((a,b)=>b.totalScore-a.totalScore);
+  if (sorted.length) alert(`🏆 CHÚC MỪNG ĐỘI ${sorted[0].name.toUpperCase()}!\n\nVô địch với ${sorted[0].totalScore} điểm!\n${sorted[0].members.map(m=>m.name).join(', ')}`);
+}
+
+function adminTab(tab) {
+  ['players','teams','auction','result'].forEach(t => {
+    const el = document.getElementById('admin-tab-'+t);
+    if (el) el.style.display = t===tab ? '' : 'none';
+    const btn = document.getElementById('tab-'+t);
+    if (btn) btn.classList.toggle('active', t===tab);
+  });
+  if (tab === 'auction') { renderTeamBidList(); updateAuctionStatus(); }
+  if (tab === 'result') renderFinalResult();
+  if (tab === 'teams') adminRefreshTeams();
+}
+
+// Expose global functions
+window.showPage = showPage;
+window.handleAdminLogin = handleAdminLogin;
+window.handleAdminLogout = handleAdminLogout;
+window.handleRegister = handleRegister;
+window.handleRegister2 = handleRegister2;
+window.handleStartTest1 = handleStartTest1;
+window.populateRegisterPage = populateRegisterPage;
+window.populateRegister2Page = populateRegister2Page;
+window.skipQuestion = skipQuestion;
+window.placeAuctionBid = placeAuctionBid;
+window.passAuctionBid = passAuctionBid;
+window.submitAuctionAnswer = submitAuctionAnswer;
+window.renderLeaderboard = renderLeaderboard;
+window.adminRefreshPlayers = adminRefreshPlayers;
+window.adminRefreshTeams = adminRefreshTeams;
+window.adminOpenQuiz = adminOpenQuiz;
+window.adminCloseQuiz = adminCloseQuiz;
+window.shareQuizLink = shareQuizLink;
+window.clearAllData = clearAllData;
+window.autoGroupTeams = autoGroupTeams;
+window.clearTeams = clearTeams;
+window.deletePlayersByMssvList = deletePlayersByMssvList;
+window.deletePlayerByMssv = deletePlayerByMssv;
+window.placeBid = placeBid;
+window.passRound = passRound;
+window.updateTeamReview = updateTeamReview;
+window.startAuctionTimer = startAuctionTimer;
+window.stopAuctionTimer = stopAuctionTimer;
+window.publishAuctionResults = publishAuctionResults;
+window.resetAuctionRound = resetAuctionRound;
+window.nextAuctionRound = nextAuctionRound;
+window.computeFinalResult = computeFinalResult;
+window.adminTab = adminTab;
+
+// Initial load
+document.addEventListener('DOMContentLoaded', async () => {
+  if (sessionStorage.getItem('admin_logged_in') === '1') {
+    isAdminLoggedIn = true;
+  }
+  
+  // Restore logged-in player session
+  if (isLoggedIn()) {
+    const mssv = getLoggedInMssv();
+    try {
+      const playerDoc = await playersCollection.doc(mssv).get();
+      if (playerDoc.exists) {
+        currentPlayer = playerDoc.data();
+      } else {
+        // Stale session, clear it
+        sessionStorage.removeItem('loggedInMssv');
+      }
+    } catch(e) { /* offline, will use cache */ }
+    refreshHomeUI();
+  }
+  
+  // Load quiz settings
+  const quizDoc = await quizSettingsDoc.get();
+  if (quizDoc.exists) {
+    cachedQuizOpen = quizDoc.data().quizOpen || false;
+  }
+  refreshQuizOpenUI();
+  
+  // Load auction state
+  const auctionDoc = await auctionStateDoc.get();
+  if (auctionDoc.exists) {
+    auctionState = { ...auctionState, ...auctionDoc.data() };
+  } else {
+    await auctionStateDoc.set(auctionState);
+  }
+  if (isAdminLoggedIn) {
+    startRealtimeListeners();
+  }
+  
+  updateAuctionStatus();
+  renderTeamBidList();
+}); 
+</script>
 </body>
 </html>
