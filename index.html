@@ -672,7 +672,7 @@
   <div class="card anim-fade" style="text-align:center;">
     <div class="chess-icon">♟️</div>
     <div class="logo">USSC Chess</div>
-    <div class="subtitle">Tournament · HCMUS · 2025</div>
+    <div class="subtitle">Tournament · HCMUS · 2026</div>
     <div id="home-login-status" style="font-size:0.75rem; color:var(--muted); margin-top:8px; display:none;"></div>
     <hr class="divider">
     <div id="home-not-logged-in">
@@ -801,6 +801,9 @@
     <div id="reg2-player-info" style="background:var(--surface2); border:1px solid var(--border); border-radius:10px; padding:16px; margin-bottom:20px; font-family:'Space Mono',monospace; font-size:0.85rem; color:var(--muted);">
       <div style="color:var(--white); font-size:1rem; font-weight:600; margin-bottom:4px;" id="reg2-display-name">Họ và Tên</div>
       <div id="reg2-display-mssv">MSSV: ...</div>
+    </div>
+    <div style="padding:12px 16px; background:rgba(52,152,219,0.08); border:1px solid rgba(52,152,219,0.25); border-radius:8px; font-family:'Space Mono',monospace; font-size:0.8rem; color:var(--blue); margin-bottom:16px;">
+      ℹ️ Nếu bạn vô tình thoát ra khỏi giải đấu, bạn vẫn có thể đăng nhập lại với tài khoản và nhóm của bạn để tiếp tục. Không bao giờ mất quyền truy cập!
     </div>
     <div class="field">
       <label>Tên Nhóm (mã nhóm do Admin cấp)</label>
@@ -1711,6 +1714,7 @@ function populateRegister2Page() {
   const nameEl = document.getElementById('reg2-display-name');
   const mssvEl = document.getElementById('reg2-display-mssv');
   const err = document.getElementById('reg2-error');
+  const teamInputEl = document.getElementById('reg2-team');
   if (err) err.style.display = 'none';
   if (currentPlayer) {
     if (nameEl) nameEl.textContent = currentPlayer.name || mssv;
@@ -1724,6 +1728,17 @@ function populateRegister2Page() {
       }
     });
   }
+  
+  // Check if user has already registered for test2
+  test2PlayersCollection.doc(mssv).get().then(doc => {
+    if (doc.exists) {
+      const existingData = doc.data();
+      // Pre-fill the team field with previously entered team
+      if (teamInputEl && existingData.team) {
+        teamInputEl.value = existingData.team;
+      }
+    }
+  });
 }
 
 function formatTime(seconds) {
@@ -1872,14 +1887,6 @@ async function handleRegister2() {
   const playerData = playerDoc.data();
   const name = playerData.name;
 
-  // Check if registered for test2
-  const existingPlayer = await test2PlayersCollection.doc(mssv).get();
-  if (existingPlayer.exists) {
-    err.textContent = '⚠ MSSV này đã đăng ký đấu giá!';
-    err.style.display='block';
-    return;
-  }
-
   const teamDoc = await teamsCollection.doc(team).get();
   if (!teamDoc.exists) {
     err.textContent = '⚠ Tên nhóm không tồn tại! Liên hệ Admin để được cấp nhóm.';
@@ -1896,8 +1903,18 @@ async function handleRegister2() {
   }
 
   err.style.display='none';
-  currentTest2Player = { name, mssv, team, registeredAt: Date.now() };
-  await test2PlayersCollection.doc(mssv).set(currentTest2Player);
+  
+  // Check if user already registered - if so, allow them to re-enter
+  const existingPlayer = await test2PlayersCollection.doc(mssv).get();
+  if (existingPlayer.exists) {
+    // User is re-entering - load existing data
+    currentTest2Player = { ...existingPlayer.data(), name, mssv, team };
+  } else {
+    // First time entry
+    currentTest2Player = { name, mssv, team, registeredAt: Date.now() };
+    await test2PlayersCollection.doc(mssv).set(currentTest2Player);
+  }
+  
   startAuctionPlayer();
 }
 
