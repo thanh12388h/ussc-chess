@@ -625,6 +625,146 @@
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"
   onerror="console.error('Firebase database-compat failed to load')"></script>
 
+
+<script>
+const PIECE_SVG = {
+  wP: "https://upload.wikimedia.org/wikipedia/commons/4/45/Chess_plt45.svg",
+  wN: "https://upload.wikimedia.org/wikipedia/commons/7/70/Chess_nlt45.svg",
+  wB: "https://upload.wikimedia.org/wikipedia/commons/b/b1/Chess_blt45.svg",
+  wR: "https://upload.wikimedia.org/wikipedia/commons/7/72/Chess_rlt45.svg",
+  wQ: "https://upload.wikimedia.org/wikipedia/commons/1/15/Chess_qlt45.svg",
+  wK: "https://upload.wikimedia.org/wikipedia/commons/4/42/Chess_klt45.svg",
+  bP: "https://upload.wikimedia.org/wikipedia/commons/c/c7/Chess_pdt45.svg",
+  bN: "https://upload.wikimedia.org/wikipedia/commons/e/ef/Chess_ndt45.svg",
+  bB: "https://upload.wikimedia.org/wikipedia/commons/9/98/Chess_bdt45.svg",
+  bR: "https://upload.wikimedia.org/wikipedia/commons/f/ff/Chess_rdt45.svg",
+  bQ: "https://upload.wikimedia.org/wikipedia/commons/4/47/Chess_qdt45.svg",
+  bK: "https://upload.wikimedia.org/wikipedia/commons/f/f0/Chess_kdt45.svg",
+};
+
+function parseFen(fen) {
+  const pieceMap = {
+    p:"bP", n:"bN", b:"bB", r:"bR", q:"bQ", k:"bK",
+    P:"wP", N:"wN", B:"wB", R:"wR", Q:"wQ", K:"wK",
+  };
+  const cols = ["a","b","c","d","e","f","g","h"];
+  const ranks = ["8","7","6","5","4","3","2","1"];
+  const pos = {};
+  fen.split(" ")[0].split("/").forEach((row, ri) => {
+    let ci = 0;
+    for (const ch of row) {
+      if (isNaN(Number(ch))) { 
+        pos[cols[ci] + ranks[ri]] = pieceMap[ch]; 
+        ci++; 
+      }
+      else ci += Number(ch);
+    }
+  });
+  return pos;
+}
+
+function renderChessBoardSVG(containerId, fen, size = 320) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+  
+  const pos = parseFen(fen);
+  const sq = size / 8;
+  const files = ["a","b","c","d","e","f","g","h"];
+  const ranks = ["8","7","6","5","4","3","2","1"];
+  
+  container.innerHTML = '';
+  container.style.cssText = `
+    display: inline-block;
+    border: 4px solid #3d2b1f;
+    border-radius: 4px;
+    overflow: hidden;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+    user-select: none;
+  `;
+  
+  const boardDiv = document.createElement('div');
+  boardDiv.style.cssText = `position: relative; width: ${size}px; height: ${size}px;`;
+  
+  ranks.forEach((rank, ri) => {
+    const rowDiv = document.createElement('div');
+    rowDiv.style.display = 'flex';
+    
+    files.forEach((file, fi) => {
+      const square = file + rank;
+      const piece = pos[square];
+      const isLight = (ri + fi) % 2 === 0;
+      const bgColor = isLight ? "#f0d9b5" : "#b58863";
+      
+      const squareDiv = document.createElement('div');
+      squareDiv.style.cssText = `
+        width: ${sq}px;
+        height: ${sq}px;
+        background: ${bgColor};
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        position: relative;
+      `;
+      
+      // Thêm tọa độ nhỏ ở góc (giống Lichess)
+      if (fi === 0) {
+        const coord = document.createElement('span');
+        coord.style.cssText = `
+          position: absolute;
+          left: 2px;
+          top: 2px;
+          font-size: 10px;
+          color: ${isLight ? "#b58863" : "#f0d9b5"};
+          font-weight: bold;
+          font-family: 'Space Mono', monospace;
+        `;
+        coord.textContent = rank;
+        squareDiv.appendChild(coord);
+      }
+      
+      if (ri === 7) {
+        const coord = document.createElement('span');
+        coord.style.cssText = `
+          position: absolute;
+          right: 2px;
+          bottom: 2px;
+          font-size: 10px;
+          color: ${isLight ? "#b58863" : "#f0d9b5"};
+          font-weight: bold;
+          font-family: 'Space Mono', monospace;
+        `;
+        coord.textContent = file;
+        squareDiv.appendChild(coord);
+      }
+      
+      // Render quân cờ bằng SVG
+      if (piece && PIECE_SVG[piece]) {
+        const img = document.createElement('img');
+        img.src = PIECE_SVG[piece];
+        img.alt = piece;
+        img.style.cssText = `
+          width: 90%;
+          height: 90%;
+          filter: drop-shadow(0 2px 2px rgba(0,0,0,0.3));
+          pointer-events: none;
+        `;
+        squareDiv.appendChild(img);
+      }
+      
+      rowDiv.appendChild(squareDiv);
+    });
+    boardDiv.appendChild(rowDiv);
+  });
+  
+  container.appendChild(boardDiv);
+}
+
+  // Ghi đè hàm renderChessBoard cũ (nếu có)
+  if (typeof window.renderChessBoard !== 'undefined') {
+    window.renderChessBoard = renderChessBoardSVG;
+  }
+</script>
+
 <script>
   if (typeof firebase === 'undefined') {
     document.body && (document.body.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;min-height:100vh;background:#0a0a0f;color:#f5c842;font-family:monospace;text-align:center;padding:24px;"><div><div style="font-size:2rem;margin-bottom:12px;">⚠️</div><div style="font-size:1.1rem;font-weight:700;margin-bottom:8px;">Không thể tải Firebase SDK</div><div style="font-size:0.85rem;color:#888;margin-bottom:16px;">Kiểm tra kết nối mạng hoặc tắt trình chặn quảng cáo (AdBlock) rồi tải lại trang.</div><button onclick="location.reload()" style="background:#f5c842;color:#000;border:none;padding:10px 24px;border-radius:8px;font-size:1rem;cursor:pointer;font-weight:700;">🔄 Tải Lại Trang</button></div></div>');
