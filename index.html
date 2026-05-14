@@ -783,6 +783,11 @@
       ⚠ Bạn đã hoàn thành Test 1. Mỗi tài khoản chỉ được thi một lần.
     </div>
     <p style="font-size:0.85rem; color:var(--muted); margin-bottom:16px; font-style:italic;">Bạn sẽ bắt đầu vòng quiz Chess với 30 câu hỏi trong 3 phút. Lưu ý: chỉ được thi <strong style="color:var(--gold);">một lần duy nhất</strong>.</p>
+    <!-- Realtime quiz status indicator -->
+    <div id="reg-quiz-status" style="display:none; align-items:center; gap:10px; padding:12px 16px; background:rgba(245,200,66,0.06); border:1px solid rgba(245,200,66,0.25); border-radius:8px; font-family:'Space Mono',monospace; font-size:0.8rem; color:var(--gold); margin-bottom:12px;">
+      <span style="font-size:1.1rem;">⏳</span>
+      <span>Quiz chưa mở. Vui lòng đợi Admin mở — trang sẽ tự cập nhật.</span>
+    </div>
     <div id="reg-error" style="color:var(--red);font-size:0.8rem;margin-bottom:12px;font-family:'Space Mono',monospace;display:none;"></div>
     <button class="btn btn-gold" id="btn-register-test1" onclick="handleRegister()">🎮 Bắt Đầu Thi Đấu 1 →</button>
     <button class="btn btn-outline" onclick="showPage('page-home')" style="margin-top:8px;">← Quay Lại</button>
@@ -1679,6 +1684,8 @@ function populateRegisterPage() {
   if (err) err.style.display = 'none';
   if (alreadyDoneEl) alreadyDoneEl.style.display = 'none';
   if (btn) btn.disabled = false;
+  // Áp dụng trạng thái quiz ngay khi vào trang
+  refreshQuizOpenUI();
   if (currentPlayer) {
     if (nameEl) nameEl.textContent = currentPlayer.name || mssv;
     if (mssvEl) mssvEl.textContent = 'MSSV: ' + (currentPlayer.mssv || mssv);
@@ -1791,17 +1798,20 @@ async function handleRegister() {
   const mssv = getLoggedInMssv();
   const err = document.getElementById('reg-error');
 
-  const quizDoc = await quizSettingsDoc.get();
-  const quizIsOpen = quizDoc.exists ? quizDoc.data().quizOpen : false;
-  
-  if (!quizIsOpen) {
+  // Dùng cachedQuizOpen (realtime listener cập nhật) thay vì get() bị cache stale
+  if (!cachedQuizOpen) {
     err.textContent = '⏳ Quiz chưa mở. Vui lòng đợi Admin mở.';
     err.style.display = 'block';
     return;
   }
 
-  // Get latest player data from Firestore
-  const playerDoc = await playersCollection.doc(mssv).get();
+  // Force đọc từ server để tránh stale cache
+  let playerDoc;
+  try {
+    playerDoc = await playersCollection.doc(mssv).get({ source: 'server' });
+  } catch(e) {
+    playerDoc = await playersCollection.doc(mssv).get();
+  }
   if (!playerDoc.exists) {
     err.textContent = '⚠ Tài khoản không tồn tại. Vui lòng đăng ký lại.';
     err.style.display = 'block';
@@ -2194,16 +2204,35 @@ async function adminCloseQuiz() {
 }
 
 function refreshQuizOpenUI() {
+  // Admin panel status
   const status = document.getElementById('admin-quiz-status');
-  if (!status) return;
-  if (cachedQuizOpen) {
-    status.textContent = '✅ Quiz đang MỞ – Người chơi có thể đăng ký';
-    status.style.borderColor = 'var(--green)';
-    status.style.color = 'var(--green)';
-  } else {
-    status.textContent = '🔒 Quiz đã ĐÓNG';
-    status.style.borderColor = 'rgba(245,200,66,0.3)';
-    status.style.color = 'var(--gold)';
+  if (status) {
+    if (cachedQuizOpen) {
+      status.textContent = '✅ Quiz đang MỞ – Người chơi có thể đăng ký';
+      status.style.borderColor = 'var(--green)';
+      status.style.color = 'var(--green)';
+    } else {
+      status.textContent = '🔒 Quiz đã ĐÓNG';
+      status.style.borderColor = 'rgba(245,200,66,0.3)';
+      status.style.color = 'var(--gold)';
+    }
+  }
+
+  // User register page: hiển thị trạng thái quiz và enable/disable nút
+  const quizStatusIndicator = document.getElementById('reg-quiz-status');
+  const startBtn = document.getElementById('btn-register-test1');
+  const alreadyDone = document.getElementById('reg-already-done');
+  const alreadyDoneVisible = alreadyDone && alreadyDone.style.display !== 'none';
+
+  if (quizStatusIndicator) {
+    if (cachedQuizOpen) {
+      quizStatusIndicator.style.display = 'none';
+    } else {
+      quizStatusIndicator.style.display = 'flex';
+    }
+  }
+  if (startBtn && !alreadyDoneVisible) {
+    startBtn.disabled = !cachedQuizOpen;
   }
 }
 
