@@ -1221,11 +1221,11 @@ let auctionState = {
   teamReview: {},
   finalResults: {},
   roundData: [
-    {gm:"Kasparov vs Topalov", ctx:"Wijk aan Zee 1999 · Nước 24", fen:"rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1", answer:"e5", range:"50–200"},
-    {gm:"Bobby Fischer vs Robert Byrne", ctx:"US Championship 1963 · Nước 11", fen:"rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2", answer:"Nf3", range:"50–200"},
-    {gm:"Mikhail Tal vs Vasily Smyslov", ctx:"Candidates 1959 · Nước 19", fen:"rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1", answer:"e5", range:"100–400"},
-    {gm:"Magnus Carlsen vs Viswanathan Anand", ctx:"World Championship 2013 · Game 5 · Nước 26", fen:"rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 1", answer:"d4", range:"100–400"},
-    {gm:"Judith Polgar vs Garry Kasparov", ctx:"Linares 1994 · Nước 28", fen:"rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1", answer:"e5", range:"200–500"},
+    {gm:"Bobby Fischer vs Boris Spassky", ctx:"World Championship 1972 · Sicilian Defense", fen:"rnbqkbnr/pp1ppppp/8/2p5/4P3/5N2/PPPP1PPP/RNBQKB1R b KQkq - 1 2", answer:"Nc6", range:"50–200"},
+    {gm:"José Raúl Capablanca vs Alexander Alekhine", ctx:"Buenos Aires 1927 · Ruy Lopez", fen:"r1bqkbnr/pppp1ppp/2n5/1B2p3/4P3/5N2/PPPP1PPP/RNBQK2R b KQkq - 3 3", answer:"a6", range:"50–200"},
+    {gm:"Wilhelm Steinitz vs Johannes Zukertort", ctx:"World Championship 1886 · Queen's Gambit", fen:"rnbqkbnr/ppp1pppp/8/3p4/2PP4/8/PP2PPPP/RNBQKBNR b KQkq - 0 2", answer:"dxc4", range:"100–400"},
+    {gm:"Garry Kasparov vs Anatoly Karpov", ctx:"World Championship 1985 · King's Indian", fen:"rnbq1rk1/ppp1ppbp/3p1np1/8/2PPP3/2N2N2/PP3PPP/R1BQKB1R w KQ - 1 7", answer:"dxe5", range:"100–400"},
+    {gm:"Magnus Carlsen vs Fabiano Caruana", ctx:"World Championship 2018 · French Defense", fen:"rnbqkbnr/pppp1ppp/4p3/8/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2", answer:"d4", range:"200–500"},
   ]
 };
 
@@ -1258,16 +1258,12 @@ function formatTime(seconds) {
 function fenToBoard(fen) {
   const board = [];
   const rows = fen.split(' ')[0].split('/');
-  const pieces = {
-    'p':'♟','r':'♜','n':'♞','b':'♝','q':'♛','k':'♚',
-    'P':'♙','R':'♖','N':'♘','B':'♗','Q':'♕','K':'♔'
-  };
   
   rows.forEach((row,rIdx) => {
     let col = 0;
     for (let char of row) {
       if (isNaN(char)) {
-        board.push({piece:pieces[char]||'',isLight:(rIdx+col)%2===0});
+        board.push({piece:char,isLight:(rIdx+col)%2===0});
         col++;
       } else {
         for (let i=0; i<parseInt(char); i++) {
@@ -1284,11 +1280,35 @@ function renderChessBoard(containerId, fen) {
   const container = document.getElementById(containerId);
   if (!container) return;
   const board = fenToBoard(fen);
+  const pieceImages = {
+    'P': 'https://lichess.org/static/lila-1/images/piece/merida/wP.svg',
+    'p': 'https://lichess.org/static/lila-1/images/piece/merida/bP.svg',
+    'R': 'https://lichess.org/static/lila-1/images/piece/merida/wR.svg',
+    'r': 'https://lichess.org/static/lila-1/images/piece/merida/bR.svg',
+    'N': 'https://lichess.org/static/lila-1/images/piece/merida/wN.svg',
+    'n': 'https://lichess.org/static/lila-1/images/piece/merida/bN.svg',
+    'B': 'https://lichess.org/static/lila-1/images/piece/merida/wB.svg',
+    'b': 'https://lichess.org/static/lila-1/images/piece/merida/bB.svg',
+    'Q': 'https://lichess.org/static/lila-1/images/piece/merida/wQ.svg',
+    'q': 'https://lichess.org/static/lila-1/images/piece/merida/bQ.svg',
+    'K': 'https://lichess.org/static/lila-1/images/piece/merida/wK.svg',
+    'k': 'https://lichess.org/static/lila-1/images/piece/merida/bK.svg'
+  };
   container.innerHTML = '';
   board.forEach(sq => {
     const div = document.createElement('div');
     div.className = 'chess-square' + (sq.isLight ? '' : ' dark');
-    div.textContent = sq.piece;
+    if (sq.piece) {
+      const img = document.createElement('img');
+      img.src = pieceImages[sq.piece];
+      img.style.width = '100%';
+      img.style.height = '100%';
+      img.style.objectFit = 'contain';
+      img.style.pointerEvents = 'none';
+      img.alt = sq.piece;
+      img.draggable = false;
+      div.appendChild(img);
+    }
     container.appendChild(div);
   });
 }
