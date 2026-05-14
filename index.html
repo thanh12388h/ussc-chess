@@ -664,6 +664,33 @@ function parseFen(fen) {
   return pos;
 }
 
+function getSideToMove(fen) {
+  if (!fen) return '—';
+  const parts = fen.trim().split(' ');
+  if (parts.length < 2) return '—';
+  return parts[1] === 'w' ? 'Trắng đi' : 'Đen đi';
+}
+
+async function getUserTeamName(mssv) {
+  if (!mssv) return null;
+  const teams = await getTeams();
+  const team = teams.find(t => Array.isArray(t.members) && t.members.some(m => m.mssv === mssv));
+  return team ? team.name : null;
+}
+
+async function refreshHomeTeamInfo() {
+  const teamTag = document.getElementById('home-team-tag');
+  const mssv = getLoggedInMssv();
+  if (!teamTag || !mssv) return;
+  const teamName = await getUserTeamName(mssv);
+  if (teamName) {
+    teamTag.textContent = `Nhóm của bạn: ${teamName}`;
+    teamTag.style.display = 'block';
+  } else {
+    teamTag.style.display = 'none';
+  }
+}
+
 function renderChessBoardSVG(containerId, fen, size = 320) {
   const container = document.getElementById(containerId);
   if (!container) return;
@@ -826,6 +853,7 @@ function renderChessBoardSVG(containerId, fen, size = 320) {
       <button class="btn btn-outline mt-16" onclick="showPage('page-account-login')" style="margin-top:10px">🔐 Đăng Nhập Tài Khoản</button>
     </div>
     <div id="home-logged-in" style="display:none;">
+      <div id="home-team-tag" style="font-size:0.85rem; color:var(--gold); margin-top:12px; font-family:'Space Mono',monospace; display:none;">Nhóm của bạn: —</div>
       <div id="home-test1-section">
         <button class="btn btn-gold mt-16" id="btn-start-test1" onclick="handleStartTest1()">🎮 Bắt Đầu Thi Đấu 1</button>
       </div>
@@ -1008,6 +1036,7 @@ function renderChessBoardSVG(containerId, fen, size = 320) {
       <div class="round-badge" id="player-round-badge">VÒNG 1 / 5</div>
       <div class="logo" style="font-size:1.4rem; margin-bottom:8px;">Thế Cờ Đấu Giá</div>
       <div style="font-family:'Space Mono',monospace; font-size:0.8rem; color:var(--muted);" id="player-team-info">Nhóm: ?</div>
+      <div style="font-family:'Space Mono',monospace; font-size:0.8rem; color:var(--gold); margin-top:6px;" id="player-side-to-move">Gợi ý: —</div>
     </div>
 
     <div id="player-result-notification" style="display:none; padding:14px 16px; background:linear-gradient(135deg,rgba(46,204,113,0.15),rgba(52,152,219,0.15)); border:1px solid var(--green); border-radius:10px; margin-bottom:16px; text-align:center; animation:slideDown 0.4s ease;">
@@ -1025,24 +1054,22 @@ function renderChessBoardSVG(containerId, fen, size = 320) {
     </div>
     <div class="bet-controls">
       <input type="number" id="player-bet-input" class="bet-input" min="50" max="500" value="50" placeholder="Số tiền cược">
-      <button class="btn btn-blue btn-sm" onclick="placeAuctionBid()">💰 Cược</button>
-      <button class="btn btn-outline btn-sm" onclick="passAuctionBid()">⛔ Pass</button>
+      <button class="btn btn-blue btn-sm" id="player-bet-btn" onclick="placeAuctionBid()">💰 Cược</button>
+      <button class="btn btn-outline btn-sm" id="player-pass-btn" onclick="passAuctionBid()">⛔ Pass</button>
     </div>
     <div id="player-bid-status" style="font-size:0.85rem; color:var(--muted); font-family:'Space Mono',monospace; margin-bottom:16px; text-align:center;">
-      Chưa đặt cược. Vui lòng bet hoặc pass khi phiên đấu giá bắt đầu.
+      Chưa đặt cược. Vui lòng nhập nước đi và bấm Cược hoặc bấm Pass khi phiên đấu giá bắt đầu.
     </div>
 
     <hr class="divider">
 
     <div class="answer-input-group">
-      <label>🎯 NHẬP ĐÁP ÁN (Ký hiệu cờ vua, vd: e4, Nf3, O-O, Kh8, ...)</label>
+      <label>🎯 NHẬP NƯỚC ĐI KHI CƯỢC (Vd: e4, Nf3, O-O, Kh8, ...)</label>
       <input type="text" id="player-answer-input" class="answer-input" placeholder="Vd: e4" autocomplete="off" maxlength="8">
       <div style="font-size:0.7rem; color:var(--muted); margin-top:6px; font-family:'Space Mono',monospace;">
         ✓ Nước đi hợp lệ: e4, e5, Nf3, Nf6, O-O (nhập thành), O-O-O (nhập thành dài), Kh8, Qd4, ...
       </div>
     </div>
-
-    <button class="btn btn-gold" onclick="submitAuctionAnswer()" style="margin-top:16px;">✅ Nộp Đáp Án</button>
 
     <div id="player-round-result" class="result-card" style="display:none; margin-top:20px; border:2px solid var(--green);">
       <div style="font-size:0.9rem; color:var(--muted); text-transform:uppercase; letter-spacing:0.15em;">Kết quả vòng</div>
@@ -1365,6 +1392,29 @@ function startRealtimeListeners() {
     });
   }
 
+  // Team membership listener — update both admin and user team info
+  if (!teamsUnsubscribe) {
+    teamsUnsubscribe = teamsCollection.onSnapshot(() => {
+      if (isLoggedIn()) {
+        refreshHomeTeamInfo();
+      }
+      if (document.getElementById('page-register2')?.classList.contains('active')) {
+        populateRegister2Page();
+      }
+      if (isAdminLoggedIn) {
+        if (document.getElementById('page-admin')?.classList.contains('active')) {
+          adminRefreshTeams();
+        }
+        if (document.getElementById('page-leaderboard')?.classList.contains('active')) {
+          renderLeaderboard();
+        }
+        if (document.getElementById('admin-tab-auction')?.style.display !== 'none') {
+          renderTeamBidList();
+        }
+      }
+    });
+  }
+
   realtimeListenersStarted = true;
 
   // Admin-only listeners
@@ -1379,20 +1429,6 @@ function startRealtimeListeners() {
         renderLeaderboard();
       }
       updateAdminStats();
-    });
-  }
-
-  if (!teamsUnsubscribe) {
-    teamsUnsubscribe = teamsCollection.onSnapshot(() => {
-      if (document.getElementById('page-admin')?.classList.contains('active')) {
-        adminRefreshTeams();
-      }
-      if (document.getElementById('page-leaderboard')?.classList.contains('active')) {
-        renderLeaderboard();
-      }
-      if (document.getElementById('admin-tab-auction')?.style.display !== 'none') {
-        renderTeamBidList();
-      }
     });
   }
 }
@@ -1549,6 +1585,7 @@ function refreshHomeUI() {
         btnTest1.style.border = '';
       }
     }
+    refreshHomeTeamInfo();
   } else {
     if (notLoggedIn) notLoggedIn.style.display = 'block';
     if (loggedIn) loggedIn.style.display = 'none';
@@ -2001,6 +2038,13 @@ function populateRegister2Page() {
       }
     }
   });
+
+  // If admin đã ghép nhóm, tự động điền tên nhóm hiện tại
+  if (teamInputEl && !teamInputEl.value) {
+    getUserTeamName(mssv).then(teamName => {
+      if (teamName) teamInputEl.value = teamName;
+    }).catch(() => {});
+  }
 }
 
 function formatTime(seconds) {
@@ -2281,14 +2325,26 @@ function startAuctionPlayer() {
     return;
   }
   const rd = auctionState.roundData[auctionState.round];
+  const team = currentTest2Player?.team;
+  if (!team) {
+    alert('⚠ Không tìm thấy nhóm của bạn. Vui lòng đăng ký lại hoặc liên hệ Admin.');
+    showPage('page-register2');
+    return;
+  }
   const badge = document.getElementById('player-round-badge');
   if (badge) badge.textContent = `VÒNG ${auctionState.round + 1} / ${auctionState.roundData.length}`;
   
   const teamInfo = document.getElementById('player-team-info');
-  if (teamInfo) teamInfo.textContent = `Nhóm: ${currentTest2Player.team}`;
+  if (teamInfo) teamInfo.textContent = `Nhóm: ${team}`;
   
-  document.getElementById('player-answer-input').value = '';
-  document.getElementById('player-answer-input').className = 'answer-input';
+  const sideHint = document.getElementById('player-side-to-move');
+  if (sideHint) sideHint.textContent = `Gợi ý: ${getSideToMove(rd.fen)}`;
+  
+  const answerInput = document.getElementById('player-answer-input');
+  if (answerInput) {
+    answerInput.value = '';
+    answerInput.className = 'answer-input';
+  }
   renderChessBoardSVG('player-chess-board', rd.fen, 320);
   showPage('page-auction-player');
   renderAuctionPlayerState();
@@ -2296,7 +2352,8 @@ function startAuctionPlayer() {
 
 async function placeAuctionBid() {
   if (!auctionState.running) { alert('⚠ Phiên đấu giá chưa bắt đầu hoặc đã dừng.'); return; }
-  const team = currentTest2Player.team;
+  const team = currentTest2Player?.team;
+  if (!team) { alert('⚠ Lỗi: không tìm thấy nhóm của bạn.'); return; }
   // Check if the player has already placed a bid or passed in this round
   if (auctionState.bids[team] && (auctionState.bids[team].amount > 0 || auctionState.bids[team].passed)) {
     alert('⚠ Bạn đã đặt cược hoặc pass trong vòng này rồi.');
@@ -2304,7 +2361,13 @@ async function placeAuctionBid() {
   }
 
   const amount = parseInt(document.getElementById('player-bet-input').value) || 0;
-  
+  const answerInput = document.getElementById('player-answer-input');
+  const answer = answerInput?.value.trim().toUpperCase() || '';
+  if (!answer) {
+    alert('⚠ Vui lòng nhập nước đi trước khi bấm Cược.');
+    return;
+  }
+
   const rd = auctionState.roundData[auctionState.round];
   const parts = rd.range.split('–');
   const minBet = parseInt(parts[0]) || 50;
@@ -2319,14 +2382,17 @@ async function placeAuctionBid() {
   }
   
   auctionState.bids[team] = { amount, passed: false };
+  auctionState.answers[team] = answer;
   auctionState.teamReview[team] = { status: 'auto', delta: 0 };
   await auctionStateDoc.set(auctionState, { merge: true });
   renderAuctionPlayerState();
+  alert('✅ Bạn đã cược và nộp nước đi. Hành động đã khóa, chờ kết quả.');
 }
 
 async function passAuctionBid() {
   if (!auctionState.running) { alert('⚠ Phiên đấu giá chưa bắt đầu hoặc đã dừng.'); return; }
-  const team = currentTest2Player.team;
+  const team = currentTest2Player?.team;
+  if (!team) { alert('⚠ Lỗi: không tìm thấy nhóm của bạn.'); return; }
   // Check if the player has already placed a bid or passed in this round
   if (auctionState.bids[team] && (auctionState.bids[team].amount > 0 || auctionState.bids[team].passed)) {
     alert('⚠ Bạn đã đặt cược hoặc pass trong vòng này rồi.');
@@ -2334,33 +2400,11 @@ async function passAuctionBid() {
   }
 
   auctionState.bids[team] = { amount: 0, passed: true };
+  auctionState.answers[team] = '';
   auctionState.teamReview[team] = { status: 'pass', delta: 0 };
   await auctionStateDoc.set(auctionState, { merge: true });
   renderAuctionPlayerState();
-}
-
-async function submitAuctionAnswer() {
-  if (!auctionState.running) { alert('⚠ Phiên đấu giá chưa bắt đầu hoặc đã dừng.'); return; }
-  const team = currentTest2Player.team;
-  // Check if the team has already made a bid or passed
-  if (!auctionState.bids[team] || (!auctionState.bids[team].amount > 0 && !auctionState.bids[team].passed)) {
-    alert('⚠ Vui lòng đặt cược hoặc pass trước khi nộp đáp án.');
-    return;
-  }
-  if (auctionState.bids[team].passed) {
-    alert('⚠ Bạn đã chọn PASS, không thể nộp đáp án.');
-    return;
-  }
-
-  const input = document.getElementById('player-answer-input');
-  const answer = input.value.trim().toUpperCase();
-  if (!answer) { alert('⚠ Vui lòng nhập đáp án'); return; }
-
-  auctionState.answers[currentTest2Player.team] = answer;
-  // Do not set teamReview status here, it should be done by admin or in publishAuctionResults based on answer
-  await auctionStateDoc.set(auctionState, { merge: true });
-  renderAuctionPlayerState();
-  alert('✅ Đã nộp đáp án. Kết quả sẽ hiện khi Admin chốt vòng.');
+  alert('✅ Bạn đã chọn PASS. Hành động đã khóa, chờ kết quả.');
 }
 
 function renderAuctionPlayerState() {
@@ -2371,17 +2415,41 @@ function renderAuctionPlayerState() {
   const rd = auctionState.roundData[auctionState.round] || auctionState.roundData[0];
   const answerInput = document.getElementById('player-answer-input');
   const bidInput = document.getElementById('player-bet-input');
+  const betBtn = document.getElementById('player-bet-btn');
+  const passBtn = document.getElementById('player-pass-btn');
+  const teamInfo = document.getElementById('player-team-info');
+  const sideHint = document.getElementById('player-side-to-move');
   const team = currentTest2Player?.team;
   
   if (timerEl) timerEl.textContent = formatTime(auctionState.timeLeft);
+  if (rd && document.getElementById('player-chess-board')) {
+    renderChessBoardSVG('player-chess-board', rd.fen, 320);
+  }
+  if (teamInfo) teamInfo.textContent = `Nhóm: ${team || '—'}`;
+  if (sideHint) sideHint.textContent = `Gợi ý: ${getSideToMove(rd?.fen)}`;
+  if (document.getElementById('player-round-badge')) {
+    document.getElementById('player-round-badge').textContent = `VÒNG ${Math.min(auctionState.round + 1, auctionState.roundData.length)} / ${auctionState.roundData.length}`;
+  }
 
-  if (!team) return;
-  const bid = auctionState.bids[team];
+  const isActionLocked = !auctionState.running || auctionState.review || auctionState.finalized;
+  const bid = team ? auctionState.bids[team] : null;
+  const hasActed = bid && (bid.passed || bid.amount > 0);
+
+  if (!team) {
+    statusEl.textContent = '⚠ Không tìm thấy nhóm của bạn. Vui lòng đăng ký lại hoặc liên hệ Admin.';
+    if (answerInput) answerInput.disabled = true;
+    if (bidInput) bidInput.disabled = true;
+    if (betBtn) betBtn.disabled = true;
+    if (passBtn) passBtn.disabled = true;
+    return;
+  }
+
   if (auctionState.finalized) {
     statusEl.textContent = 'Phiên đấu giá đã chốt. Kết quả được hiển thị bên dưới.';
     if (answerInput) answerInput.disabled = true;
     if (bidInput) bidInput.disabled = true;
-    // Show notification if results just finalized
+    if (betBtn) betBtn.disabled = true;
+    if (passBtn) passBtn.disabled = true;
     if (resultNotif && resultNotif.style.display === 'none') {
       resultNotif.style.display = 'block';
       resultNotif.style.animation = 'slideDown 0.4s ease';
@@ -2390,19 +2458,33 @@ function renderAuctionPlayerState() {
       }, 500);
     }
   } else if (auctionState.running) {
-    statusEl.textContent = bid ? (bid.passed ? 'Bạn đã chọn PASS.' : `Bạn đã cược ${bid.amount} ĐP.`) : 'Phiên đấu giá đang diễn ra. Vui lòng đặt cược và nộp đáp án.';
-    if (answerInput) answerInput.disabled = false;
-    if (bidInput) bidInput.disabled = false;
+    if (hasActed) {
+      statusEl.textContent = bid.passed ? 'Bạn đã chọn PASS. Hành động đã khóa.' : `Bạn đã cược ${bid.amount} ĐP và nộp nước đi. Hành động đã khóa.`;
+      if (answerInput) answerInput.disabled = true;
+      if (bidInput) bidInput.disabled = true;
+      if (betBtn) betBtn.disabled = true;
+      if (passBtn) passBtn.disabled = true;
+    } else {
+      statusEl.textContent = 'Phiên đấu giá đang diễn ra. Nhập nước đi và bấm Cược hoặc bấm Pass.';
+      if (answerInput) answerInput.disabled = false;
+      if (bidInput) bidInput.disabled = false;
+      if (betBtn) betBtn.disabled = false;
+      if (passBtn) passBtn.disabled = false;
+    }
     if (resultNotif) resultNotif.style.display = 'none';
   } else if (auctionState.review) {
     statusEl.textContent = 'Phiên đã dừng, chờ Admin chốt kết quả.';
     if (answerInput) answerInput.disabled = true;
     if (bidInput) bidInput.disabled = true;
+    if (betBtn) betBtn.disabled = true;
+    if (passBtn) passBtn.disabled = true;
     if (resultNotif) resultNotif.style.display = 'none';
   } else {
     statusEl.textContent = 'Chờ Admin bắt đầu phiên đấu giá.';
     if (answerInput) answerInput.disabled = true;
     if (bidInput) bidInput.disabled = true;
+    if (betBtn) betBtn.disabled = true;
+    if (passBtn) passBtn.disabled = true;
     if (resultNotif) resultNotif.style.display = 'none';
   }
 
@@ -2600,6 +2682,7 @@ async function clearAllData() {
 // ADMIN – TEAMS
 // ============================================================
 async function autoGroupTeams() {
+  await deleteAllTeams();
   const players = await getPlayers();
   const sorted = players.sort((a,b) => b.score-a.score);
   if (sorted.length < 3) { document.getElementById('group-result').textContent = '⚠ Cần ít nhất 3 người chơi!'; return; }
@@ -3233,7 +3316,6 @@ window.populateRegister2Page = populateRegister2Page;
 window.skipQuestion = skipQuestion;
 window.placeAuctionBid = placeAuctionBid;
 window.passAuctionBid = passAuctionBid;
-window.submitAuctionAnswer = submitAuctionAnswer;
 window.renderLeaderboard = renderLeaderboard;
 window.adminRefreshPlayers = adminRefreshPlayers;
 window.adminRefreshTeams = adminRefreshTeams;
