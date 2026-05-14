@@ -1158,10 +1158,7 @@ let quizUnsubscribe = null;
 let realtimeListenersStarted = false;
 
 function startRealtimeListeners() {
-  if (realtimeListenersStarted) return;
-  realtimeListenersStarted = true;
-
-  // Listen to quiz settings - for all users
+  // Quiz settings listener — always active for ALL users
   if (!quizUnsubscribe) {
     quizUnsubscribe = quizSettingsDoc.onSnapshot((doc) => {
       if (doc.exists) {
@@ -1171,45 +1168,53 @@ function startRealtimeListeners() {
     });
   }
 
-  // Only start other listeners if admin is logged in
+  // Auction state listener — always active for ALL users (needed for auction player page)
+  if (!auctionUnsubscribe) {
+    auctionUnsubscribe = auctionStateDoc.onSnapshot((doc) => {
+      if (doc.exists) {
+        auctionState = { ...auctionState, ...doc.data() };
+      }
+      updateAuctionStatus();
+      if (document.getElementById('page-auction-player')?.classList.contains('active')) {
+        renderAuctionPlayerState();
+      }
+      // Only render admin-side bid list if admin
+      if (isAdminLoggedIn) {
+        renderTeamBidList();
+      }
+    });
+  }
+
+  realtimeListenersStarted = true;
+
+  // Admin-only listeners
   if (!isAdminLoggedIn) return;
 
-  // Listen to players collection
-  playersUnsubscribe = playersCollection.onSnapshot((snapshot) => {
+  if (!playersUnsubscribe) {
+    playersUnsubscribe = playersCollection.onSnapshot(() => {
+      if (document.getElementById('page-admin')?.classList.contains('active')) {
+        adminRefreshPlayers();
+      }
+      if (document.getElementById('page-leaderboard')?.classList.contains('active')) {
+        renderLeaderboard();
+      }
+      updateAdminStats();
+    });
+  }
 
-    if (document.getElementById('page-admin')?.classList.contains('active')) {
-      adminRefreshPlayers();
-    }
-    if (document.getElementById('page-leaderboard')?.classList.contains('active')) {
-      renderLeaderboard();
-    }
-    updateAdminStats();
-  });
-  
-  // Listen to teams collection
-  teamsUnsubscribe = teamsCollection.onSnapshot((snapshot) => {
-    if (document.getElementById('page-admin')?.classList.contains('active')) {
-      adminRefreshTeams();
-    }
-    if (document.getElementById('page-leaderboard')?.classList.contains('active')) {
-      renderLeaderboard();
-    }
-    if (document.getElementById('admin-tab-auction')?.style.display !== 'none') {
-      renderTeamBidList();
-    }
-  });
-  
-  // Listen to auction state
-  auctionUnsubscribe = auctionStateDoc.onSnapshot((doc) => {
-    if (doc.exists) {
-      auctionState = doc.data();
-    }
-    renderTeamBidList();
-    updateAuctionStatus();
-    if (document.getElementById('page-auction-player')?.classList.contains('active')) {
-      renderAuctionPlayerState();
-    }
-  });
+  if (!teamsUnsubscribe) {
+    teamsUnsubscribe = teamsCollection.onSnapshot(() => {
+      if (document.getElementById('page-admin')?.classList.contains('active')) {
+        adminRefreshTeams();
+      }
+      if (document.getElementById('page-leaderboard')?.classList.contains('active')) {
+        renderLeaderboard();
+      }
+      if (document.getElementById('admin-tab-auction')?.style.display !== 'none') {
+        renderTeamBidList();
+      }
+    });
+  }
 }
 
 function stopRealtimeListeners() {
@@ -2742,9 +2747,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   } else {
     await auctionStateDoc.set(auctionState);
   }
-  if (isAdminLoggedIn) {
-    startRealtimeListeners();
-  }
+
+  // Always start listeners for ALL users (quiz open status + auction state)
+  startRealtimeListeners();
   
   updateAuctionStatus();
   renderTeamBidList();
