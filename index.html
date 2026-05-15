@@ -710,22 +710,19 @@ const totalImages = Object.keys(PIECE_ASSETS).length;
 // Preload tất cả hình ảnh
 function preloadChessImages() {
   return new Promise((resolve) => {
+    let loaded = 0;
+    const total = Object.keys(PIECE_ASSETS).length;
     Object.entries(PIECE_ASSETS).forEach(([key, url]) => {
       const img = new Image();
       img.src = url;
       img.onload = () => {
-        imagesLoadedCount++;
-        if (imagesLoadedCount === totalImages) {
-          console.log('✅ All chess pieces loaded');
-          resolve();
-        }
+        imageCache[key] = img;
+        if (++loaded === total) resolve();
       };
       img.onerror = () => {
-        console.warn(`⚠ Failed to load: ${url}`);
-        imagesLoadedCount++;
-        if (imagesLoadedCount === totalImages) resolve();
+        console.error("Lỗi nạp ảnh quân cờ:", url);
+        if (++loaded === total) resolve();
       };
-      imageCache[key] = img;
     });
   });
 }
@@ -969,16 +966,11 @@ const chessBoards = {};
 
 // Main render function (compatible with old renderChessBoardSVG)
 async function renderChessBoard(containerId, fen, size = 320, options = {}) {
-  // Ensure images are preloaded
-  if (imagesLoadedCount < totalImages) {
-    await preloadChessImages();
-  }
+  // Đợi nạp ảnh xong để tránh lỗi 'broken' state
+  await preloadChessImages(); 
   
   const container = document.getElementById(containerId);
-  if (!container) {
-    console.warn(`Container #${containerId} not found`);
-    return;
-  }
+  if (!container) return;
   
   if (chessBoards[containerId]) {
     chessBoards[containerId].updateFen(fen, options);
