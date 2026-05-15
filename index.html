@@ -709,104 +709,92 @@ async function refreshHomeTeamInfo() {
 function renderChessBoardSVG(containerId, fen, size = 320) {
   const container = document.getElementById(containerId);
   if (!container) return;
-  
+
   const pos = parseFen(fen);
-  const sq = size / 8;
   const files = ["a","b","c","d","e","f","g","h"];
   const ranks = ["8","7","6","5","4","3","2","1"];
-  
+  const pieceSymbols = {
+    wP: '♙', wN: '♘', wB: '♗', wR: '♖', wQ: '♕', wK: '♔',
+    bP: '♟', bN: '♞', bB: '♝', bR: '♜', bQ: '♛', bK: '♚',
+  };
+
   container.innerHTML = '';
   container.style.cssText = `
-    display: inline-block;
+    width: ${size}px;
+    height: ${size}px;
+    max-width: ${size}px;
+    display: grid;
+    grid-template-columns: repeat(8, 1fr);
+    grid-template-rows: repeat(8, 1fr);
     border: 4px solid #3d2b1f;
-    border-radius: 4px;
+    border-radius: 12px;
     overflow: hidden;
+    background: #3d2b1f;
     box-shadow: 0 8px 20px rgba(0,0,0,0.3);
     user-select: none;
   `;
-  
-  const boardDiv = document.createElement('div');
-  boardDiv.style.cssText = `position: relative; width: ${size}px; height: ${size}px;`;
-  
+
   ranks.forEach((rank, ri) => {
-    const rowDiv = document.createElement('div');
-    rowDiv.style.display = 'flex';
-    
     files.forEach((file, fi) => {
       const square = file + rank;
       const piece = pos[square];
       const isLight = (ri + fi) % 2 === 0;
-      const bgColor = isLight ? "#f0d9b5" : "#b58863";
-      
       const squareDiv = document.createElement('div');
+      squareDiv.className = `chess-square${isLight ? '' : ' dark'}`;
       squareDiv.style.cssText = `
-        width: ${sq}px;
-        height: ${sq}px;
-        background: ${bgColor};
+        position: relative;
+        width: 100%;
+        height: 100%;
+        background: ${isLight ? '#f0d9b5' : '#b58863'};
         display: flex;
         align-items: center;
         justify-content: center;
-        position: relative;
       `;
-      
-      // Thêm tọa độ nhỏ ở góc (giống Lichess)
-      if (fi === 0) {
-        const coord = document.createElement('span');
-        coord.style.cssText = `
-          position: absolute;
-          left: 2px;
-          top: 2px;
-          font-size: 10px;
-          color: ${isLight ? "#b58863" : "#f0d9b5"};
-          font-weight: bold;
-          font-family: 'Space Mono', monospace;
-        `;
-        coord.textContent = rank;
-        squareDiv.appendChild(coord);
-      }
-      
-      if (ri === 7) {
-        const coord = document.createElement('span');
-        coord.style.cssText = `
-          position: absolute;
-          right: 2px;
-          bottom: 2px;
-          font-size: 10px;
-          color: ${isLight ? "#b58863" : "#f0d9b5"};
-          font-weight: bold;
-          font-family: 'Space Mono', monospace;
-        `;
-        coord.textContent = file;
-        squareDiv.appendChild(coord);
-      }
-      
-      // Render quân cờ bằng SVG
-      if (piece && PIECE_SVG[piece]) {
-        const img = document.createElement('img');
-        img.src = PIECE_SVG[piece];
-        img.alt = piece;
-        img.style.cssText = `
-          width: 90%;
-          height: 90%;
-          filter: drop-shadow(0 2px 2px rgba(0,0,0,0.3));
+
+      if (piece) {
+        const pieceSpan = document.createElement('span');
+        pieceSpan.textContent = pieceSymbols[piece] || '';
+        pieceSpan.style.cssText = `
+          font-size: ${Math.floor(size / 7)}px;
+          line-height: 1;
+          color: ${piece[0] === 'w' ? '#ffffff' : '#1b1b1b'};
+          text-shadow: 0 0 4px rgba(0,0,0,0.25);
           pointer-events: none;
         `;
-        img.onerror = () => {
-          img.remove();
-          const fallback = document.createElement('span');
-          fallback.textContent = piece[1];
-          fallback.style.cssText = `font-size: 1.4rem; color: ${piece[0] === 'w' ? '#fff' : '#000'};`;
-          squareDiv.appendChild(fallback);
-        };
-        squareDiv.appendChild(img);
+        squareDiv.appendChild(pieceSpan);
       }
-      
-      rowDiv.appendChild(squareDiv);
+
+      if (fi === 0) {
+        const rankLabel = document.createElement('span');
+        rankLabel.textContent = rank;
+        rankLabel.style.cssText = `
+          position: absolute;
+          left: 4px;
+          top: 4px;
+          font-size: 10px;
+          color: rgba(255,255,255,0.8);
+          font-family: 'Space Mono', monospace;
+        `;
+        squareDiv.appendChild(rankLabel);
+      }
+
+      if (ri === 7) {
+        const fileLabel = document.createElement('span');
+        fileLabel.textContent = file;
+        fileLabel.style.cssText = `
+          position: absolute;
+          right: 4px;
+          bottom: 4px;
+          font-size: 10px;
+          color: rgba(255,255,255,0.8);
+          font-family: 'Space Mono', monospace;
+        `;
+        squareDiv.appendChild(fileLabel);
+      }
+
+      container.appendChild(squareDiv);
     });
-    boardDiv.appendChild(rowDiv);
   });
-  
-  container.appendChild(boardDiv);
 }
 </script>
 
@@ -2374,7 +2362,7 @@ async function startAuctionPlayer() {
 
 async function placeAuctionBid() {
   if (!auctionState.running) { alert('⚠ Phiên đấu giá chưa bắt đầu hoặc đã dừng.'); return; }
-  const team = await resolveCurrentUserTeam();
+  const team = (await resolveCurrentUserTeam())?.trim();
   if (!team) { alert('⚠ Lỗi: không tìm thấy nhóm của bạn.'); return; }
   const bidRecord = auctionState.bids?.[team];
   if (bidRecord && (bidRecord.amount > 0 || bidRecord.passed)) {
@@ -2382,8 +2370,11 @@ async function placeAuctionBid() {
     return;
   }
 
-  const amount = parseInt(document.getElementById('player-bet-input').value) || 0;
+  const bidInput = document.getElementById('player-bet-input');
   const answerInput = document.getElementById('player-answer-input');
+  const betBtn = document.getElementById('player-bet-btn');
+  const passBtn = document.getElementById('player-pass-btn');
+  const amount = parseInt(bidInput?.value) || 0;
   const answer = answerInput?.value.trim().toUpperCase() || '';
   if (!answer) {
     alert('⚠ Vui lòng nhập nước đi trước khi bấm Cược.');
@@ -2402,21 +2393,38 @@ async function placeAuctionBid() {
     alert(`Cược phải từ ${minBet} đến ${maxBet} ĐP (Tổng điểm hiện tại của nhóm: ${teamData?.totalScore || 0})`);
     return;
   }
-  
+
   auctionState.bids = auctionState.bids || {};
   auctionState.answers = auctionState.answers || {};
   auctionState.teamReview = auctionState.teamReview || {};
   auctionState.bids[team] = { amount, passed: false };
   auctionState.answers[team] = answer;
   auctionState.teamReview[team] = { status: 'auto', delta: 0 };
-  await auctionStateDoc.set(auctionState, { merge: true });
+
+  if (answerInput) answerInput.disabled = true;
+  if (bidInput) bidInput.disabled = true;
+  if (betBtn) betBtn.disabled = true;
+  if (passBtn) passBtn.disabled = true;
   renderAuctionPlayerState();
-  alert('✅ Bạn đã cược và nộp nước đi. Hành động đã khóa, chờ kết quả.');
+
+  try {
+    await auctionStateDoc.set(auctionState, { merge: true });
+    renderAuctionPlayerState();
+    alert('✅ Bạn đã cược và nộp nước đi. Hành động đã khóa, chờ kết quả.');
+  } catch (e) {
+    console.error('placeAuctionBid error:', e);
+    if (answerInput) answerInput.disabled = false;
+    if (bidInput) bidInput.disabled = false;
+    if (betBtn) betBtn.disabled = false;
+    if (passBtn) passBtn.disabled = false;
+    renderAuctionPlayerState();
+    alert('❌ Lỗi khi gửi cược. Vui lòng thử lại.');
+  }
 }
 
 async function passAuctionBid() {
   if (!auctionState.running) { alert('⚠ Phiên đấu giá chưa bắt đầu hoặc đã dừng.'); return; }
-  const team = await resolveCurrentUserTeam();
+  const team = (await resolveCurrentUserTeam())?.trim();
   if (!team) { alert('⚠ Lỗi: không tìm thấy nhóm của bạn.'); return; }
   const bidRecord = auctionState.bids?.[team];
   if (bidRecord && (bidRecord.amount > 0 || bidRecord.passed)) {
@@ -2424,15 +2432,37 @@ async function passAuctionBid() {
     return;
   }
 
+  const answerInput = document.getElementById('player-answer-input');
+  const bidInput = document.getElementById('player-bet-input');
+  const betBtn = document.getElementById('player-bet-btn');
+  const passBtn = document.getElementById('player-pass-btn');
+
   auctionState.bids = auctionState.bids || {};
   auctionState.answers = auctionState.answers || {};
   auctionState.teamReview = auctionState.teamReview || {};
   auctionState.bids[team] = { amount: 0, passed: true };
   auctionState.answers[team] = '';
   auctionState.teamReview[team] = { status: 'pass', delta: 0 };
-  await auctionStateDoc.set(auctionState, { merge: true });
+
+  if (answerInput) answerInput.disabled = true;
+  if (bidInput) bidInput.disabled = true;
+  if (betBtn) betBtn.disabled = true;
+  if (passBtn) passBtn.disabled = true;
   renderAuctionPlayerState();
-  alert('✅ Bạn đã chọn PASS. Hành động đã khóa, chờ kết quả.');
+
+  try {
+    await auctionStateDoc.set(auctionState, { merge: true });
+    renderAuctionPlayerState();
+    alert('✅ Bạn đã chọn PASS. Hành động đã khóa, chờ kết quả.');
+  } catch (e) {
+    console.error('passAuctionBid error:', e);
+    if (answerInput) answerInput.disabled = false;
+    if (bidInput) bidInput.disabled = false;
+    if (betBtn) betBtn.disabled = false;
+    if (passBtn) passBtn.disabled = false;
+    renderAuctionPlayerState();
+    alert('❌ Lỗi khi gửi PASS. Vui lòng thử lại.');
+  }
 }
 
 function renderAuctionPlayerState() {
@@ -2447,7 +2477,7 @@ function renderAuctionPlayerState() {
   const passBtn = document.getElementById('player-pass-btn');
   const teamInfo = document.getElementById('player-team-info');
   const sideHint = document.getElementById('player-side-to-move');
-  const team = currentTest2Player?.team;
+  const team = currentTest2Player?.team?.trim();
   
   if (timerEl) timerEl.textContent = formatTime(auctionState.timeLeft);
   if (rd && document.getElementById('player-chess-board')) {
