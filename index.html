@@ -2697,7 +2697,13 @@ async function startAuctionPlayer() {
 // Thêm biến toàn cục để track trạng thái action của từng team
 const teamActionLocked = new Set(); // Lưu các team đã hành động trong vòng này
 
+// Khai báo biến toàn cục (đặt ở ngoài các hàm)
+let isSubmitting = false;
+
 async function placeAuctionBid() {
+  // --- CHỐNG SPAM: Chặn ngay lập tức nếu đang trong quá trình gửi ---
+  if (isSubmitting) return;
+
   if (!auctionState.running) { 
     alert('⚠ Phiên đấu giá chưa bắt đầu hoặc đã dừng.'); 
     return; 
@@ -2744,6 +2750,9 @@ async function placeAuctionBid() {
     return;
   }
 
+  // --- BẬT TRẠNG THÁI ĐANG GỬI ---
+  isSubmitting = true;
+
   // LOCK NGAY LẬP TỨC - KHÔNG CHỜ SERVER
   teamActionLocked.add(team);
   
@@ -2775,10 +2784,16 @@ async function placeAuctionBid() {
     lockPlayerUI(false);
     renderAuctionPlayerState();
     alert('❌ Lỗi khi gửi cược. ' + (e?.message || 'Vui lòng thử lại.'));
+  } finally {
+    // --- GIẢI PHÓNG TRẠNG THÁI GỬI DÙ THÀNH CÔNG HAY THẤT BẠI ---
+    isSubmitting = false;
   }
 }
 
 async function passAuctionBid() {
+  // --- CHỐNG SPAM: Chặn ngay lập tức nếu đang trong quá trình gửi ---
+  if (isSubmitting) return;
+
   if (!auctionState.running) { 
     alert('⚠ Phiên đấu giá chưa bắt đầu hoặc đã dừng.'); 
     return; 
@@ -2801,6 +2816,9 @@ async function passAuctionBid() {
     alert('⚠ Bạn đã đặt cược hoặc pass trong vòng này rồi.');
     return;
   }
+
+  // --- BẬT TRẠNG THÁI ĐANG GỬI ---
+  isSubmitting = true;
 
   // LOCK NGAY LẬP TỨC - KHÔNG CHỜ SERVER
   teamActionLocked.add(team);
@@ -2834,6 +2852,9 @@ async function passAuctionBid() {
     lockPlayerUI(false);
     renderAuctionPlayerState();
     alert('❌ Lỗi khi gửi PASS: ' + (e?.message || 'Vui lòng thử lại.'));
+  } finally {
+    // --- GIẢI PHÓNG TRẠNG THÁI GỬI DÙ THÀNH CÔNG HAY THẤT BẠI ---
+    isSubmitting = false;
   }
 }
 
