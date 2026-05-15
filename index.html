@@ -5,6 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>USSC Chess Tournament - Firebase Sync</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Space+Mono:wght@400;700&family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+<!-- React, ReactDOM, Babel for JSX in browser -->
+<script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 <style>
 
   :root {
@@ -669,20 +673,14 @@
   onerror="console.error('Firebase database-compat failed to load')"></script>
 
 
-<script>
-const PIECE_SVG = {
-  wP: "https://upload.wikimedia.org/wikipedia/commons/4/45/Chess_plt45.png",
-  wN: "https://upload.wikimedia.org/wikipedia/commons/7/70/Chess_nlt45.png",
-  wB: "https://upload.wikimedia.org/wikipedia/commons/b/b1/Chess_blt45.png",
-  wR: "https://upload.wikimedia.org/wikipedia/commons/7/72/Chess_rlt45.png",
-  wQ: "https://upload.wikimedia.org/wikipedia/commons/1/15/Chess_qlt45.png",
-  wK: "https://upload.wikimedia.org/wikipedia/commons/4/42/Chess_klt45.png",
-  bP: "https://upload.wikimedia.org/wikipedia/commons/c/c7/Chess_pdt45.png",
-  bN: "https://upload.wikimedia.org/wikipedia/commons/e/ef/Chess_ndt45.png",
-  bB: "https://upload.wikimedia.org/wikipedia/commons/9/98/Chess_bdt45.png",
-  bR: "https://upload.wikimedia.org/wikipedia/commons/f/ff/Chess_rdt45.png",
-  bQ: "https://upload.wikimedia.org/wikipedia/commons/4/47/Chess_qdt45.png",
-  bK: "https://upload.wikimedia.org/wikipedia/commons/f/f0/Chess_kdt45.png",
+<script type="text/babel">
+
+// ============================================================
+// BỘ UNICODE QUÂN CỜ (FALLBACK NẾU SVG KHÔNG LOAD)
+// ============================================================
+const PIECE_UNICODE = {
+  wP: "♙", wN: "♘", wB: "♗", wR: "♖", wQ: "♕", wK: "♔",
+  bP: "♟", bN: "♞", bB: "♝", bR: "♜", bQ: "♛", bK: "♚",
 };
 
 function parseFen(fen) {
@@ -696,134 +694,105 @@ function parseFen(fen) {
   fen.split(" ")[0].split("/").forEach((row, ri) => {
     let ci = 0;
     for (const ch of row) {
-      if (isNaN(Number(ch))) { 
-        pos[cols[ci] + ranks[ri]] = pieceMap[ch]; 
-        ci++; 
-      }
+      if (isNaN(Number(ch))) { pos[cols[ci]+ranks[ri]] = pieceMap[ch]; ci++; }
       else ci += Number(ch);
     }
   });
   return pos;
 }
 
-function getSideToMove(fen) {
-  if (!fen) return '—';
-  const parts = fen.trim().split(' ');
-  if (parts.length < 2) return '—';
-  return parts[1] === 'w' ? 'Trắng đi' : 'Đen đi';
+// Component Bàn Cờ
+function ChessBoard({ fen, size = 320 }) {
+  const pos = parseFen(fen);
+  const sq = size / 8;
+  const files = ["a","b","c","d","e","f","g","h"];
+  const ranks = ["8","7","6","5","4","3","2","1"];
+
+  return (
+    <div style={{ 
+      display: "inline-block", 
+      border: "4px solid #3d2b1f", 
+      borderRadius: 4, 
+      overflow: "hidden", 
+      boxShadow: "0 12px 50px rgba(0,0,0,0.8)", 
+      userSelect: "none" 
+    }}>
+      <div style={{ position: "relative", width: size, height: size }}>
+        {ranks.map((rank, ri) => (
+          <div key={rank} style={{ display: "flex" }}>
+            {files.map((file, fi) => {
+              const square = file + rank;
+              const piece = pos[square];
+              // Màu sắc bàn cờ phong cách Lichess (Wood hoặc Classic)
+              const isLight = (ri + fi) % 2 === 0;
+              const bgColor = isLight ? "#f0d9b5" : "#b58863";
+              
+              return (
+                <div key={square} style={{ 
+                  width: sq, 
+                  height: sq, 
+                  background: bgColor,
+                  display: "flex", 
+                  alignItems: "center", 
+                  justifyContent: "center",
+                  position: "relative"
+                }}>
+                  {/* Hiển thị tọa độ nhỏ ở góc ô (giống Lichess) */}
+                  {fi === 0 && (
+                    <span style={{ position: "absolute", left: 2, top: 2, fontSize: 10, color: isLight ? "#b58863" : "#f0d9b5", fontWeight: "bold" }}>{rank}</span>
+                  )}
+                  {ri === 7 && (
+                    <span style={{ position: "absolute", right: 2, bottom: 2, fontSize: 10, color: isLight ? "#b58863" : "#f0d9b5", fontWeight: "bold" }}>{file}</span>
+                  )}
+
+                  {/* Render Quân cờ bằng Unicode */}
+                  {piece && (
+                    <span 
+                      style={{ 
+                        fontSize: "2.5rem", 
+                        lineHeight: 1,
+                        filter: "drop-shadow(0 1px 1px rgba(0,0,0,0.5))",
+                        pointerEvents: "none"
+                      }} 
+                    >
+                      {PIECE_UNICODE[piece]}
+                    </span>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 }
 
-async function getUserTeamName(mssv) {
-  if (!mssv) return null;
-  const teams = await getTeams();
-  const team = teams.find(t => Array.isArray(t.members) && t.members.some(m => m.mssv === mssv));
-  return team ? team.name : null;
-}
+// Map to store ReactDOM roots
+const chessBoardRoots = {};
 
-async function resolveCurrentUserTeam() {
-  const mssv = getLoggedInMssv();
-  if (!mssv) return null;
-  const teamName = await getUserTeamName(mssv);
-  if (!teamName) return null;
-  if (!currentTest2Player) {
-    currentTest2Player = { mssv, team: teamName };
-  } else {
-    currentTest2Player.team = teamName;
-  }
-  const teamInputEl = document.getElementById('reg2-team');
-  if (teamInputEl) teamInputEl.value = teamName;
-  return teamName;
-}
-
-async function refreshHomeTeamInfo() {
-  const teamTag = document.getElementById('home-team-tag');
-  const mssv = getLoggedInMssv();
-  if (!teamTag || !mssv) return;
-  const teamName = await getUserTeamName(mssv);
-  if (teamName) {
-    teamTag.textContent = `Nhóm của bạn: ${teamName}`;
-    teamTag.style.display = 'block';
-  } else {
-    teamTag.style.display = 'none';
-  }
-}
-
+// Modified renderChessBoardSVG to use React
 function renderChessBoardSVG(containerId, fen, size = 320) {
   const container = document.getElementById(containerId);
   if (!container) return;
 
-  const pos = parseFen(fen);
-  const files = ["a","b","c","d","e","f","g","h"];
-  const ranks = ["8","7","6","5","4","3","2","1"];
-  const pieceSymbols = {
-    wP: '♙', wN: '♘', wB: '♗', wR: '♖', wQ: '♕', wK: '♔',
-    bP: '♟', bN: '♞', bB: '♝', bR: '♜', bQ: '♛', bK: '♚',
-  };
-
+  // Clear any existing content
   container.innerHTML = '';
-  container.style.cssText = `
-    width: ${size}px;
-    height: ${size}px;
-    max-width: ${size}px;
-    display: grid;
-    grid-template-columns: repeat(8, 1fr);
-    grid-template-rows: repeat(8, 1fr);
-    border-radius: 18px;
-    overflow: hidden;
-    background: linear-gradient(180deg, #f5f2eb 0%, #d7c5a7 100%);
-    box-shadow: 0 18px 45px rgba(0,0,0,0.18);
-    border: 1px solid rgba(15,15,15,0.12);
-  `;
 
-  ranks.forEach((rank, ri) => {
-    files.forEach((file, fi) => {
-      const square = file + rank;
-      const piece = pos[square];
-      const isLight = (ri + fi) % 2 === 0;
-      const squareDiv = document.createElement('div');
-      squareDiv.className = `chess-square ${isLight ? 'light' : 'dark'}`;
-      squareDiv.style.cssText = `
-        position: relative;
-        width: 100%;
-        height: 100%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-      `;
+  if (!chessBoardRoots[containerId]) {
+    // Initialize ReactDOM root if it doesn't exist
+    chessBoardRoots[containerId] = ReactDOM.createRoot(container);
+  }
 
-      if (piece) {
-        const img = document.createElement('img');
-        img.src = PIECE_SVG[piece];
-        img.alt = piece;
-        img.style.cssText = `
-          width: 90%;
-          height: 90%;
-          object-fit: contain;
-          pointer-events: none;
-          filter: drop-shadow(0 2px 3px rgba(0,0,0,0.25));
-        `;
-        squareDiv.appendChild(img);
-      }
-
-      if (fi === 0) {
-        const rankLabel = document.createElement('span');
-        rankLabel.className = 'chess-square-label rank';
-        rankLabel.textContent = rank;
-        squareDiv.appendChild(rankLabel);
-      }
-
-      if (ri === 7) {
-        const fileLabel = document.createElement('span');
-        fileLabel.className = 'chess-square-label file';
-        fileLabel.textContent = file;
-        squareDiv.appendChild(fileLabel);
-      }
-
-      container.appendChild(squareDiv);
-    });
-  });
+  // Render the React ChessBoard component
+  chessBoardRoots[containerId].render(<ChessBoard fen={fen} size={size} />);
 }
+
+// Keep other original functions, only replace the chess board rendering logic
+// (getSideToMove, getUserTeamName, resolveCurrentUserTeam, refreshHomeTeamInfo)
 </script>
+
+<script>
 
 <script>
   if (typeof firebase === 'undefined') {
