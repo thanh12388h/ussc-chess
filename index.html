@@ -2661,6 +2661,38 @@ async function endQuiz() {
 // AUCTION PLAYER
 // ============================================================
 
+async function startAuctionPlayer() {
+  if (auctionState.round >= auctionState.roundData.length) {
+    alert('🏁 Đã kết thúc tất cả vòng đấu giá!');
+    showPage('page-home');
+    return;
+  }
+  const rd = auctionState.roundData[auctionState.round];
+  const team = await resolveCurrentUserTeam();
+  if (!team) {
+    alert('⚠ Không tìm thấy nhóm của bạn. Vui lòng đăng ký lại hoặc liên hệ Admin.');
+    showPage('page-register2');
+    return;
+  }
+  const badge = document.getElementById('player-round-badge');
+  if (badge) badge.textContent = `VÒNG ${auctionState.round + 1} / ${auctionState.roundData.length}`;
+  
+  const teamInfo = document.getElementById('player-team-info');
+  if (teamInfo) teamInfo.textContent = `Nhóm: ${team}`;
+  
+  const sideHint = document.getElementById('player-side-to-move');
+  if (sideHint) sideHint.textContent = `Gợi ý: ${getSideToMove(rd.fen)}`;
+  
+  const answerInput = document.getElementById('player-answer-input');
+  if (answerInput) {
+    answerInput.value = '';
+    answerInput.className = 'answer-input';
+  }
+  renderChessBoard('player-chess-board', rd.fen, 320);
+  showPage('page-auction-player');
+  renderAuctionPlayerState();
+}
+
 
 // Thêm biến toàn cục để track trạng thái action của từng team
 const teamActionLocked = new Set(); // Lưu các team đã hành động trong vòng này
