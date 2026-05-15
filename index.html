@@ -1361,33 +1361,48 @@ console.log('✅ Lichess Style Chess Board Renderer loaded!');
     </div>
 
     <!-- TAB: PLAYERS -->
-    <div id="admin-tab-players">
-      <div class="admin-grid">
-        <div class="panel">
-          <div class="panel-title">📋 Danh Sách Người Chơi</div>
-          <div style="margin-bottom:12px; display:flex; gap:8px; flex-wrap:wrap;">
-            <button class="btn btn-outline btn-sm" onclick="adminRefreshPlayers()">🔄 Refresh</button>
-            <button class="btn btn-sm" style="background:var(--red);color:#fff" onclick="clearAllData()">🗑 Reset All</button>
-          </div>
-          <div style="margin-bottom:16px;">
-            <div style="font-family:'Space Mono',monospace;font-size:0.8rem;color:var(--muted);margin-bottom:8px;">Xóa hàng loạt thành viên (MSSV). Nhập MSSV mỗi dòng hoặc cách nhau bằng dấu phẩy.</div>
-            <textarea id="admin-delete-members" rows="4" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px;color:var(--white);font-family:'Space Mono',monospace;font-size:0.9rem;resize:vertical;" placeholder="221234567, 221234568, 221234569"></textarea>
-            <button class="btn btn-sm" style="background:var(--red);color:#fff;margin-top:10px;" onclick="deletePlayersByMssvList()">🗑 Xóa danh sách thành viên</button>
-          </div>
-          <div class="scroll-area" id="admin-player-list"></div>
-        </div>
-        <div class="panel">
-          <div class="panel-title">⚙️ Điều Khiển Quiz</div>
-          <div class="alert" id="admin-quiz-status">Quiz chưa bắt đầu</div>
-          <button class="btn btn-gold" onclick="adminOpenQuiz()" style="margin-bottom:8px">✅ Mở Quiz (Thi Đấu 1)</button>
-          <button class="btn btn-outline" onclick="adminCloseQuiz()" style="margin-bottom:8px">🔒 Đóng Quiz</button>
-          <button class="btn btn-sm" style="background:#4CAF50;color:#fff;margin-bottom:8px;width:100%" onclick="shareQuizLink()" title="Sao chép liên kết">📋 Sao Chép Link Quiz</button>
-          <hr class="divider">
-          <div class="panel-title" style="font-size:1rem;">📊 Thống Kê</div>
-          <div id="admin-stats" style="font-family:'Space Mono',monospace; font-size:0.8rem; line-height:2; color:var(--muted);"></div>
-        </div>
+<div id="admin-tab-players">
+  <div class="admin-grid">
+    <div class="panel">
+      <div class="panel-title">📋 Danh Sách Người Chơi</div>
+      <div style="margin-bottom:12px; display:flex; gap:8px; flex-wrap:wrap;">
+        <button class="btn btn-outline btn-sm" onclick="adminRefreshPlayers()">🔄 Refresh</button>
+        <button class="btn btn-sm" style="background:var(--red);color:#fff" onclick="clearAllData()">🗑 Reset All</button>
       </div>
+      <div style="margin-bottom:16px;">
+        <div style="font-family:'Space Mono',monospace;font-size:0.8rem;color:var(--muted);margin-bottom:8px;">Xóa hàng loạt (MSSV).</div>
+        <textarea id="admin-delete-members" rows="2" style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px;color:var(--white);font-family:'Space Mono',monospace;font-size:0.9rem;resize:vertical;" placeholder="221234567, 221234568"></textarea>
+        <button class="btn btn-sm" style="background:var(--red);color:#fff;margin-top:10px;" onclick="deletePlayersByMssvList()">🗑 Xóa danh sách</button>
+      </div>
+      <div class="scroll-area" id="admin-player-list"></div>
     </div>
+
+    <div class="panel">
+      <div style="margin-bottom: 24px; padding: 16px; background: rgba(124, 58, 237, 0.1); border: 1px solid var(--accent); border-radius: 12px;">
+        <div class="panel-title" style="font-size: 1rem; color: var(--accent); margin-bottom: 8px;">🚀 SIÊU ĐỒNG BỘ</div>
+        <div style="font-family:'Space Mono',monospace; font-size:0.7rem; color:var(--muted); margin-bottom:12px; line-height: 1.4;">
+          Đẩy kịch bản FEN & Round Data từ Code lên Firestore.
+        </div>
+        <button class="btn btn-purple btn-sm" style="width: 100%; background: var(--accent); color: #fff;" onclick="forceSyncCodeToFirebase()" id="btn-sync-db">
+          📤 Đồng bộ Code → Database
+        </button>
+        <div id="sync-status" style="margin-top: 8px; font-size: 0.65rem; font-family: 'Space Mono', monospace; text-align: center;"></div>
+      </div>
+
+      <hr class="divider" style="margin-bottom: 20px;">
+
+      <div class="panel-title">⚙️ Điều Khiển Quiz</div>
+      <div class="alert" id="admin-quiz-status">Quiz chưa bắt đầu</div>
+      <button class="btn btn-gold" onclick="adminOpenQuiz()" style="margin-bottom:8px; width: 100%;">✅ Mở Quiz (Thi Đấu 1)</button>
+      <button class="btn btn-outline" onclick="adminCloseQuiz()" style="margin-bottom:8px; width: 100%;">🔒 Đóng Quiz</button>
+      <button class="btn btn-sm" style="background:#4CAF50;color:#fff;margin-bottom:8px;width:100%" onclick="shareQuizLink()">📋 Sao Chép Link Quiz</button>
+      
+      <hr class="divider">
+      <div class="panel-title" style="font-size:1rem;">📊 Thống Kê</div>
+      <div id="admin-stats" style="font-family:'Space Mono',monospace; font-size:0.8rem; line-height:2; color:var(--muted);"></div>
+    </div>
+  </div>
+</div>
 
     <!-- TAB: TEAMS -->
     <div id="admin-tab-teams" style="display:none;">
@@ -3691,6 +3706,41 @@ function adminTab(tab) {
   if (tab === 'result') renderFinalResult();
   if (tab === 'teams') adminRefreshTeams();
 }
+
+async function forceSyncCodeToFirebase() {
+    const btn = document.getElementById('btn-sync-db');
+    const statusEl = document.getElementById('sync-status');
+    
+    if (!confirm("Xác nhận: Ghi đè kịch bản FEN từ Code lên Firebase?")) return;
+
+    try {
+        showLoading(true);
+        btn.disabled = true;
+        btn.textContent = "⏳ Đang đồng bộ...";
+        statusEl.style.color = "var(--gold)";
+        statusEl.textContent = "Đang đẩy dữ liệu...";
+
+        // Đồng bộ dữ liệu quan trọng
+        await db.collection('settings').doc('auction_state').set(auctionState);
+        
+        // (Tùy chọn) Nếu bạn muốn đồng bộ cả trạng thái Quiz
+        // await db.collection('settings').doc('quiz').set({ quizOpen: cachedQuizOpen });
+
+        statusEl.style.color = "var(--green)";
+        statusEl.textContent = "✅ THÀNH CÔNG: " + new Date().toLocaleTimeString();
+    } catch (error) {
+        console.error(error);
+        statusEl.style.color = "var(--red)";
+        statusEl.textContent = "❌ LỖI: " + error.message;
+    } finally {
+        showLoading(false);
+        btn.disabled = false;
+        btn.textContent = "📤 Đồng bộ Code → Database";
+    }
+}
+
+// Khai báo để HTML nhận diện được hàm
+window.forceSyncCodeToFirebase = forceSyncCodeToFirebase;
 
 // Expose global functions
 window.showPage = showPage;
