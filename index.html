@@ -676,121 +676,262 @@
 <script type="text/babel">
 
 // ============================================================
-// BỘ UNICODE QUÂN CỜ (FALLBACK NẾU SVG KHÔNG LOAD)
+// CHESS BOARD CANVAS RENDERER - THAY THẾ HOÀN TOÀN
 // ============================================================
-const PIECE_UNICODE = {
-  wP: "♙", wN: "♘", wB: "♗", wR: "♖", wQ: "♕", wK: "♔",
-  bP: "♟", bN: "♞", bB: "♝", bR: "♜", bQ: "♛", bK: "♚",
+
+// Mapping từ ký hiệu FEN sang tên quân cờ
+const PIECE_NAMES = {
+  'r': 'rook_b', 'n': 'knight_b', 'b': 'bishop_b', 'q': 'queen_b', 'k': 'king_b', 'p': 'pawn_b',
+  'R': 'rook_w', 'N': 'knight_w', 'B': 'bishop_w', 'Q': 'queen_w', 'K': 'king_w', 'P': 'pawn_w'
 };
 
-function parseFen(fen) {
-  const pieceMap = {
-    p:"bP", n:"bN", b:"bB", r:"bR", q:"bQ", k:"bK",
-    P:"wP", N:"wN", B:"wB", R:"wR", Q:"wQ", K:"wK",
-  };
-  const cols = ["a","b","c","d","e","f","g","h"];
-  const ranks = ["8","7","6","5","4","3","2","1"];
-  const pos = {};
-  fen.split(" ")[0].split("/").forEach((row, ri) => {
-    let ci = 0;
-    for (const ch of row) {
-      if (isNaN(Number(ch))) { pos[cols[ci]+ranks[ri]] = pieceMap[ch]; ci++; }
-      else ci += Number(ch);
+// Hàm parse FEN (giữ nguyên logic nhưng viết lại gọn)
+function parseFenToPieces(fen) {
+  const pieces = {};
+  const rows = fen.split(' ')[0].split('/');
+  const files = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
+  const ranks = ['8', '7', '6', '5', '4', '3', '2', '1'];
+  
+  for (let i = 0; i < rows.length; i++) {
+    let fileIdx = 0;
+    for (const ch of rows[i]) {
+      if (isNaN(parseInt(ch))) {
+        pieces[files[fileIdx] + ranks[i]] = ch;
+        fileIdx++;
+      } else {
+        fileIdx += parseInt(ch);
+      }
     }
-  });
-  return pos;
-}
-
-// Component Bàn Cờ
-function ChessBoard({ fen, size = 320 }) {
-  const pos = parseFen(fen);
-  const sq = size / 8;
-  const files = ["a","b","c","d","e","f","g","h"];
-  const ranks = ["8","7","6","5","4","3","2","1"];
-
-  return (
-    <div style={{ 
-      display: "inline-block", 
-      border: "4px solid #3d2b1f", 
-      borderRadius: 4, 
-      overflow: "hidden", 
-      boxShadow: "0 12px 50px rgba(0,0,0,0.8)", 
-      userSelect: "none" 
-    }}>
-      <div style={{ position: "relative", width: size, height: size }}>
-        {ranks.map((rank, ri) => (
-          <div key={rank} style={{ display: "flex" }}>
-            {files.map((file, fi) => {
-              const square = file + rank;
-              const piece = pos[square];
-              // Màu sắc bàn cờ phong cách Lichess (Wood hoặc Classic)
-              const isLight = (ri + fi) % 2 === 0;
-              const bgColor = isLight ? "#f0d9b5" : "#b58863";
-              
-              return (
-                <div key={square} style={{ 
-                  width: sq, 
-                  height: sq, 
-                  background: bgColor,
-                  display: "flex", 
-                  alignItems: "center", 
-                  justifyContent: "center",
-                  position: "relative"
-                }}>
-                  {/* Hiển thị tọa độ nhỏ ở góc ô (giống Lichess) */}
-                  {fi === 0 && (
-                    <span style={{ position: "absolute", left: 2, top: 2, fontSize: 10, color: isLight ? "#b58863" : "#f0d9b5", fontWeight: "bold" }}>{rank}</span>
-                  )}
-                  {ri === 7 && (
-                    <span style={{ position: "absolute", right: 2, bottom: 2, fontSize: 10, color: isLight ? "#b58863" : "#f0d9b5", fontWeight: "bold" }}>{file}</span>
-                  )}
-
-                  {/* Render Quân cờ bằng Unicode */}
-                  {piece && (
-                    <span 
-                      style={{ 
-                        fontSize: "2.5rem", 
-                        lineHeight: 1,
-                        filter: "drop-shadow(0 1px 1px rgba(0,0,0,0.5))",
-                        pointerEvents: "none"
-                      }} 
-                    >
-                      {PIECE_UNICODE[piece]}
-                    </span>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-// Map to store ReactDOM roots
-const chessBoardRoots = {};
-
-// Modified renderChessBoardSVG to use React
-function renderChessBoardSVG(containerId, fen, size = 320) {
-  const container = document.getElementById(containerId);
-  if (!container) return;
-
-  // Clear any existing content
-  container.innerHTML = '';
-
-  if (!chessBoardRoots[containerId]) {
-    // Initialize ReactDOM root if it doesn't exist
-    chessBoardRoots[containerId] = ReactDOM.createRoot(container);
   }
-
-  // Render the React ChessBoard component
-  chessBoardRoots[containerId].render(<ChessBoard fen={fen} size={size} />);
+  return pieces;
 }
 
-// Keep other original functions, only replace the chess board rendering logic
-// (getSideToMove, getUserTeamName, resolveCurrentUserTeam, refreshHomeTeamInfo)
+// Hàm vẽ quân cờ vector
+function drawPieceOnCanvas(ctx, x, y, size, pieceType) {
+  const cx = x + size / 2;
+  const cy = y + size / 2;
+  const baseSize = size * 0.65;
+  const isWhite = pieceType.endsWith('_w');
+  
+  ctx.save();
+  ctx.fillStyle = isWhite ? '#ffffff' : '#222222';
+  ctx.strokeStyle = isWhite ? '#333333' : '#cccccc';
+  ctx.lineWidth = Math.max(1.5, size * 0.05);
+  ctx.shadowBlur = 0;
+  
+  const pieceCode = pieceType.split('_')[0];
+  
+  switch(pieceCode) {
+    case 'pawn':
+      ctx.beginPath();
+      ctx.ellipse(cx, cy - size*0.08, baseSize*0.32, baseSize*0.38, 0, 0, Math.PI*2);
+      ctx.fill();
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(cx - baseSize*0.18, cy - size*0.32);
+      ctx.lineTo(cx, cy - size*0.52);
+      ctx.lineTo(cx + baseSize*0.18, cy - size*0.32);
+      ctx.fill();
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.ellipse(cx, cy + size*0.22, baseSize*0.38, baseSize*0.1, 0, 0, Math.PI*2);
+      ctx.fill();
+      ctx.stroke();
+      break;
+      
+    case 'knight':
+      ctx.beginPath();
+      ctx.ellipse(cx - size*0.08, cy - size*0.08, baseSize*0.32, baseSize*0.38, -0.15, 0, Math.PI*2);
+      ctx.fill();
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(cx - size*0.22, cy - size*0.28);
+      ctx.lineTo(cx + size*0.12, cy - size*0.42);
+      ctx.lineTo(cx + size*0.22, cy - size*0.18);
+      ctx.fill();
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.ellipse(cx, cy + size*0.22, baseSize*0.38, baseSize*0.1, 0, 0, Math.PI*2);
+      ctx.fill();
+      ctx.stroke();
+      break;
+      
+    case 'bishop':
+      ctx.beginPath();
+      ctx.moveTo(cx, cy - size*0.52);
+      ctx.lineTo(cx - baseSize*0.18, cy - size*0.22);
+      ctx.lineTo(cx - baseSize*0.13, cy - size*0.08);
+      ctx.lineTo(cx, cy - size*0.17);
+      ctx.lineTo(cx + baseSize*0.13, cy - size*0.08);
+      ctx.lineTo(cx + baseSize*0.18, cy - size*0.22);
+      ctx.fill();
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.ellipse(cx, cy - size*0.12, baseSize*0.27, baseSize*0.32, 0, 0, Math.PI*2);
+      ctx.fill();
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.ellipse(cx, cy + size*0.22, baseSize*0.38, baseSize*0.1, 0, 0, Math.PI*2);
+      ctx.fill();
+      ctx.stroke();
+      break;
+      
+    case 'rook':
+      ctx.fillRect(cx - baseSize*0.32, cy - size*0.38, baseSize*0.64, baseSize*0.65);
+      ctx.strokeRect(cx - baseSize*0.32, cy - size*0.38, baseSize*0.64, baseSize*0.65);
+      for(let i = -1; i <= 1; i++) {
+        ctx.fillRect(cx + i*baseSize*0.2 - baseSize*0.07, cy - size*0.46, baseSize*0.14, baseSize*0.1);
+        ctx.strokeRect(cx + i*baseSize*0.2 - baseSize*0.07, cy - size*0.46, baseSize*0.14, baseSize*0.1);
+      }
+      ctx.beginPath();
+      ctx.ellipse(cx, cy + size*0.22, baseSize*0.42, baseSize*0.1, 0, 0, Math.PI*2);
+      ctx.fill();
+      ctx.stroke();
+      break;
+      
+    case 'queen':
+      ctx.beginPath();
+      ctx.ellipse(cx, cy - size*0.12, baseSize*0.36, baseSize*0.42, 0, 0, Math.PI*2);
+      ctx.fill();
+      ctx.stroke();
+      for(let i = -1; i <= 1; i++) {
+        ctx.beginPath();
+        ctx.arc(cx + i*baseSize*0.2, cy - size*0.46, baseSize*0.11, 0, Math.PI*2);
+        ctx.fill();
+        ctx.stroke();
+      }
+      ctx.beginPath();
+      ctx.ellipse(cx, cy + size*0.22, baseSize*0.42, baseSize*0.1, 0, 0, Math.PI*2);
+      ctx.fill();
+      ctx.stroke();
+      break;
+      
+    case 'king':
+      ctx.beginPath();
+      ctx.ellipse(cx, cy - size*0.12, baseSize*0.36, baseSize*0.42, 0, 0, Math.PI*2);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillRect(cx - baseSize*0.05, cy - size*0.6, baseSize*0.1, baseSize*0.18);
+      ctx.fillRect(cx - baseSize*0.18, cy - size*0.53, baseSize*0.36, baseSize*0.09);
+      ctx.beginPath();
+      ctx.ellipse(cx, cy + size*0.22, baseSize*0.42, baseSize*0.1, 0, 0, Math.PI*2);
+      ctx.fill();
+      ctx.stroke();
+      break;
+  }
+  
+  ctx.restore();
+}
+
+// Hàm vẽ toàn bộ bàn cờ
+function renderChessBoardToCanvas(canvas, fen, size = 320) {
+  if (!canvas) return;
+  
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext('2d');
+  const sq = size / 8;
+  
+  // Vẽ ô
+  for (let r = 0; r < 8; r++) {
+    for (let c = 0; c < 8; c++) {
+      ctx.fillStyle = (r + c) % 2 === 0 ? '#f0d9b5' : '#b58863';
+      ctx.fillRect(c * sq, r * sq, sq, sq);
+    }
+  }
+  
+  // Vẽ tọa độ
+  ctx.font = `${Math.max(9, Math.floor(sq * 0.22))}px 'Space Mono', monospace`;
+  ctx.fillStyle = 'rgba(0,0,0,0.45)';
+  for (let i = 0; i < 8; i++) {
+    ctx.fillText(String.fromCharCode(97 + i), i * sq + sq - sq * 0.13, size - sq * 0.04);
+    ctx.fillText((8 - i).toString(), sq * 0.05, i * sq + sq * 0.18);
+  }
+  
+  // Vẽ quân cờ
+  const pieces = parseFenToPieces(fen);
+  const files = ['a','b','c','d','e','f','g','h'];
+  const ranks = ['8','7','6','5','4','3','2','1'];
+  
+  for (const [square, pieceChar] of Object.entries(pieces)) {
+    const col = files.indexOf(square[0]);
+    const row = ranks.indexOf(square[1]);
+    if (col !== -1 && row !== -1) {
+      const pieceName = PIECE_NAMES[pieceChar];
+      if (pieceName) drawPieceOnCanvas(ctx, col * sq, row * sq, sq, pieceName);
+    }
+  }
+  
+  canvas.style.boxShadow = '0 8px 20px rgba(0,0,0,0.3)';
+  canvas.style.borderRadius = '8px';
+}
+
+// Class quản lý bàn cờ
+class ChessBoardManager {
+  constructor(containerId, fen, size = 320) {
+    this.containerId = containerId;
+    this.fen = fen;
+    this.size = size;
+    this.canvas = null;
+    this.init();
+  }
+  
+  init() {
+    const container = document.getElementById(this.containerId);
+    if (!container) return;
+    container.innerHTML = '';
+    this.canvas = document.createElement('canvas');
+    this.canvas.style.width = '100%';
+    this.canvas.style.height = 'auto';
+    this.canvas.style.maxWidth = `${this.size}px`;
+    this.canvas.style.display = 'block';
+    this.canvas.style.margin = '0 auto';
+    container.appendChild(this.canvas);
+    this.render();
+  }
+  
+  render() {
+    if (this.canvas) renderChessBoardToCanvas(this.canvas, this.fen, this.size);
+  }
+  
+  updateFen(newFen) {
+    this.fen = newFen;
+    this.render();
+  }
+}
+
+// Lưu instances
+const chessBoards = {};
+
+// Hàm render chính (thay thế renderChessBoard cũ)
+function renderChessBoard(containerId, fen, size = 320) {
+  if (!document.getElementById(containerId)) return;
+  if (chessBoards[containerId]) {
+    chessBoards[containerId].updateFen(fen);
+  } else {
+    chessBoards[containerId] = new ChessBoardManager(containerId, fen, size);
+  }
+}
+
+// Hàm lấy bên đi (giữ nguyên)
+function getSideToMoveFromFen(fen) {
+  if (!fen || typeof fen !== 'string') return 'Không xác định';
+  const side = fen.split(' ')[1];
+  return side === 'b' ? '🔴 Đen đi' : '⚪ Trắng đi';
+}
+
+// Export global
+window.renderChessBoard = renderChessBoard;
+window.getSideToMove = getSideToMoveFromFen;
+
+console.log('✅ Canvas Chess Board Renderer loaded');
+
+
+
 </script>
+
+
+
 
 <script>
   var db, auth;
@@ -2435,7 +2576,7 @@ async function startAuctionPlayer() {
     answerInput.value = '';
     answerInput.className = 'answer-input';
   }
-  renderChessBoardSVG('player-chess-board', rd.fen, 320);
+  renderChessBoard('player-chess-board', rd.fen, 320);
   showPage('page-auction-player');
   renderAuctionPlayerState();
 }
@@ -2573,7 +2714,7 @@ function renderAuctionPlayerState() {
   
   if (timerEl) timerEl.textContent = formatTime(auctionState.timeLeft);
   if (rd && document.getElementById('player-chess-board')) {
-    renderChessBoardSVG('player-chess-board', rd.fen, 320);
+    renderChessBoard('player-chess-board', rd.fen, 320);
   }
   if (teamInfo) teamInfo.textContent = `Nhóm: ${team || '—'}`;
   if (sideHint) sideHint.textContent = `Gợi ý: ${getSideToMove(rd?.fen)}`;
@@ -3012,7 +3153,7 @@ async function renderTeamBidList() {
     if(roundEl) roundEl.textContent = `VÒNG ${round+1} / ${auctionState.roundData.length}`;
     const rangeEl = document.getElementById('auction-bet-range');
     if(rangeEl) rangeEl.textContent = rd.range + ' ĐP';
-    renderChessBoardSVG('auction-board-display', rd.fen, 320);
+    renderChessBoard('auction-board-display', rd.fen, 320);
   }
 }
 
@@ -3567,42 +3708,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 
 <script>
-// ============================================================
-// FIX: Re-render chess board when FEN changes
-// ============================================================
-
-// 1. Fix renderTeamBidList - đảm bảo render bàn cờ sau khi cập nhật
-const originalRenderTeamBidList = window.renderTeamBidList;
-window.renderTeamBidList = async function() {
-    if (originalRenderTeamBidList) {
-        await originalRenderTeamBidList();
-    }
-    // Render bàn cờ admin sau khi cập nhật danh sách
-    const rd = auctionState?.roundData?.[auctionState.round];
-    if (rd && document.getElementById('auction-board-display')) {
-        renderChessBoardSVG('auction-board-display', rd.fen, 320);
-    }
-};
-
-// 2. Fix nextAuctionRound - render lại bàn cờ khi chuyển vòng
-const originalNextAuctionRound = window.nextAuctionRound;
-window.nextAuctionRound = async function() {
-    if (originalNextAuctionRound) {
-        await originalNextAuctionRound();
-    }
-    // Render lại bàn cờ admin sau khi chuyển vòng
-    const rd = auctionState?.roundData?.[auctionState.round];
-    if (rd && document.getElementById('auction-board-display')) {
-        renderChessBoardSVG('auction-board-display', rd.fen, 320);
-    }
-    // Render lại bàn cờ player nếu đang ở trang player
-    if (document.getElementById('page-auction-player')?.classList.contains('active')) {
-        const playerRd = auctionState?.roundData?.[auctionState.round];
-        if (playerRd && document.getElementById('player-chess-board')) {
-            renderChessBoardSVG('player-chess-board', playerRd.fen, 320);
-        }
-    }
-};
 
 // 3. Fix resetAuctionRound - render lại khi reset
 const originalResetAuctionRound = window.resetAuctionRound;
@@ -3612,7 +3717,7 @@ window.resetAuctionRound = async function() {
     }
     const rd = auctionState?.roundData?.[auctionState.round];
     if (rd && document.getElementById('auction-board-display')) {
-        renderChessBoardSVG('auction-board-display', rd.fen, 320);
+        renderChessBoard('auction-board-display', rd.fen, 320);
     }
 };
 
@@ -3624,7 +3729,7 @@ window.startAuctionTimer = function() {
     }
     const rd = auctionState?.roundData?.[auctionState.round];
     if (rd && document.getElementById('auction-board-display')) {
-        renderChessBoardSVG('auction-board-display', rd.fen, 320);
+        renderChessBoard('auction-board-display', rd.fen, 320);
     }
 };
 
@@ -3646,12 +3751,12 @@ if (typeof auctionStateDoc !== 'undefined') {
                 if (rd) {
                     // Cập nhật bàn cờ admin
                     if (document.getElementById('auction-board-display')) {
-                        renderChessBoardSVG('auction-board-display', rd.fen, 320);
+                        renderChessBoard('auction-board-display', rd.fen, 320);
                     }
                     // Cập nhật bàn cờ player nếu đang ở trang player
                     if (document.getElementById('page-auction-player')?.classList.contains('active')) {
                         if (document.getElementById('player-chess-board')) {
-                            renderChessBoardSVG('player-chess-board', rd.fen, 320);
+                            renderChessBoard('player-chess-board', rd.fen, 320);
                         }
                     }
                 }
@@ -3670,7 +3775,7 @@ window.adminTab = function(tab) {
         setTimeout(() => {
             const rd = auctionState?.roundData?.[auctionState.round];
             if (rd && document.getElementById('auction-board-display')) {
-                renderChessBoardSVG('auction-board-display', rd.fen, 320);
+                renderChessBoard('auction-board-display', rd.fen, 320);
             }
         }, 100);
     }
@@ -3686,7 +3791,7 @@ window.startAuctionPlayer = async function() {
     setTimeout(() => {
         const rd = auctionState?.roundData?.[auctionState.round];
         if (rd && document.getElementById('player-chess-board')) {
-            renderChessBoardSVG('player-chess-board', rd.fen, 320);
+            renderChessBoard('player-chess-board', rd.fen, 320);
         }
     }, 50);
 };
@@ -3696,10 +3801,10 @@ window.refreshChessBoards = function() {
     const rd = auctionState?.roundData?.[auctionState.round];
     if (rd) {
         if (document.getElementById('auction-board-display')) {
-            renderChessBoardSVG('auction-board-display', rd.fen, 320);
+            renderChessBoard('auction-board-display', rd.fen, 320);
         }
         if (document.getElementById('player-chess-board')) {
-            renderChessBoardSVG('player-chess-board', rd.fen, 320);
+            renderChessBoard('player-chess-board', rd.fen, 320);
         }
         console.log('✅ Chess boards refreshed with FEN:', rd.fen);
     } else {
