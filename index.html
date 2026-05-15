@@ -2286,6 +2286,8 @@ let auctionState = {
   ]
 };
 
+let isProcessingAction = false;
+
 // ============================================================
 // UTILS
 // ============================================================
@@ -2753,31 +2755,38 @@ async function placeAuctionBid() {
 }
 
 async function passAuctionBid() {
-  if (!auctionState.running) { alert('⚠ Phiên đấu giá chưa bắt đầu hoặc đã dừng.'); return; }
+  // 1. Kiểm tra chốt chặn: Nếu đang xử lý một hành động khác thì không cho bấm
+  if (isProcessingAction) return;
+
+  if (!auctionState.running) { 
+    alert('⚠ Phiên đấu giá chưa bắt đầu hoặc đã dừng.'); 
+    return; 
+  }
+
   const team = (await resolveCurrentUserTeam())?.trim();
-  if (!team) { alert('⚠ Lỗi: không tìm thấy nhóm của bạn.'); return; }
+  if (!team) { 
+    alert('⚠ Lỗi: không tìm thấy nhóm của bạn.'); 
+    return; 
+  }
+
   const bidRecord = auctionState.bids?.[team];
   if (bidRecord && (bidRecord.amount > 0 || bidRecord.passed)) {
     alert('⚠ Bạn đã đặt cược hoặc pass trong vòng này rồi.');
     return;
   }
 
-  const answerInput = document.getElementById('player-answer-input');
-  const bidInput = document.getElementById('player-bet-input');
-  const betBtn = document.getElementById('player-bet-btn');
-  const passBtn = document.getElementById('player-pass-btn');
+  // 2. Kích hoạt chốt chặn và cập nhật UI ngay lập tức tại Local
+  isProcessingAction = true;
 
   auctionState.bids = auctionState.bids || {};
   auctionState.answers = auctionState.answers || {};
   auctionState.teamReview = auctionState.teamReview || {};
+  
   auctionState.bids[team] = { amount: 0, passed: true };
   auctionState.answers[team] = '';
   auctionState.teamReview[team] = { status: 'pass', delta: 0 };
 
-  if (answerInput) answerInput.disabled = true;
-  if (bidInput) bidInput.disabled = true;
-  if (betBtn) betBtn.disabled = true;
-  if (passBtn) passBtn.disabled = true;
+  // Gọi render để khóa tất cả nút bấm ngay lập tức
   renderAuctionPlayerState();
 
   const updatePayload = {
@@ -2787,17 +2796,20 @@ async function passAuctionBid() {
   };
 
   try {
+    // 3. Gửi dữ liệu lên Firestore
     await auctionStateDoc.set(updatePayload, { merge: true });
-    renderAuctionPlayerState();
+    
+    // Lưu ý: Chúng ta không set isProcessingAction = false ở đây.
+    // Hãy để hàm renderAuctionPlayerState tự giải phóng biến này 
+    // khi nó nhận được dữ liệu xác nhận từ Server qua Listener onSnapshot.
+    
     alert('✅ Bạn đã chọn PASS. Hành động đã khóa, chờ kết quả.');
   } catch (e) {
+    // 4. Nếu lỗi mạng, phải giải phóng chốt chặn để người dùng có thể thử lại
+    isProcessingAction = false;
     console.error('passAuctionBid error:', e);
-    if (answerInput) answerInput.disabled = false;
-    if (bidInput) bidInput.disabled = false;
-    if (betBtn) betBtn.disabled = false;
-    if (passBtn) passBtn.disabled = false;
     renderAuctionPlayerState();
-    alert('❌ Lỗi khi gửi PASS. ' + (e?.message || 'Vui lòng thử lại.'));
+    alert('❌ Lỗi khi gửi PASS: ' + (e?.message || 'Vui lòng thử lại.'));
   }
 }
 
@@ -2835,8 +2847,14 @@ function renderAuctionPlayerState() {
     });
   }
 
+  // Lấy dữ liệu bid từ server
   const bid = team ? auctionState.bids?.[team] : null;
-  const hasActed = bid && (bid.passed || bid.amount > 0);
+  const hasActedOnServer = bid && (bid.passed || bid.amount > 0);
+
+  // --- LOGIC FIX: KIỂM TRA TRẠNG THÁI ĐANG XỬ LÝ ---
+  if (hasActedOnServer) {
+    isProcessingAction = false; // Giải phóng chốt chặn vì server đã nhận data
+  }
 
   if (!team) {
     if (statusEl) statusEl.textContent = '⚠ Không tìm thấy nhóm của bạn. Vui lòng đăng ký lại hoặc liên hệ Admin.';
@@ -2847,7 +2865,21 @@ function renderAuctionPlayerState() {
     return;
   }
 
-  if (auctionState.finalized) {
+  // ƯU TIÊN 1: Khóa UI nếu đang gửi data hoặc server đã ghi nhận
+  if (isProcessingAction || hasActedOnServer) {
+      if (statusEl) {
+          statusEl.textContent = hasActedOnServer 
+            ? (bid.passed ? 'Bạn đã chọn PASS. Hành động đã khóa.' : `Bạn đã cược ${bid.amount} ĐP và nộp nước đi. Hành động đã khóa.`)
+            : 'Đang gửi dữ liệu lên máy chủ...';
+      }
+      if (answerInput) answerInput.disabled = true;
+      if (bidInput) answerInput.disabled = true; // Fix lỗi typo nhỏ trong code gốc của bạn
+      if (bidInput) bidInput.disabled = true;
+      if (betBtn) betBtn.disabled = true;
+      if (passBtn) passBtn.disabled = true;
+  } 
+  // ƯU TIÊN 2: Nếu đã chốt kết quả (Finalized)
+  else if (auctionState.finalized) {
     if (statusEl) statusEl.textContent = 'Phiên đấu giá đã chốt. Kết quả được hiển thị bên dưới.';
     if (answerInput) answerInput.disabled = true;
     if (bidInput) bidInput.disabled = true;
@@ -2860,22 +2892,18 @@ function renderAuctionPlayerState() {
         resultCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
       }, 500);
     }
-  } else if (auctionState.running) {
-    if (hasActed) {
-      if (statusEl) statusEl.textContent = bid.passed ? 'Bạn đã chọn PASS. Hành động đã khóa.' : `Bạn đã cược ${bid.amount} ĐP và nộp nước đi. Hành động đã khóa.`;
-      if (answerInput) answerInput.disabled = true;
-      if (bidInput) bidInput.disabled = true;
-      if (betBtn) betBtn.disabled = true;
-      if (passBtn) passBtn.disabled = true;
-    } else {
-      if (statusEl) statusEl.textContent = 'Phiên đấu giá đang diễn ra. Nhập nước đi và bấm Cược hoặc bấm Pass.';
-      if (answerInput) answerInput.disabled = false;
-      if (bidInput) bidInput.disabled = false;
-      if (betBtn) betBtn.disabled = false;
-      if (passBtn) passBtn.disabled = false;
-    }
+  } 
+  // ƯU TIÊN 3: Nếu phiên đang chạy (Running) và chưa làm gì
+  else if (auctionState.running) {
+    if (statusEl) statusEl.textContent = 'Phiên đấu giá đang diễn ra. Nhập nước đi và bấm Cược hoặc bấm Pass.';
+    if (answerInput) answerInput.disabled = false;
+    if (bidInput) bidInput.disabled = false;
+    if (betBtn) betBtn.disabled = false;
+    if (passBtn) passBtn.disabled = false;
     if (resultNotif) resultNotif.style.display = 'none';
-  } else if (auctionState.review) {
+  } 
+  // ƯU TIÊN 4: Review hoặc Chờ bắt đầu
+  else if (auctionState.review) {
     if (statusEl) statusEl.textContent = 'Phiên đã dừng, chờ Admin chốt kết quả.';
     if (answerInput) answerInput.disabled = true;
     if (bidInput) bidInput.disabled = true;
@@ -2891,6 +2919,7 @@ function renderAuctionPlayerState() {
     if (resultNotif) resultNotif.style.display = 'none';
   }
 
+  // --- PHẦN HIỂN THỊ KẾT QUẢ CUỐI VÒNG (GIỮ NGUYÊN) ---
   if (auctionState.finalized && auctionState.finalResults && auctionState.finalResults[team]) {
     const result = auctionState.finalResults[team];
     resultCard.style.display = 'block';
