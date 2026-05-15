@@ -360,20 +360,25 @@
     line-height:1.6;
     color:var(--muted);
   }
+  /* CSS mới tối ưu cho Lichess Style */
   .chess-board {
     width: 320px;
     height: 320px;
-    margin: 0 auto;
-    border-radius: 4px; /* Lichess thường bo góc rất nhẹ */
+    max-width: 100%;
+    margin: 0 auto 12px;
+    display: block;
+    position: relative;
     overflow: hidden;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.4), 
-                0 0 0 1px rgba(255,255,255,0.05);
-    background: #262421; /* Màu nền gỗ tối bao quanh */
+    border-radius: 6px;
+    background: #b58863; /* Màu của ô tối */
+    box-shadow: 0 12px 28px rgba(0,0,0,0.35);
   }
 
   .chess-board canvas {
+    width: 100% !important;
+    height: 100% !important;
     display: block;
-    image-rendering: -webkit-optimize-contrast; /* Giúp SVG sắc nét hơn trên Chrome */
+    image-rendering: -webkit-optimize-contrast; /* Giúp quân cờ SVG sắc nét hơn */
   }
   .chess-board.dark { background: #cbd4c4; }
   .chess-square {
@@ -675,9 +680,7 @@
 
 
 <script type="text/babel">
-
-
- // ============================================================
+// ============================================================
 // CHESS BOARD CANVAS RENDERER - LICHESS STYLE
 // ============================================================
 
@@ -1021,8 +1024,9 @@ if (document.readyState === 'loading') {
 
 console.log('✅ Lichess Style Chess Board Renderer loaded!');
 
-
 </script>
+
+
 
 
 <script>
@@ -1049,7 +1053,7 @@ console.log('✅ Lichess Style Chess Board Renderer loaded!');
     db = firebase.firestore();
     auth = firebase.auth();
   }
-</>
+</script>
 </head>
 <body>
 
