@@ -1619,11 +1619,7 @@ function subscribeAuctionRoundCollections(round) {
   }, (error) => console.warn('Auction review snapshot failed:', error));
 }
 
-let originalNextAuctionRound = null;
-let originalResetAuctionRound = null;
-let originalStartAuctionTimer = null;
-let originalAdminTab = null;
-let originalStartAuctionPlayer = null;
+
 const quizSettingsDoc = db.collection('settings').doc('quiz');
 
 // Monitor connection status
@@ -2820,11 +2816,6 @@ function getTeamSync() {
   return t ? String(t).trim() : null;
 }
 
-
-
-
-
-
 async function placeAuctionBid() {
   if (!auctionState.running) { 
     alert('⚠ Phiên đấu giá chưa bắt đầu hoặc đã dừng.'); 
@@ -3953,7 +3944,7 @@ async function nextAuctionRound() {
 
 let auctionTimerInterval = null;
 
-async async function startAuctionTimer() {
+async function startAuctionTimer() {
   if (auctionState.running) return;
   auctionState.running = true;
   auctionState.review = false;
@@ -3989,7 +3980,7 @@ async async function startAuctionTimer() {
   }, 1000);
 }
 
-async async function stopAuctionTimer() {
+async function stopAuctionTimer() {
   clearInterval(auctionTimerInterval);
   auctionTimerInterval = null;
   auctionState.running = false;
