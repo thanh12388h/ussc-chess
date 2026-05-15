@@ -2899,7 +2899,9 @@ function renderAuctionPlayerState() {
   const passBtn = document.getElementById('player-pass-btn');
   const teamInfo = document.getElementById('player-team-info');
   const sideHint = document.getElementById('player-side-to-move');
-  const team = currentTest2Player?.team?.trim();
+  const team = (currentTest2Player?.team || currentPlayer?.team)
+               ? String(currentTest2Player?.team || currentPlayer?.team).trim()
+               : null;
   
   if (timerEl) timerEl.textContent = formatTime(auctionState.timeLeft);
   if (rangeEl && rd) rangeEl.textContent = rd.range + ' ĐP'; 
