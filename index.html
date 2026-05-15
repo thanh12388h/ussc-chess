@@ -361,25 +361,67 @@
     max-width:320px;
     margin:0 auto 12px;
     aspect-ratio:1;
-    background: #f0d9b5;
-    border-radius:8px;
     display:grid;
     grid-template-columns: repeat(8,1fr);
     grid-template-rows: repeat(8,1fr);
-    border:2px solid var(--border);
+    border-radius:18px;
+    overflow:hidden;
+    border:1px solid rgba(15, 15, 15, 0.12);
+    box-shadow: 0 18px 45px rgba(0,0,0,0.18);
+    background: linear-gradient(180deg, #f3f1ed 0%, #d6c9b7 100%);
   }
-  .chess-board.dark { background: #baca44; }
+  .chess-board.dark { background: #cbd4c4; }
   .chess-square {
     display:flex;
     align-items:center;
     justify-content:center;
+    position: relative;
     font-size:2.3rem;
     font-family: 'Segoe UI Symbol', 'Apple Color Emoji', 'Noto Color Emoji', sans-serif;
     line-height:1;
-    background: transparent;
     cursor:default;
+    transition: background 0.15s ease;
   }
-  .chess-square.dark { background: #8f8f47; }
+  .chess-square.dark { background: #b58863; }
+  .chess-square.light { background: #f0d9b5; }
+  .chess-square::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    opacity: 0.04;
+    pointer-events: none;
+  }
+  .chess-square.light::before { background: radial-gradient(circle at center, rgba(255,255,255,0.08), transparent 35%); }
+  .chess-square.dark::before { background: radial-gradient(circle at center, rgba(0,0,0,0.05), transparent 35%); }
+  .chess-square span.piece {
+    font-size: 2.2rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+  }
+  .chess-square img {
+    width: 92%;
+    height: 92%;
+    object-fit: contain;
+    pointer-events: none;
+    filter: drop-shadow(0 2px 2px rgba(0,0,0,0.18));
+  }
+  .chess-square-label {
+    position: absolute;
+    font-size: 10px;
+    font-family: 'Space Mono', monospace;
+    color: rgba(20,20,20,0.55);
+    user-select: none;
+  }
+  .chess-square-label.rank {
+    left: 4px;
+    top: 4px;
+  }
+  .chess-square-label.file {
+    right: 4px;
+    bottom: 4px;
+  }
   .bet-controls {
     display:flex;
     gap:8px;
@@ -726,12 +768,11 @@ function renderChessBoardSVG(containerId, fen, size = 320) {
     display: grid;
     grid-template-columns: repeat(8, 1fr);
     grid-template-rows: repeat(8, 1fr);
-    border: 4px solid #3d2b1f;
-    border-radius: 12px;
+    border-radius: 18px;
     overflow: hidden;
-    background: #3d2b1f;
-    box-shadow: 0 8px 20px rgba(0,0,0,0.3);
-    user-select: none;
+    background: linear-gradient(180deg, #f5f2eb 0%, #d7c5a7 100%);
+    box-shadow: 0 18px 45px rgba(0,0,0,0.18);
+    border: 1px solid rgba(15,15,15,0.12);
   `;
 
   ranks.forEach((rank, ri) => {
@@ -740,55 +781,41 @@ function renderChessBoardSVG(containerId, fen, size = 320) {
       const piece = pos[square];
       const isLight = (ri + fi) % 2 === 0;
       const squareDiv = document.createElement('div');
-      squareDiv.className = `chess-square${isLight ? '' : ' dark'}`;
+      squareDiv.className = `chess-square ${isLight ? 'light' : 'dark'}`;
       squareDiv.style.cssText = `
         position: relative;
         width: 100%;
         height: 100%;
-        background: ${isLight ? '#f0d9b5' : '#b58863'};
         display: flex;
         align-items: center;
         justify-content: center;
       `;
 
       if (piece) {
-        const pieceSpan = document.createElement('span');
-        pieceSpan.textContent = pieceSymbols[piece] || '';
-        pieceSpan.style.cssText = `
-          font-size: ${Math.floor(size / 7)}px;
-          line-height: 1;
-          color: ${piece[0] === 'w' ? '#ffffff' : '#1b1b1b'};
-          text-shadow: 0 0 4px rgba(0,0,0,0.25);
+        const img = document.createElement('img');
+        img.src = PIECE_SVG[piece];
+        img.alt = piece;
+        img.style.cssText = `
+          width: 90%;
+          height: 90%;
+          object-fit: contain;
           pointer-events: none;
+          filter: drop-shadow(0 2px 3px rgba(0,0,0,0.25));
         `;
-        squareDiv.appendChild(pieceSpan);
+        squareDiv.appendChild(img);
       }
 
       if (fi === 0) {
         const rankLabel = document.createElement('span');
+        rankLabel.className = 'chess-square-label rank';
         rankLabel.textContent = rank;
-        rankLabel.style.cssText = `
-          position: absolute;
-          left: 4px;
-          top: 4px;
-          font-size: 10px;
-          color: rgba(255,255,255,0.8);
-          font-family: 'Space Mono', monospace;
-        `;
         squareDiv.appendChild(rankLabel);
       }
 
       if (ri === 7) {
         const fileLabel = document.createElement('span');
+        fileLabel.className = 'chess-square-label file';
         fileLabel.textContent = file;
-        fileLabel.style.cssText = `
-          position: absolute;
-          right: 4px;
-          bottom: 4px;
-          font-size: 10px;
-          color: rgba(255,255,255,0.8);
-          font-family: 'Space Mono', monospace;
-        `;
         squareDiv.appendChild(fileLabel);
       }
 
