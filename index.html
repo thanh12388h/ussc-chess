@@ -1302,10 +1302,10 @@ console.log('✅ Lichess Style Chess Board Renderer loaded!');
     <hr class="divider">
 
     <div class="answer-input-group">
-      <label>🎯 NHẬP NƯỚC ĐI KHI CƯỢC (Vd: e4, Nf3, O-O, Kh8, ...)</label>
+      <label>🎯 NHẬP NƯỚC ĐI KHI CƯỢC (Vd: e4, Nf3, Nxf3, O-O, Kh8, ...)</label>
       <input type="text" id="player-answer-input" class="answer-input" placeholder="Vd: e4" autocomplete="off" maxlength="8">
       <div style="font-size:0.7rem; color:var(--muted); margin-top:6px; font-family:'Space Mono',monospace;">
-        ✓ Nước đi hợp lệ: e4, e5, Nf3, Nf6, O-O (nhập thành), O-O-O (nhập thành dài), Kh8, Qd4, ...
+        ✓ Nước đi hợp lệ: e4, e5, Nf3, Nf6, Nxf6, O-O (nhập thành), O-O-O (nhập thành dài), Kh8, Qd4, ...
       </div>
     </div>
 
@@ -2901,6 +2901,12 @@ function renderAuctionPlayerState() {
   
   // ƯU TIÊN 1: Kiểm tra teamActionLocked (local lock) hoặc hasActedOnServer (server lock)
   const isLocallyLocked = team && teamActionLocked.has(team);
+
+  // --- VỊ TRÍ SỬA: GIẢI PHÓNG LOCK CỤC BỘ ---
+  if (hasActedOnServer && isLocallyLocked) {
+      teamActionLocked.delete(team); 
+      // Khi server đã có dữ liệu, biến isLocallyLocked bên dưới sẽ thành false ở lần chạy tới
+  }
   
   if (isLocallyLocked || hasActedOnServer) {
     // Nếu có lock local hoặc server đã ghi nhận, KHÓA HOÀN TOÀN
