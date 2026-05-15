@@ -4358,9 +4358,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 <script>
 
 // 3. Fix resetAuctionRound - render lại khi reset
+const originalResetAuctionRoundFix = window.resetAuctionRound;
 window.resetAuctionRound = async function() {
-    if (window.originalResetAuctionRound) {
-        await window.originalResetAuctionRound();
+    if (originalResetAuctionRoundFix) {
+        await originalResetAuctionRoundFix();
     }
     const rd = auctionState?.roundData?.[auctionState.round];
     if (rd && document.getElementById('auction-board-display')) {
@@ -4369,9 +4370,10 @@ window.resetAuctionRound = async function() {
 };
 
 // 4. Fix startAuctionTimer - render khi bắt đầu
+const originalStartAuctionTimerFix = window.startAuctionTimer;
 window.startAuctionTimer = function() {
-    if (window.originalStartAuctionTimer) {
-        window.originalStartAuctionTimer();
+    if (originalStartAuctionTimerFix) {
+        originalStartAuctionTimerFix();
     }
     const rd = auctionState?.roundData?.[auctionState.round];
     if (rd && document.getElementById('auction-board-display')) {
