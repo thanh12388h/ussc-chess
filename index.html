@@ -1432,6 +1432,9 @@ console.log('✅ Lichess Style Chess Board Renderer loaded!');
           <div class="chess-position" id="auction-position-info" style="display:none;">
             <div style="font-size:1.5rem; margin-bottom:8px;" id="auction-gm-name">Kasparov vs Topalov</div>
             <div style="font-size:0.75rem; letter-spacing:0.1em;" id="auction-context">Wijk aan Zee, 1999 · Nước đi số 24</div>
+            <div id="auction-side-hint" style="font-family:'Space Mono',monospace; font-size:0.85rem; color:var(--gold); margin-top:10px; font-weight:700; border-top: 1px solid rgba(245,200,66,0.2); padding-top: 8px;">
+              👉 Lượt đi: —
+            </div>
           </div>
           <div style="text-align:center; margin-bottom:12px;">
             <div style="font-size:0.75rem; color:var(--muted); font-family:'Space Mono',monospace; margin-bottom:6px;">GIỚI HẠN CƯỢC VÒNG NÀY</div>
@@ -3192,17 +3195,21 @@ async function renderTeamBidList() {
   const teams = await getTeams();
   const round = auctionState.round;
   const el = document.getElementById('team-bid-list');
-  if (!teams.length) { if(el) el.innerHTML = '<div style="color:var(--muted);font-size:0.8rem;padding:12px 0;">Chưa có nhóm</div>'; return; }
+  if (!teams.length) { 
+    if(el) el.innerHTML = '<div style="color:var(--muted);font-size:0.8rem;padding:12px 0;">Chưa có nhóm</div>'; 
+    return; 
+  }
 
-  const rd = auctionState.roundData[Math.min(round, auctionState.roundData.length-1)];
+  // Lấy dữ liệu của vòng đấu hiện tại (đảm bảo không vượt quá mảng)
+  const rd = auctionState.roundData[Math.min(round, auctionState.roundData.length - 1)];
 
+  // 1. RENDER DANH SÁCH CÁC NHÓM ĐANG CƯỢC (Giữ nguyên logic render của bạn)
   if(el) el.innerHTML = teams.map(t => {
     const bid = auctionState.bids[t.name];
     const answer = auctionState.answers[t.name];
 
-    // Xác định trạng thái cược
-    let bidLine = '';
-    let bidColor = 'var(--muted)';
+    let bidLine = '⏳ Đang quyết định...';
+    let bidColor = 'var(--gold)';
     if (bid) {
       if (bid.passed) {
         bidLine = '⛔ PASS';
@@ -3210,16 +3217,9 @@ async function renderTeamBidList() {
       } else if (bid.amount > 0) {
         bidLine = `💰 Cược ${bid.amount} ĐP`;
         bidColor = 'var(--blue)';
-      } else {
-        bidLine = '⏳ Đang quyết định...';
-        bidColor = 'var(--gold)';
       }
-    } else {
-      bidLine = '⏳ Đang quyết định...';
-      bidColor = 'var(--gold)';
     }
 
-    // Nước đi nộp
     let answerLine = '';
     let answerColor = 'var(--muted)';
     if (auctionState.finalized && auctionState.finalResults && auctionState.finalResults[t.name]) {
@@ -3240,15 +3240,10 @@ async function renderTeamBidList() {
     } else if (bid && !bid.passed) {
       answerLine = '⏳ Chưa nộp nước đi';
       answerColor = 'var(--muted)';
-    } else if (bid && bid.passed) {
-      answerLine = '';
-    } else {
-      answerLine = '';
     }
 
-    // Border color theo trạng thái
     let borderColor = 'var(--border)';
-    if (auctionState.finalized && auctionState.finalResults[t.name]) {
+    if (auctionState.finalized && auctionState.finalResults && auctionState.finalResults[t.name]) {
       const s = auctionState.finalResults[t.name].status;
       borderColor = s === 'correct' ? 'var(--green)' : s === 'wrong' ? 'var(--red)' : 'var(--border)';
     } else if (bid) {
@@ -3280,11 +3275,32 @@ async function renderTeamBidList() {
     </div>`;
   }).join('');
 
+  // 2. CẬP NHẬT THÔNG TIN THẾ CỜ (PHẦN BẠN CẦN THÊM)
   if(rd) {
+    // Cập nhật số vòng
     const roundEl = document.getElementById('auction-round-indicator');
-    if(roundEl) roundEl.textContent = `VÒNG ${round+1} / ${auctionState.roundData.length}`;
+    if(roundEl) roundEl.textContent = `VÒNG ${round + 1} / ${auctionState.roundData.length}`;
+    
+    // Cập nhật giới hạn cược
     const rangeEl = document.getElementById('auction-bet-range');
     if(rangeEl) rangeEl.textContent = rd.range + ' ĐP';
+    
+    // Cập nhật thông tin ván đấu kinh điển
+    const gmNameEl = document.getElementById('auction-gm-name');
+    const contextEl = document.getElementById('auction-context');
+    const posInfoEl = document.getElementById('auction-position-info');
+    
+    if (gmNameEl) gmNameEl.textContent = rd.gm;
+    if (contextEl) contextEl.textContent = rd.ctx;
+    if (posInfoEl) posInfoEl.style.display = 'block';
+
+    // Hiển thị lượt đi (Side Hint)
+    const sideHintEl = document.getElementById('auction-side-hint');
+    if (sideHintEl) {
+      sideHintEl.textContent = "👉 Lượt đi: " + getSideToMoveFromFen(rd.fen);
+    }
+
+    // Vẽ bàn cờ chuẩn Lichess
     renderChessBoard('auction-board-display', rd.fen, 320);
   }
 }
