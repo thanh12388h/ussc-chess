@@ -1605,6 +1605,78 @@ function refreshHomeUI() {
   }
 }
 
+async function getUserTeamName(mssv) {
+  if (!mssv) return null;
+  if (currentTest2Player?.mssv === mssv && currentTest2Player.team) {
+    return String(currentTest2Player.team).trim();
+  }
+  if (currentPlayer?.mssv === mssv && currentPlayer.team) {
+    return String(currentPlayer.team).trim();
+  }
+
+  try {
+    const test2Doc = await test2PlayersCollection.doc(mssv).get();
+    if (test2Doc.exists) {
+      const data = test2Doc.data();
+      if (data.team) return String(data.team).trim();
+    }
+  } catch (error) {
+    console.warn('getUserTeamName test2 lookup failed:', error);
+  }
+
+  try {
+    const teamsSnapshot = await teamsCollection.get();
+    for (const doc of teamsSnapshot.docs) {
+      const teamData = doc.data();
+      const members = Array.isArray(teamData.members) ? teamData.members : [];
+      const found = members.find(member => member.mssv === mssv || member.id === mssv || member.name === mssv);
+      if (found) {
+        return String(teamData.name || found.team || '').trim();
+      }
+    }
+  } catch (error) {
+    console.warn('getUserTeamName team lookup failed:', error);
+  }
+
+  return null;
+}
+
+async function resolveCurrentUserTeam() {
+  const mssv = getLoggedInMssv();
+  if (!mssv) return null;
+  return await getUserTeamName(mssv);
+}
+
+function getSideToMove(fen) {
+  if (!fen || typeof fen !== 'string') return 'Không xác định';
+  const parts = fen.split(' ');
+  const side = parts[1] || 'w';
+  return side === 'b' ? 'Đen' : 'Trắng';
+}
+
+function refreshHomeTeamInfo() {
+  const homeTeamTag = document.getElementById('home-team-tag');
+  if (!homeTeamTag) return;
+
+  if (!isLoggedIn()) {
+    homeTeamTag.style.display = 'none';
+    return;
+  }
+
+  const mssv = getLoggedInMssv();
+  getUserTeamName(mssv).then(teamName => {
+    if (teamName) {
+      homeTeamTag.textContent = `Nhóm của bạn: ${teamName}`;
+      homeTeamTag.style.display = 'block';
+    } else {
+      homeTeamTag.textContent = 'Nhóm của bạn: Chưa phân nhóm';
+      homeTeamTag.style.display = 'block';
+    }
+  }).catch(() => {
+    homeTeamTag.style.display = 'none';
+  });
+}
+
 async function handleAccountRegister() {
   const mssv = document.getElementById('acc-reg-mssv').value.trim();
   const name = document.getElementById('acc-reg-name').value.trim();
