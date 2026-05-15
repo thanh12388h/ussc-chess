@@ -2776,6 +2776,80 @@ function getTeamSync() {
   return t ? String(t).trim() : null;
 }
 
+async function placeBidWithTransaction(team, amount, answer) {
+  try {
+    return await db.runTransaction(async (transaction) => {
+      const stateSnap = await transaction.get(auctionStateDoc);
+      if (!stateSnap.exists) throw new Error('Không tìm thấy trạng thái đấu giá.');
+
+      const serverState = stateSnap.data() || {};
+      if (!serverState.running) throw new Error('Phiên đấu giá đã kết thúc.');
+      if (serverState.review || serverState.finalized) throw new Error('Vòng đấu đã được chốt kết quả.');
+
+      const existingBid = serverState.bids?.[team];
+      if (existingBid && (existingBid.amount > 0 || existingBid.passed)) {
+        throw new Error('Nhóm của bạn đã đặt cược hoặc pass trong vòng này rồi.');
+      }
+
+      const rd = serverState.roundData?.[serverState.round];
+      if (!rd?.range) throw new Error('Không tìm thấy dữ liệu vòng đấu.');
+
+      const [minRaw, maxRaw] = String(rd.range).split(/[–-]/).map(v => parseInt(v, 10));
+      const minBet = Number.isFinite(minRaw) ? minRaw : 50;
+      const maxRange = Number.isFinite(maxRaw) ? maxRaw : 500;
+
+      let maxBet = maxRange;
+      const teamSnap = await transaction.get(teamsCollection.doc(team));
+      if (teamSnap.exists) {
+        const score = parseInt(teamSnap.data()?.totalScore, 10) || 0;
+        maxBet = Math.min(maxRange, score);
+      }
+
+      if (amount < minBet || amount > maxBet) {
+        throw new Error(`Cược phải từ ${minBet} đến ${maxBet} ĐP`);
+      }
+
+      transaction.update(auctionStateDoc, {
+        [`bids.${team}`]: { amount, passed: false },
+        [`answers.${team}`]: answer,
+        [`teamReview.${team}`]: { status: 'auto', delta: 0 },
+      });
+
+      return { success: true, minBet, maxBet };
+    });
+  } catch (error) {
+    return { success: false, message: error?.message || 'Lỗi khi gửi cược.' };
+  }
+}
+
+async function passWithTransaction(team) {
+  try {
+    return await db.runTransaction(async (transaction) => {
+      const stateSnap = await transaction.get(auctionStateDoc);
+      if (!stateSnap.exists) throw new Error('Không tìm thấy trạng thái đấu giá.');
+
+      const serverState = stateSnap.data() || {};
+      if (!serverState.running) throw new Error('Phiên đấu giá đã kết thúc.');
+      if (serverState.review || serverState.finalized) throw new Error('Vòng đấu đã được chốt kết quả.');
+
+      const existingBid = serverState.bids?.[team];
+      if (existingBid && (existingBid.amount > 0 || existingBid.passed)) {
+        throw new Error('Nhóm của bạn đã đặt cược hoặc pass trong vòng này rồi.');
+      }
+
+      transaction.update(auctionStateDoc, {
+        [`bids.${team}`]: { amount: 0, passed: true },
+        [`answers.${team}`]: '',
+        [`teamReview.${team}`]: { status: 'pass', delta: 0 },
+      });
+
+      return { success: true };
+    });
+  } catch (error) {
+    return { success: false, message: error?.message || 'Lỗi khi gửi PASS.' };
+  }
+}
+
 async function placeAuctionBid() {
   if (!auctionState.running) {
     alert('⚠ Phiên đấu giá chưa bắt đầu hoặc đã dừng.');
@@ -2866,26 +2940,27 @@ async function placeAuctionBid() {
 
   renderAuctionPlayerState();
 
-  const updatePayload = {
-    [`bids.${team}`]: { amount, passed: false },
-    [`answers.${team}`]: answer,
-    [`teamReview.${team}`]: { status: 'auto', delta: 0 },
-  };
+  const txResult = await placeBidWithTransaction(team, amount, answer);
 
-  try {
-    await auctionStateDoc.update(updatePayload);
-
+  if (txResult.success) {
     teamActionLocked.delete(team);
     renderAuctionPlayerState();
-
     alert('✅ Bạn đã cược và nộp nước đi. Hành động đã khóa, chờ kết quả.');
-    } catch (e) {
-      console.error('placeAuctionBid error:', e);
-      teamActionLocked.delete(team);
-      lockPlayerUI(false);
-      renderAuctionPlayerState();
-      alert('❌ Lỗi khi gửi cược. ' + (e?.message || 'Vui lòng thử lại.'));
+  } else {
+    teamActionLocked.delete(team);
+    lockPlayerUI(false);
+    renderAuctionPlayerState();
+
+    if (txResult.message && (txResult.message.includes('đã kết thúc') || txResult.message.includes('đã được chốt'))) {
+      const freshDoc = await auctionStateDoc.get();
+      if (freshDoc.exists) {
+        auctionState = { ...auctionState, ...freshDoc.data() };
+        renderAuctionPlayerState();
+      }
     }
+
+    alert('❌ Không thể đặt cược: ' + (txResult.message || 'Vui lòng thử lại.'));
+  }
   } finally {
     _bidInFlight = false;
   }
@@ -2955,26 +3030,27 @@ async function passAuctionBid() {
   auctionState.answers[team] = '';
   auctionState.teamReview[team] = { status: 'pass', delta: 0 };
 
-  const updatePayload = {
-    [`bids.${team}`]: { amount: 0, passed: true },
-    [`answers.${team}`]: '',
-    [`teamReview.${team}`]: { status: 'pass', delta: 0 },
-  };
+  const txResult = await passWithTransaction(team);
 
-  try {
-    await auctionStateDoc.update(updatePayload);
-
+  if (txResult.success) {
     teamActionLocked.delete(team);
     renderAuctionPlayerState();
-
     alert('✅ Bạn đã chọn PASS. Hành động đã khóa, chờ kết quả.');
-    } catch (e) {
-      console.error('passAuctionBid error:', e);
-      teamActionLocked.delete(team);
-      lockPlayerUI(false);
-      renderAuctionPlayerState();
-      alert('❌ Lỗi khi gửi PASS: ' + (e?.message || 'Vui lòng thử lại.'));
+  } else {
+    teamActionLocked.delete(team);
+    lockPlayerUI(false);
+    renderAuctionPlayerState();
+
+    if (txResult.message && (txResult.message.includes('đã kết thúc') || txResult.message.includes('đã được chốt'))) {
+      const freshDoc = await auctionStateDoc.get();
+      if (freshDoc.exists) {
+        auctionState = { ...auctionState, ...freshDoc.data() };
+        renderAuctionPlayerState();
+      }
     }
+
+    alert('❌ Không thể PASS: ' + (txResult.message || 'Vui lòng thử lại.'));
+  }
   } finally {
     _bidInFlight = false;
   }
