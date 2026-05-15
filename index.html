@@ -2407,8 +2407,14 @@ async function placeAuctionBid() {
   if (passBtn) passBtn.disabled = true;
   renderAuctionPlayerState();
 
+  const updatePayload = {
+    bids: auctionState.bids,
+    answers: auctionState.answers,
+    teamReview: auctionState.teamReview,
+  };
+
   try {
-    await auctionStateDoc.set(auctionState, { merge: true });
+    await auctionStateDoc.set(updatePayload, { merge: true });
     renderAuctionPlayerState();
     alert('✅ Bạn đã cược và nộp nước đi. Hành động đã khóa, chờ kết quả.');
   } catch (e) {
@@ -2418,7 +2424,7 @@ async function placeAuctionBid() {
     if (betBtn) betBtn.disabled = false;
     if (passBtn) passBtn.disabled = false;
     renderAuctionPlayerState();
-    alert('❌ Lỗi khi gửi cược. Vui lòng thử lại.');
+    alert('❌ Lỗi khi gửi cược. ' + (e?.message || 'Vui lòng thử lại.'));
   }
 }
 
@@ -2450,8 +2456,14 @@ async function passAuctionBid() {
   if (passBtn) passBtn.disabled = true;
   renderAuctionPlayerState();
 
+  const updatePayload = {
+    bids: auctionState.bids,
+    answers: auctionState.answers,
+    teamReview: auctionState.teamReview,
+  };
+
   try {
-    await auctionStateDoc.set(auctionState, { merge: true });
+    await auctionStateDoc.set(updatePayload, { merge: true });
     renderAuctionPlayerState();
     alert('✅ Bạn đã chọn PASS. Hành động đã khóa, chờ kết quả.');
   } catch (e) {
@@ -2461,7 +2473,7 @@ async function passAuctionBid() {
     if (betBtn) betBtn.disabled = false;
     if (passBtn) passBtn.disabled = false;
     renderAuctionPlayerState();
-    alert('❌ Lỗi khi gửi PASS. Vui lòng thử lại.');
+    alert('❌ Lỗi khi gửi PASS. ' + (e?.message || 'Vui lòng thử lại.'));
   }
 }
 
