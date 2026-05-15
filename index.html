@@ -793,8 +793,8 @@ function renderChessBoardSVG(containerId, fen, size = 320) {
 </script>
 
 <script>
+  var db, auth;
 
-<script>
   if (typeof firebase === 'undefined') {
     document.body && (document.body.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;min-height:100vh;background:#0a0a0f;color:#f5c842;font-family:monospace;text-align:center;padding:24px;"><div><div style="font-size:2rem;margin-bottom:12px;">⚠️</div><div style="font-size:1.1rem;font-weight:700;margin-bottom:8px;">Không thể tải Firebase SDK</div><div style="font-size:0.85rem;color:#888;margin-bottom:16px;">Kiểm tra kết nối mạng hoặc tắt trình chặn quảng cáo (AdBlock) rồi tải lại trang.</div><button onclick="location.reload()" style="background:#f5c842;color:#000;border:none;padding:10px 24px;border-radius:8px;font-size:1rem;cursor:pointer;font-weight:700;">🔄 Tải Lại Trang</button></div></div>');
   } else {
@@ -813,8 +813,8 @@ function renderChessBoardSVG(containerId, fen, size = 320) {
     if (!firebase.apps.length) {
       firebase.initializeApp(firebaseConfig);
     }
-    var db = firebase.firestore();
-    var auth = firebase.auth();
+    db = firebase.firestore();
+    auth = firebase.auth();
   }
 </script>
 </head>
@@ -1318,10 +1318,16 @@ async function handleAdminLogin() {
     return;
   }
 
+  if (!auth) {
+    errEl.textContent = '⚠ Firebase Auth chưa sẵn sàng, vui lòng tải lại trang';
+    errEl.style.display = 'block';
+    return;
+  }
+
   try {
     showLoading(true);
-    // Sign in with Firebase Auth
-    await auth.signInWithEmailAndPassword(ADMIN_EMAIL, ADMIN_PASSWORD);
+    // Sign in with Firebase Auth using the entered username/email and password
+    await auth.signInWithEmailAndPassword(username, password);
     isAdminLoggedIn = true;
     sessionStorage.setItem('admin_logged_in', '1');
     errEl.style.display = 'none';
@@ -1668,6 +1674,12 @@ async function handleAccountLogin() {
 
   if (!mssv || !password) {
     err.textContent = '⚠ Vui lòng nhập MSSV và mật khẩu';
+    err.style.display = 'block';
+    return;
+  }
+
+  if (!playersCollection) {
+    err.textContent = '⚠ Firebase chưa sẵn sàng, vui lòng tải lại trang';
     err.style.display = 'block';
     return;
   }
