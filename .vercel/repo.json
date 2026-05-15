@@ -1,0 +1,11 @@
+{
+  "remoteName": "origin",
+  "projects": [
+    {
+      "id": "prj_XouBg83rC7aVnbPqyLIg2dWxaiKJ",
+      "name": "ussc-chess",
+      "directory": ".",
+      "orgId": "team_3DWAqedF4bV7OzHR9oGSKVKQ"
+    }
+  ]
+}
