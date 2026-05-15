@@ -3636,10 +3636,12 @@ if (typeof auctionStateDoc !== 'undefined') {
         if (doc.exists) {
             const newState = doc.data();
             const oldRound = auctionState?.round;
+            const oldFen = auctionState?.roundData?.[auctionState.round]?.fen;
             auctionState = { ...auctionState, ...newState };
+            const newFen = auctionState?.roundData?.[auctionState.round]?.fen;
             
-            // Nếu round thay đổi hoặc có dữ liệu mới, cập nhật bàn cờ
-            if (oldRound !== auctionState.round || newState.roundData) {
+            // Nếu round thay đổi hoặc FEN của vòng hiện tại thay đổi, cập nhật bàn cờ
+            if (oldRound !== auctionState.round || oldFen !== newFen) {
                 const rd = auctionState?.roundData?.[auctionState.round];
                 if (rd) {
                     // Cập nhật bàn cờ admin
