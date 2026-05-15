@@ -360,20 +360,26 @@
     line-height:1.6;
     color:var(--muted);
   }
-  .chess-board {
-    width:100%;
-    max-width:320px;
-    margin:0 auto 12px;
-    aspect-ratio:1;
-    display:grid;
-    grid-template-columns: repeat(8,1fr);
-    grid-template-rows: repeat(8,1fr);
-    border-radius:18px;
-    overflow:hidden;
-    border:1px solid rgba(15, 15, 15, 0.12);
-    box-shadow: 0 18px 45px rgba(0,0,0,0.18);
-    background: linear-gradient(180deg, #f3f1ed 0%, #d6c9b7 100%);
-  }
+ .chess-board {
+  width: 320px;
+  height: 320px; /* Xác định rõ chiều cao để giữ khung hình vuông */
+  max-width: 100%; /* Giúp responsive tốt hơn trên màn hình nhỏ */
+  margin: 0 auto 12px;
+  display: block; 
+  position: relative; /* Giúp quản lý canvas bên trong tốt hơn */
+  overflow: hidden;
+  border: 1px solid rgba(15, 15, 15, 0.12);
+  border-radius: 8px; 
+  box-shadow: 0 18px 45px rgba(0,0,0,0.18);
+  background: #b58863; /* Màu nền dự phòng trùng với màu ô tối */
+}
+
+/* Thêm đoạn này để đảm bảo Canvas luôn khít với khung */
+.chess-board canvas {
+  width: 100% !important;
+  height: 100% !important;
+  display: block;
+}
   .chess-board.dark { background: #cbd4c4; }
   .chess-square {
     display:flex;
