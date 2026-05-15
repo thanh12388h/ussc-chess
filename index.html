@@ -1516,110 +1516,7 @@ let onlineStatus = true;
 const playersCollection = db.collection('players');
 const test2PlayersCollection = db.collection('test2_players');
 const teamsCollection = db.collection('teams');
-const auctionGlobalStateDoc = db.collection('settings').doc('auction_global_state');
-const auctionRoundsCollection = db.collection('auction_rounds');
-
-let auctionRoundBidsUnsubscribe = null;
-let auctionRoundAnswersUnsubscribe = null;
-let auctionRoundResultsUnsubscribe = null;
-let auctionRoundReviewsUnsubscribe = null;
-
-function getAuctionRoundRef(round) {
-  return auctionRoundsCollection.doc(String(round));
-}
-
-function getAuctionRoundBidsCollection(round) {
-  return getAuctionRoundRef(round).collection('bids');
-}
-
-function getAuctionRoundAnswersCollection(round) {
-  return getAuctionRoundRef(round).collection('answers');
-}
-
-function getAuctionRoundResultsCollection(round) {
-  return getAuctionRoundRef(round).collection('results');
-}
-
-function getAuctionRoundReviewsCollection(round) {
-  return getAuctionRoundRef(round).collection('reviews');
-}
-
-async function clearAuctionRoundDocs(round) {
-  const batch = db.batch();
-  const bidsSnap = await getAuctionRoundBidsCollection(round).get();
-  bidsSnap.docs.forEach(doc => batch.delete(doc.ref));
-
-  const answersSnap = await getAuctionRoundAnswersCollection(round).get();
-  answersSnap.docs.forEach(doc => batch.delete(doc.ref));
-
-  const resultsSnap = await getAuctionRoundResultsCollection(round).get();
-  resultsSnap.docs.forEach(doc => batch.delete(doc.ref));
-
-  const reviewsSnap = await getAuctionRoundReviewsCollection(round).get();
-  reviewsSnap.docs.forEach(doc => batch.delete(doc.ref));
-
-  await batch.commit();
-}
-
-function updateAuctionGlobalState(payload) {
-  return auctionGlobalStateDoc.set(payload, { merge: true });
-}
-
-function subscribeAuctionRoundCollections(round) {
-  if (auctionRoundBidsUnsubscribe) auctionRoundBidsUnsubscribe();
-  if (auctionRoundAnswersUnsubscribe) auctionRoundAnswersUnsubscribe();
-  if (auctionRoundResultsUnsubscribe) auctionRoundResultsUnsubscribe();
-  if (auctionRoundReviewsUnsubscribe) auctionRoundReviewsUnsubscribe();
-
-  auctionState.bids = {};
-  auctionState.answers = {};
-  auctionState.finalResults = {};
-  auctionState.teamReview = {};
-
-  auctionRoundBidsUnsubscribe = getAuctionRoundBidsCollection(round).onSnapshot((snapshot) => {
-    const newBids = {};
-    snapshot.docs.forEach(doc => newBids[doc.id] = doc.data());
-    auctionState.bids = newBids;
-    if (document.getElementById('page-auction-player')?.classList.contains('active')) {
-      renderAuctionPlayerState();
-    }
-    if (isAdminLoggedIn) {
-      renderTeamBidList();
-    }
-  }, (error) => console.warn('Auction bids snapshot failed:', error));
-
-  auctionRoundAnswersUnsubscribe = getAuctionRoundAnswersCollection(round).onSnapshot((snapshot) => {
-    const newAnswers = {};
-    snapshot.docs.forEach(doc => newAnswers[doc.id] = doc.data()?.answer || '');
-    auctionState.answers = newAnswers;
-    if (document.getElementById('page-auction-player')?.classList.contains('active')) {
-      renderAuctionPlayerState();
-    }
-    if (isAdminLoggedIn) {
-      renderTeamBidList();
-    }
-  }, (error) => console.warn('Auction answers snapshot failed:', error));
-
-  auctionRoundResultsUnsubscribe = getAuctionRoundResultsCollection(round).onSnapshot((snapshot) => {
-    const newResults = {};
-    snapshot.docs.forEach(doc => newResults[doc.id] = doc.data());
-    auctionState.finalResults = newResults;
-    if (document.getElementById('page-auction-player')?.classList.contains('active')) {
-      renderAuctionPlayerState();
-    }
-    if (isAdminLoggedIn) {
-      renderTeamBidList();
-    }
-  }, (error) => console.warn('Auction results snapshot failed:', error));
-
-  auctionRoundReviewsUnsubscribe = getAuctionRoundReviewsCollection(round).onSnapshot((snapshot) => {
-    const newReviews = {};
-    snapshot.docs.forEach(doc => newReviews[doc.id] = doc.data());
-    auctionState.teamReview = newReviews;
-  }, (error) => console.warn('Auction review snapshot failed:', error));
-}
-
-
+const auctionStateDoc = db.collection('settings').doc('auction_state');
 const quizSettingsDoc = db.collection('settings').doc('quiz');
 
 // Monitor connection status
@@ -1726,7 +1623,6 @@ let playersUnsubscribe = null;
 let test2PlayersUnsubscribe = null;
 let teamsUnsubscribe = null;
 let auctionUnsubscribe = null;
-let bidsUnsubscribe = null;
 let quizUnsubscribe = null;
 let realtimeListenersStarted = false;
 
@@ -1743,7 +1639,7 @@ function startRealtimeListeners() {
 
   // Auction state listener — always active for ALL users (needed for auction player page)
   if (!auctionUnsubscribe) {
-    auctionUnsubscribe = auctionGlobalStateDoc.onSnapshot((doc) => {
+    auctionUnsubscribe = auctionStateDoc.onSnapshot((doc) => {
       if (doc.exists) {
         auctionState = { ...auctionState, ...doc.data() };
       }
@@ -1754,16 +1650,6 @@ function startRealtimeListeners() {
       // Only render admin-side bid list if admin
       if (isAdminLoggedIn) {
         renderTeamBidList();
-      }
-      // Khi global state thay đổi, đặc biệt là round, cần cập nhật listener cho subcollections vòng hiện tại
-      if (doc.exists && doc.data().round !== undefined) {
-          const currentRound = doc.data().round;
-          if (auctionState.round !== currentRound) {
-            auctionState.round = currentRound;
-          }
-          subscribeAuctionRoundCollections(currentRound);
-      } else {
-          subscribeAuctionRoundCollections(auctionState.round || 0);
       }
     });
   }
@@ -2642,7 +2528,7 @@ async function handleRegister2() {
 
   // Check if there's an ongoing auction. If so, go straight to the auction player page.
   // Otherwise, go to home and let the admin start the auction.
-  const auctionStateSnap = await auctionGlobalStateDoc.get();
+  const auctionStateSnap = await auctionStateDoc.get();
   const currentAuctionState = auctionStateSnap.exists ? auctionStateSnap.data() : auctionState;
 
   if (currentAuctionState.running || currentAuctionState.review || currentAuctionState.finalized) {
@@ -2822,28 +2708,46 @@ async function placeAuctionBid() {
     return; 
   }
 
+  // FAST PATH: Thử lấy team từ cache đồng bộ trước
   let team = (currentTest2Player?.team || currentPlayer?.team)
               ? String(currentTest2Player?.team || currentPlayer?.team).trim()
               : null;
 
-  if (!team) {
-    team = (await resolveCurrentUserTeam())?.trim();
-  }
-  
-  if (!team) {
-    alert('⚠ Lỗi: không tìm thấy nhóm của bạn.');
-    return;
+  // Nếu có cache → lock UI ngay lập tức, không chờ async
+  if (team) {
+    if (teamActionLocked.has(team)) {
+      alert('⚠ Nhóm của bạn đã thực hiện cược hoặc pass trong vòng này.');
+      return;
+    }
+    const bidRecordEarly = auctionState.bids?.[team];
+    if (bidRecordEarly && (bidRecordEarly.amount > 0 || bidRecordEarly.passed)) {
+      alert('⚠ Bạn đã đặt cược hoặc pass trong vòng này rồi.');
+      return;
+    }
+    teamActionLocked.add(team);
+    lockPlayerUI(true);
+    renderAuctionPlayerState(); // Hiển thị "⏳ Đang gửi..." ngay lập tức
   }
 
-  if (teamActionLocked.has(team)) {
-    alert('⚠ Nhóm của bạn đã thực hiện cược hoặc pass trong vòng này.');
-    return;
-  }
-  
-  const bidRecord = auctionState.bids?.[team];
-  if (bidRecord && (bidRecord.amount > 0 || bidRecord.passed)) {
-    alert('⚠ Bạn đã đặt cược hoặc pass trong vòng này rồi.');
-    return;
+  // SLOW PATH: Nếu cache miss thì mới gọi async
+  if (!team) {
+    team = (await resolveCurrentUserTeam())?.trim();
+    if (!team) {
+      alert('⚠ Lỗi: không tìm thấy nhóm của bạn.');
+      return;
+    }
+    if (teamActionLocked.has(team)) {
+      alert('⚠ Nhóm của bạn đã thực hiện cược hoặc pass trong vòng này.');
+      return;
+    }
+    const bidRecord = auctionState.bids?.[team];
+    if (bidRecord && (bidRecord.amount > 0 || bidRecord.passed)) {
+      alert('⚠ Bạn đã đặt cược hoặc pass trong vòng này rồi.');
+      return;
+    }
+    teamActionLocked.add(team);
+    lockPlayerUI(true);
+    renderAuctionPlayerState();
   }
 
   const bidInput = document.getElementById('player-bet-input');
@@ -2852,6 +2756,9 @@ async function placeAuctionBid() {
   const answer = answerInput?.value.trim().toUpperCase() || '';
   
   if (!answer) {
+    teamActionLocked.delete(team);
+    lockPlayerUI(false);
+    renderAuctionPlayerState();
     alert('⚠ Vui lòng nhập nước đi trước khi bấm Cược.');
     return;
   }
@@ -2865,38 +2772,38 @@ async function placeAuctionBid() {
   const maxBet = Math.min(parseInt(parts[1]) || 500, teamData?.totalScore || 0);
   
   if (amount < minBet || amount > maxBet) {
+    teamActionLocked.delete(team);
+    lockPlayerUI(false);
+    renderAuctionPlayerState();
     alert(`Cược phải từ ${minBet} đến ${maxBet} ĐP (Tổng điểm hiện tại của nhóm: ${teamData?.totalScore || 0})`);
     return;
   }
 
-  // LOCK UI
-  teamActionLocked.add(team);
-  lockPlayerUI(true);
+  // Cập nhật local state ngay
+  auctionState.bids = auctionState.bids || {};
+  auctionState.answers = auctionState.answers || {};
+  auctionState.teamReview = auctionState.teamReview || {};
+  auctionState.bids[team] = { amount, passed: false };
+  auctionState.answers[team] = answer;
+  auctionState.teamReview[team] = { status: 'auto', delta: 0 };
+
   renderAuctionPlayerState();
 
-  const currentRound = auctionState.round;
-  const bidDocRef = auctionRoundsCollection.doc(String(currentRound)).collection('bids').doc(team);
-  const answerDocRef = auctionRoundsCollection.doc(String(currentRound)).collection('answers').doc(team);
+  const updatePayload = {
+    bids: auctionState.bids,
+    answers: auctionState.answers,
+    teamReview: auctionState.teamReview,
+  };
 
   try {
-    await db.runTransaction(async (transaction) => {
-      transaction.set(bidDocRef, {
-        amount,
-        passed: false,
-        timestamp: firebase.firestore.FieldValue.serverTimestamp()
-      });
-      transaction.set(answerDocRef, {
-        answer,
-        timestamp: firebase.firestore.FieldValue.serverTimestamp()
-      });
-    });
-    alert('✅ Bạn đã cược và nộp nước đi.');
+    await auctionStateDoc.set(updatePayload, { merge: true });
+    alert('✅ Bạn đã cược và nộp nước đi. Hành động đã khóa, chờ kết quả.');
   } catch (e) {
     console.error('placeAuctionBid error:', e);
     teamActionLocked.delete(team);
     lockPlayerUI(false);
     renderAuctionPlayerState();
-    alert('❌ Lỗi khi gửi cược: ' + e.message);
+    alert('❌ Lỗi khi gửi cược. ' + (e?.message || 'Vui lòng thử lại.'));
   }
 }
 
@@ -2906,19 +2813,13 @@ async function passAuctionBid() {
     return; 
   }
 
-  let team = (currentTest2Player?.team || currentPlayer?.team)
-              ? String(currentTest2Player?.team || currentPlayer?.team).trim()
-              : null;
-
-  if (!team) {
-    team = (await resolveCurrentUserTeam())?.trim();
+  const team = (await resolveCurrentUserTeam())?.trim();
+  if (!team) { 
+    alert('⚠ Lỗi: không tìm thấy nhóm của bạn.'); 
+    return; 
   }
   
-  if (!team) {
-    alert('⚠ Lỗi: không tìm thấy nhóm của bạn.');
-    return;
-  }
-
+  // KIỂM TRA LOCK: Nếu team đã hành động trong vòng này
   if (teamActionLocked.has(team)) {
     alert('⚠ Nhóm của bạn đã thực hiện cược hoặc pass trong vòng này.');
     return;
@@ -2930,197 +2831,40 @@ async function passAuctionBid() {
     return;
   }
 
-  // LOCK UI
+  // LOCK NGAY LẬP TỨC - KHÔNG CHỜ SERVER
   teamActionLocked.add(team);
+  
+  // Cập nhật local state ngay
+  auctionState.bids = auctionState.bids || {};
+  auctionState.answers = auctionState.answers || {};
+  auctionState.teamReview = auctionState.teamReview || {};
+  
+  auctionState.bids[team] = { amount: 0, passed: true };
+  auctionState.answers[team] = '';
+  auctionState.teamReview[team] = { status: 'pass', delta: 0 };
+
+  // Khóa UI ngay lập tức
   lockPlayerUI(true);
   renderAuctionPlayerState();
 
-  const currentRound = auctionState.round;
-  const bidDocRef = auctionRoundsCollection.doc(String(currentRound)).collection('bids').doc(team);
+  const updatePayload = {
+    bids: auctionState.bids,
+    answers: auctionState.answers,
+    teamReview: auctionState.teamReview,
+  };
 
   try {
-    await bidDocRef.set({
-      amount: 0,
-      passed: true,
-      timestamp: firebase.firestore.FieldValue.serverTimestamp()
-    });
-    alert('✅ Bạn đã chọn PASS.');
+    await auctionStateDoc.set(updatePayload, { merge: true });
+    alert('✅ Bạn đã chọn PASS. Hành động đã khóa, chờ kết quả.');
   } catch (e) {
     console.error('passAuctionBid error:', e);
+    // Nếu lỗi, mở khóa và xóa lock
     teamActionLocked.delete(team);
     lockPlayerUI(false);
     renderAuctionPlayerState();
-    alert('❌ Lỗi khi gửi PASS: ' + e.message);
+    alert('❌ Lỗi khi gửi PASS: ' + (e?.message || 'Vui lòng thử lại.'));
   }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 // Hàm khóa/mở khóa UI player
 function lockPlayerUI(locked) {
@@ -3155,9 +2899,7 @@ function renderAuctionPlayerState() {
   const passBtn = document.getElementById('player-pass-btn');
   const teamInfo = document.getElementById('player-team-info');
   const sideHint = document.getElementById('player-side-to-move');
-  const team = (currentTest2Player?.team || currentPlayer?.team)
-               ? String(currentTest2Player?.team || currentPlayer?.team).trim()
-               : null;
+  const team = currentTest2Player?.team?.trim();
   
   if (timerEl) timerEl.textContent = formatTime(auctionState.timeLeft);
   if (rangeEl && rd) rangeEl.textContent = rd.range + ' ĐP'; 
@@ -3255,11 +2997,13 @@ function renderAuctionPlayerState() {
 const originalNextAuctionRound = window.nextAuctionRound;
 window.nextAuctionRound = async function() {
   if (auctionState.round < auctionState.roundData.length - 1) {
+    // Reset lock trước khi chuyển vòng
     await resetTeamActionLocks();
-
+    
     if (originalNextAuctionRound) {
       await originalNextAuctionRound();
     } else {
+      // Fallback logic nếu original không tồn tại
       auctionState.round++;
       auctionState.running = false;
       auctionState.review = false;
@@ -3271,13 +3015,14 @@ window.nextAuctionRound = async function() {
       auctionState.answers = {};
       auctionState.teamReview = {};
       auctionState.finalResults = {};
+      await auctionStateDoc.set(auctionState);
       stopAuctionTimer();
-      await updateAuctionGlobalState({ round: auctionState.round, running: false, review: false, finalized: false, timeLeft: 180 });
       renderTeamBidList();
       updateAuctionStatus();
       updateRoundButtons();
     }
-
+    
+    // Đảm bảo UI được mở khóa
     lockPlayerUI(false);
     renderAuctionPlayerState();
   } else {
@@ -3290,11 +3035,11 @@ window.nextAuctionRound = async function() {
 const originalResetAuctionRound = window.resetAuctionRound;
 window.resetAuctionRound = async function() {
   await resetTeamActionLocks();
-
+  
   if (originalResetAuctionRound) {
     await originalResetAuctionRound();
   } else {
-    await stopAuctionTimer();
+    stopAuctionTimer();
     auctionState.running = false;
     auctionState.review = false;
     auctionState.finalized = false;
@@ -3303,18 +3048,13 @@ window.resetAuctionRound = async function() {
     auctionState.answers = {};
     auctionState.teamReview = {};
     auctionState.finalResults = {};
-    try {
-      await clearAuctionRoundDocs(auctionState.round);
-    } catch (error) {
-      console.warn('Không thể xóa dữ liệu vòng đấu cũ:', error);
-    }
-    await updateAuctionGlobalState({ running: false, review: false, finalized: false, timeLeft: 180 });
+    await auctionStateDoc.set(auctionState);
     const el = document.getElementById('auction-timer');
     if(el) { el.textContent='3:00'; el.style.color='var(--gold)'; }
     renderTeamBidList();
     updateAuctionStatus();
   }
-
+  
   lockPlayerUI(false);
   renderAuctionPlayerState();
 };
@@ -3322,43 +3062,48 @@ window.resetAuctionRound = async function() {
 // Sửa lại startAuctionTimer để reset lock khi bắt đầu vòng mới
 const originalStartAuctionTimer = window.startAuctionTimer;
 window.startAuctionTimer = async function() {
+  // Reset lock khi bắt đầu phiên mới
   await resetTeamActionLocks();
-
+  
   if (originalStartAuctionTimer) {
     originalStartAuctionTimer();
   }
-
+  
   const rd = auctionState?.roundData?.[auctionState.round];
   if (rd && document.getElementById('auction-board-display')) {
     renderChessBoard('auction-board-display', rd.fen, 320);
   }
-
+  
   renderAuctionPlayerState();
 };
 
 // Thêm listener để reset lock khi vòng kết thúc (finalized)
-if (typeof auctionGlobalStateDoc !== 'undefined') {
-  auctionGlobalStateDoc.onSnapshot((doc) => {
+if (typeof auctionStateDoc !== 'undefined') {
+  auctionStateDoc.onSnapshot((doc) => {
     if (doc.exists) {
       const newState = doc.data();
       const oldRound = auctionState?.round;
       const wasFinalized = auctionState?.finalized;
-
+      
       auctionState = { ...auctionState, ...newState };
-
+      
+      // Nếu vừa được finalized (chốt kết quả) hoặc round thay đổi, reset lock
       if (!wasFinalized && auctionState.finalized) {
         // Vòng vừa kết thúc, không cần lock nữa
+        // Lock sẽ được reset khi bắt đầu vòng mới
       }
-
+      
       if (oldRound !== auctionState.round) {
+        // Reset lock khi round thay đổi (do admin chuyển vòng)
         resetTeamActionLocks();
       }
-
+      
+      const newFen = auctionState?.roundData?.[auctionState.round]?.fen;
       if (document.getElementById('auction-board-display')) {
         const rd = auctionState?.roundData?.[auctionState.round];
         if (rd) renderChessBoard('auction-board-display', rd.fen, 320);
       }
-
+      
       if (document.getElementById('page-auction-player')?.classList.contains('active')) {
         renderAuctionPlayerState();
       }
@@ -3504,18 +3249,22 @@ async function clearAllData() {
   
   showLoading(true);
   try {
+    // Delete all players
     const playersSnapshot = await playersCollection.get();
     const batch = db.batch();
     playersSnapshot.docs.forEach(doc => batch.delete(doc.ref));
     
+    // Delete all test2 players
     const test2Snapshot = await test2PlayersCollection.get();
     test2Snapshot.docs.forEach(doc => batch.delete(doc.ref));
     
+    // Delete all teams
     const teamsSnapshot = await teamsCollection.get();
     teamsSnapshot.docs.forEach(doc => batch.delete(doc.ref));
     
     await batch.commit();
     
+    // Reset auction state
     auctionState = {
       round: 0,
       running: false,
@@ -3529,7 +3278,7 @@ async function clearAllData() {
       finalResults: {},
       roundData: auctionState.roundData
     };
-    await updateAuctionGlobalState({ round: 0, running: false, review: false, finalized: false, timeLeft: 180, roundData: auctionState.roundData });
+    await auctionStateDoc.set(auctionState);
     
     alert('✅ Đã xóa toàn bộ dữ liệu!');
     adminRefreshPlayers();
@@ -3775,29 +3524,17 @@ async function placeBid(teamName) {
   if (val < minBet || val > maxBet) {
     alert(`Cược phải từ ${minBet} đến ${maxBet} ĐP`); return;
   }
-  auctionState.bids = auctionState.bids || {};
   auctionState.bids[teamName] = { amount: val, passed: false };
-  auctionState.teamReview = auctionState.teamReview || {};
   auctionState.teamReview[teamName] = auctionState.teamReview[teamName] || { status:'auto', delta:0 };
-  await getAuctionRoundBidsCollection(auctionState.round).doc(teamName).set({
-    amount: val,
-    passed: false,
-    timestamp: firebase.firestore.FieldValue.serverTimestamp()
-  });
+  await auctionStateDoc.set(auctionState, { merge: true });
   renderTeamBidList();
 }
 
 async function passRound(teamName) {
   if (!auctionState.running) { alert('⚠ Phiên đấu giá chưa bắt đầu.'); return; }
-  auctionState.bids = auctionState.bids || {};
   auctionState.bids[teamName] = { amount: 0, passed: true };
-  auctionState.teamReview = auctionState.teamReview || {};
   auctionState.teamReview[teamName] = { status:'pass', delta:0 };
-  await getAuctionRoundBidsCollection(auctionState.round).doc(teamName).set({
-    amount: 0,
-    passed: true,
-    timestamp: firebase.firestore.FieldValue.serverTimestamp()
-  });
+  await auctionStateDoc.set(auctionState, { merge: true });
   renderTeamBidList();
 }
 
@@ -3807,13 +3544,8 @@ async function updateTeamReview(teamName) {
   if (!statusEl || !deltaEl) return;
   const status = statusEl.value;
   const delta = parseInt(deltaEl.value) || 0;
-  auctionState.teamReview = auctionState.teamReview || {};
   auctionState.teamReview[teamName] = { status, delta };
-  await getAuctionRoundReviewsCollection(auctionState.round).doc(teamName).set({
-    status,
-    delta,
-    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-  });
+  await auctionStateDoc.set(auctionState, { merge: true });
   renderTeamBidList();
 }
 
@@ -3824,21 +3556,10 @@ async function publishAuctionResults() {
   const test2Players = await getTest2Players();
   auctionState.finalResults = {};
 
-  const bidsSnapshot = await getAuctionRoundBidsCollection(auctionState.round).get();
-  const answersSnapshot = await getAuctionRoundAnswersCollection(auctionState.round).get();
-  const reviewsSnapshot = await getAuctionRoundReviewsCollection(auctionState.round).get();
-
-  const bids = {};
-  bidsSnapshot.docs.forEach(doc => bids[doc.id] = doc.data());
-  const answers = {};
-  answersSnapshot.docs.forEach(doc => answers[doc.id] = doc.data()?.answer || '');
-  const reviews = {};
-  reviewsSnapshot.docs.forEach(doc => reviews[doc.id] = doc.data());
-
   for (const t of teams) {
-    const bid = bids[t.name];
-    const answer = answers[t.name] ? answers[t.name].toUpperCase() : '';
-    const review = reviews[t.name] || { status:'auto', delta:0 };
+    const bid = auctionState.bids[t.name];
+    const answer = auctionState.answers[t.name] ? auctionState.answers[t.name].toUpperCase() : '';
+    const review = auctionState.teamReview[t.name] || { status:'auto', delta:0 };
     let status = 'pass';
     let delta = 0;
 
@@ -3878,18 +3599,12 @@ async function publishAuctionResults() {
       submittedAnswer: answer,
     };
 
-    await getAuctionRoundResultsCollection(auctionState.round).doc(t.name).set({
-      status,
-      delta,
-      correctAnswer: rd.answer,
-      submittedAnswer: answer,
-      timestamp: firebase.firestore.FieldValue.serverTimestamp()
-    });
-
+    // Save results to each test2 player in the team
     for (const member of t.members) {
       const test2Player = test2Players.find(p => p.mssv === member.mssv);
       if (test2Player) {
         if (!test2Player.auctionResults) test2Player.auctionResults = [];
+        // Store this round's result
         test2Player.auctionResults.push({
           round: auctionState.round + 1,
           teamName: t.name,
@@ -3908,8 +3623,7 @@ async function publishAuctionResults() {
 
   auctionState.finalized = true;
   auctionState.review = false;
-  auctionState.running = false;
-  await updateAuctionGlobalState({ finalized: true, review: false, running: false });
+  await auctionStateDoc.set(auctionState);
   adminRefreshTeams();
   renderTeamBidList();
   updateAdminStats();
@@ -3918,9 +3632,7 @@ async function publishAuctionResults() {
 
 async function nextAuctionRound() {
   if (auctionState.round < auctionState.roundData.length - 1) {
-    await resetTeamActionLocks();
-    const nextRound = auctionState.round + 1;
-    auctionState.round = nextRound;
+    auctionState.round++;
     auctionState.running = false;
     auctionState.review = false;
     auctionState.finalized = false;
@@ -3931,8 +3643,8 @@ async function nextAuctionRound() {
     auctionState.answers = {};
     auctionState.teamReview = {};
     auctionState.finalResults = {};
+    await auctionStateDoc.set(auctionState);
     stopAuctionTimer();
-    await updateAuctionGlobalState({ round: nextRound, running: false, review: false, finalized: false, timeLeft: 180 });
     renderTeamBidList();
     updateAuctionStatus();
     updateRoundButtons();
@@ -3944,7 +3656,7 @@ async function nextAuctionRound() {
 
 let auctionTimerInterval = null;
 
-async function startAuctionTimer() {
+function startAuctionTimer() {
   if (auctionState.running) return;
   auctionState.running = true;
   auctionState.review = false;
@@ -3953,7 +3665,7 @@ async function startAuctionTimer() {
   auctionState.finalResults = {};
   if (auctionState.timerInterval) clearInterval(auctionState.timerInterval);
   auctionState.timerInterval = null;
-  await updateAuctionGlobalState({ running: true, review: false, finalized: false, timeLeft: 180 });
+  auctionStateDoc.set(auctionState);
   renderTeamBidList();
   updateAuctionStatus();
 
@@ -3967,12 +3679,12 @@ async function startAuctionTimer() {
     const s = auctionState.timeLeft%60;
     const el = document.getElementById('auction-timer');
     if(el) { el.textContent = `${m}:${String(s).padStart(2,'0')}`; el.style.color = auctionState.timeLeft<=30?'var(--red)':'var(--gold)'; }
-    await updateAuctionGlobalState({ timeLeft: auctionState.timeLeft });
+    await auctionStateDoc.set(auctionState);
     if (auctionState.timeLeft <= 0) {
       clearInterval(auctionTimerInterval);
       auctionState.running = false;
       auctionState.review = true;
-      await updateAuctionGlobalState({ running: false, review: true, timeLeft: 0 });
+      await auctionStateDoc.set(auctionState);
       updateAuctionStatus();
       renderTeamBidList();
       alert('⏰ Hết giờ thảo luận! Hãy chốt kết quả.');
@@ -3980,18 +3692,18 @@ async function startAuctionTimer() {
   }, 1000);
 }
 
-async function stopAuctionTimer() {
+function stopAuctionTimer() {
   clearInterval(auctionTimerInterval);
   auctionTimerInterval = null;
   auctionState.running = false;
   auctionState.review = true;
-  await updateAuctionGlobalState({ running: false, review: true });
+  auctionStateDoc.set(auctionState);
   updateAuctionStatus();
   renderTeamBidList();
 }
 
 async function resetAuctionRound() {
-  await stopAuctionTimer();
+  stopAuctionTimer();
   auctionState.running = false;
   auctionState.review = false;
   auctionState.finalized = false;
@@ -4000,12 +3712,7 @@ async function resetAuctionRound() {
   auctionState.answers = {};
   auctionState.teamReview = {};
   auctionState.finalResults = {};
-  try {
-    await clearAuctionRoundDocs(auctionState.round);
-  } catch (error) {
-    console.warn('Không thể xóa dữ liệu vòng đấu cũ:', error);
-  }
-  await updateAuctionGlobalState({ running: false, review: false, finalized: false, timeLeft: 180 });
+  await auctionStateDoc.set(auctionState);
   const el = document.getElementById('auction-timer');
   if(el) { el.textContent='3:00'; el.style.color='var(--gold)'; }
   renderTeamBidList();
@@ -4155,6 +3862,7 @@ async function restartTournament() {
   if (!confirm('⚠ Đặt lại giải đấu từ Vòng 1?\n\nĐiểm đấu giá sẽ bị xóa. Điểm Quiz (Test 1) vẫn giữ nguyên.\n\nBấm OK để xác nhận.')) return;
   showLoading(true);
   try {
+    // Reset all teams auction scores
     const teams = await getTeams();
     for (const t of teams) {
       t.totalScore = t.baseScore;
@@ -4163,6 +3871,7 @@ async function restartTournament() {
       t.wrongAnswers = 0;
       await saveTeam(t);
     }
+    // Reset auction state to round 0
     auctionState = {
       ...auctionState,
       round: 0,
@@ -4176,8 +3885,10 @@ async function restartTournament() {
       teamReview: {},
       finalResults: {},
     };
-    await updateAuctionGlobalState({ round: 0, running: false, review: false, finalized: false, timeLeft: 180 });
+    await auctionStateDoc.set(auctionState);
+    // Unpublish tournament result
     await db.collection('settings').doc('tournament_result').set({ published: false });
+    // Reset test2 player auction results
     const test2Players = await getTest2Players();
     for (const p of test2Players) {
       await test2PlayersCollection.doc(p.mssv).set({ ...p, auctionResults: [] });
@@ -4220,15 +3931,12 @@ async function forceSyncCodeToFirebase() {
         statusEl.style.color = "var(--gold)";
         statusEl.textContent = "Đang đẩy dữ liệu...";
 
-        await auctionGlobalStateDoc.set({
-          round: auctionState.round,
-          running: auctionState.running,
-          review: auctionState.review,
-          finalized: auctionState.finalized,
-          timeLeft: auctionState.timeLeft,
-          roundData: auctionState.roundData
-        }, { merge: true });
+        // Đồng bộ dữ liệu quan trọng
+        await db.collection('settings').doc('auction_state').set(auctionState);
         
+        // (Tùy chọn) Nếu bạn muốn đồng bộ cả trạng thái Quiz
+        // await db.collection('settings').doc('quiz').set({ quizOpen: cachedQuizOpen });
+
         statusEl.style.color = "var(--green)";
         statusEl.textContent = "✅ THÀNH CÔNG: " + new Date().toLocaleTimeString();
     } catch (error) {
@@ -4309,18 +4017,11 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Load auction state
   // (cachedQuizOpen sẽ được set bởi onSnapshot trong startRealtimeListeners bên dưới)
   try {
-    const auctionDoc = await auctionGlobalStateDoc.get();
+    const auctionDoc = await auctionStateDoc.get();
     if (auctionDoc.exists) {
       auctionState = { ...auctionState, ...auctionDoc.data() };
     } else if (isAdminLoggedIn) {
-      await auctionGlobalStateDoc.set({
-        round: auctionState.round,
-        running: auctionState.running,
-        review: auctionState.review,
-        finalized: auctionState.finalized,
-        timeLeft: auctionState.timeLeft,
-        roundData: auctionState.roundData
-      });
+      await auctionStateDoc.set(auctionState); // chỉ admin mới có quyền write
     }
   } catch(e) { console.warn('auctionState load error:', e.message); }
 
@@ -4358,10 +4059,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 <script>
 
 // 3. Fix resetAuctionRound - render lại khi reset
-const originalResetAuctionRoundFix = window.resetAuctionRound;
+const originalResetAuctionRound = window.resetAuctionRound;
 window.resetAuctionRound = async function() {
-    if (originalResetAuctionRoundFix) {
-        await originalResetAuctionRoundFix();
+    if (originalResetAuctionRound) {
+        await originalResetAuctionRound();
     }
     const rd = auctionState?.roundData?.[auctionState.round];
     if (rd && document.getElementById('auction-board-display')) {
@@ -4370,10 +4071,10 @@ window.resetAuctionRound = async function() {
 };
 
 // 4. Fix startAuctionTimer - render khi bắt đầu
-const originalStartAuctionTimerFix = window.startAuctionTimer;
+const originalStartAuctionTimer = window.startAuctionTimer;
 window.startAuctionTimer = function() {
-    if (originalStartAuctionTimerFix) {
-        originalStartAuctionTimerFix();
+    if (originalStartAuctionTimer) {
+        originalStartAuctionTimer();
     }
     const rd = auctionState?.roundData?.[auctionState.round];
     if (rd && document.getElementById('auction-board-display')) {
@@ -4383,8 +4084,8 @@ window.startAuctionTimer = function() {
 
 // 5. Theo dõi thay đổi của auctionState.round từ Firestore
 // Thêm listener để tự động cập nhật bàn cờ khi round thay đổi
-if (typeof auctionGlobalStateDoc !== 'undefined') {
-    auctionGlobalStateDoc.onSnapshot((doc) => {
+if (typeof auctionStateDoc !== 'undefined') {
+    auctionStateDoc.onSnapshot((doc) => {
         if (doc.exists) {
             const newState = doc.data();
             const oldRound = auctionState?.round;
