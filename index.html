@@ -628,36 +628,25 @@
 
 
 <script>
-const PIECE_SVG = {
-  wP: "https://upload.wikimedia.org/wikipedia/commons/4/45/Chess_plt45.png",
-  wN: "https://upload.wikimedia.org/wikipedia/commons/7/70/Chess_nlt45.png",
-  wB: "https://upload.wikimedia.org/wikipedia/commons/b/b1/Chess_blt45.png",
-  wR: "https://upload.wikimedia.org/wikipedia/commons/7/72/Chess_rlt45.png",
-  wQ: "https://upload.wikimedia.org/wikipedia/commons/1/15/Chess_qlt45.png",
-  wK: "https://upload.wikimedia.org/wikipedia/commons/4/42/Chess_klt45.png",
-  bP: "https://upload.wikimedia.org/wikipedia/commons/c/c7/Chess_pdt45.png",
-  bN: "https://upload.wikimedia.org/wikipedia/commons/e/ef/Chess_ndt45.png",
-  bB: "https://upload.wikimedia.org/wikipedia/commons/9/98/Chess_bdt45.png",
-  bR: "https://upload.wikimedia.org/wikipedia/commons/f/ff/Chess_rdt45.png",
-  bQ: "https://upload.wikimedia.org/wikipedia/commons/4/47/Chess_qdt45.png",
-  bK: "https://upload.wikimedia.org/wikipedia/commons/f/f0/Chess_kdt45.png",
+// Unicode pieces — no images, no CORS, instant render
+const PIECE_UNICODE = {
+  wK:'♔', wQ:'♕', wR:'♖', wB:'♗', wN:'♘', wP:'♙',
+  bK:'♚', bQ:'♛', bR:'♜', bB:'♝', bN:'♞', bP:'♟',
 };
 
 function parseFen(fen) {
   const pieceMap = {
-    p:"bP", n:"bN", b:"bB", r:"bR", q:"bQ", k:"bK",
-    P:"wP", N:"wN", B:"wB", R:"wR", Q:"wQ", K:"wK",
+    p:'bP', n:'bN', b:'bB', r:'bR', q:'bQ', k:'bK',
+    P:'wP', N:'wN', B:'wB', R:'wR', Q:'wQ', K:'wK',
   };
-  const cols = ["a","b","c","d","e","f","g","h"];
-  const ranks = ["8","7","6","5","4","3","2","1"];
+  const cols = ['a','b','c','d','e','f','g','h'];
+  const ranks = ['8','7','6','5','4','3','2','1'];
   const pos = {};
-  fen.split(" ")[0].split("/").forEach((row, ri) => {
+  if (!fen) return pos;
+  fen.split(' ')[0].split('/').forEach((row, ri) => {
     let ci = 0;
     for (const ch of row) {
-      if (isNaN(Number(ch))) { 
-        pos[cols[ci] + ranks[ri]] = pieceMap[ch]; 
-        ci++; 
-      }
+      if (isNaN(Number(ch))) { pos[cols[ci] + ranks[ri]] = pieceMap[ch]; ci++; }
       else ci += Number(ch);
     }
   });
@@ -699,114 +688,76 @@ async function refreshHomeTeamInfo() {
   if (!teamTag || !mssv) return;
   const teamName = await getUserTeamName(mssv);
   if (teamName) {
-    teamTag.textContent = `Nhóm của bạn: ${teamName}`;
+    const nameEl = document.getElementById('home-team-name');
+    if (nameEl) nameEl.textContent = teamName;
+    else teamTag.textContent = 'Nhóm: ' + teamName;
     teamTag.style.display = 'block';
   } else {
     teamTag.style.display = 'none';
   }
 }
 
-function renderChessBoardSVG(containerId, fen, size = 320) {
-  const container = document.getElementById(containerId);
+function renderChessBoardSVG(containerId, fen, size) {
+  size = size || 320;
+  var container = document.getElementById(containerId);
   if (!container) return;
-  
-  const pos = parseFen(fen);
-  const sq = size / 8;
-  const files = ["a","b","c","d","e","f","g","h"];
-  const ranks = ["8","7","6","5","4","3","2","1"];
-  
-  container.innerHTML = '';
-  container.style.cssText = `
-    display: inline-block;
-    border: 4px solid #3d2b1f;
-    border-radius: 4px;
-    overflow: hidden;
-    box-shadow: 0 8px 20px rgba(0,0,0,0.3);
-    user-select: none;
-  `;
-  
-  const boardDiv = document.createElement('div');
-  boardDiv.style.cssText = `position: relative; width: ${size}px; height: ${size}px;`;
-  
-  ranks.forEach((rank, ri) => {
-    const rowDiv = document.createElement('div');
-    rowDiv.style.display = 'flex';
-    
-    files.forEach((file, fi) => {
-      const square = file + rank;
-      const piece = pos[square];
-      const isLight = (ri + fi) % 2 === 0;
-      const bgColor = isLight ? "#f0d9b5" : "#b58863";
-      
-      const squareDiv = document.createElement('div');
-      squareDiv.style.cssText = `
-        width: ${sq}px;
-        height: ${sq}px;
-        background: ${bgColor};
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        position: relative;
-      `;
-      
-      // Thêm tọa độ nhỏ ở góc (giống Lichess)
-      if (fi === 0) {
-        const coord = document.createElement('span');
-        coord.style.cssText = `
-          position: absolute;
-          left: 2px;
-          top: 2px;
-          font-size: 10px;
-          color: ${isLight ? "#b58863" : "#f0d9b5"};
-          font-weight: bold;
-          font-family: 'Space Mono', monospace;
-        `;
-        coord.textContent = rank;
-        squareDiv.appendChild(coord);
+  if (!fen) { container.innerHTML = '<div style="color:#888;font-size:0.8rem;padding:20px;text-align:center;">Chưa có FEN</div>'; return; }
+
+  var pos = parseFen(fen);
+  var files = ['a','b','c','d','e','f','g','h'];
+  var ranks = ['8','7','6','5','4','3','2','1'];
+  var sq = Math.floor(size / 8);
+  var actualSize = sq * 8;
+  var light = '#f0d9b5', dark = '#b58863';
+
+  var svgParts = ['<svg xmlns="http://www.w3.org/2000/svg" width="' + actualSize + '" height="' + actualSize + '" style="display:block;border-radius:6px;box-shadow:0 8px 28px rgba(0,0,0,0.55);">'];
+
+  // Border rect
+  svgParts.push('<rect x="0" y="0" width="' + actualSize + '" height="' + actualSize + '" fill="#3d2b1f" rx="4"/>');
+
+  // Squares
+  for (var ri = 0; ri < 8; ri++) {
+    for (var fi = 0; fi < 8; fi++) {
+      var isLt = (ri + fi) % 2 === 0;
+      var x = fi * sq;
+      var y = ri * sq;
+      var sqColor = isLt ? light : dark;
+      var coordColor = isLt ? dark : light;
+      svgParts.push('<rect x="' + x + '" y="' + y + '" width="' + sq + '" height="' + sq + '" fill="' + sqColor + '"/>');
+      // rank label (left col)
+      if (fi === 0) svgParts.push('<text x="' + (x+2) + '" y="' + (y+11) + '" font-size="9" font-family="monospace" font-weight="bold" fill="' + coordColor + '">' + ranks[ri] + '</text>');
+      // file label (bottom row)
+      if (ri === 7) svgParts.push('<text x="' + (x+sq-9) + '" y="' + (y+sq-2) + '" font-size="9" font-family="monospace" font-weight="bold" fill="' + coordColor + '">' + files[fi] + '</text>');
+    }
+  }
+
+  // Pieces
+  for (var ri2 = 0; ri2 < 8; ri2++) {
+    for (var fi2 = 0; fi2 < 8; fi2++) {
+      var sq2 = files[fi2] + ranks[ri2];
+      var piece = pos[sq2];
+      if (!piece || !PIECE_UNICODE[piece]) continue;
+      var cx = fi2 * sq + sq / 2;
+      var cy = ri2 * sq + sq * 0.78;
+      var fs = Math.floor(sq * 0.74);
+      var isWhitePiece = piece[0] === 'w';
+      var glyph = PIECE_UNICODE[piece];
+      // shadow pass
+      svgParts.push('<text x="' + (cx+1) + '" y="' + (cy+1) + '" font-size="' + fs + '" text-anchor="middle" font-family="serif" fill="rgba(0,0,0,0.45)" opacity="0.7">' + glyph + '</text>');
+      // main glyph
+      if (isWhitePiece) {
+        // white: dark outline then white fill
+        svgParts.push('<text x="' + cx + '" y="' + cy + '" font-size="' + fs + '" text-anchor="middle" font-family="serif" stroke="#3d2b1f" stroke-width="2" fill="#ffffff" paint-order="stroke">' + glyph + '</text>');
+      } else {
+        // black: light outline then dark fill
+        svgParts.push('<text x="' + cx + '" y="' + cy + '" font-size="' + fs + '" text-anchor="middle" font-family="serif" stroke="#f0d9b5" stroke-width="1.5" fill="#1a1a26" paint-order="stroke">' + glyph + '</text>');
       }
-      
-      if (ri === 7) {
-        const coord = document.createElement('span');
-        coord.style.cssText = `
-          position: absolute;
-          right: 2px;
-          bottom: 2px;
-          font-size: 10px;
-          color: ${isLight ? "#b58863" : "#f0d9b5"};
-          font-weight: bold;
-          font-family: 'Space Mono', monospace;
-        `;
-        coord.textContent = file;
-        squareDiv.appendChild(coord);
-      }
-      
-      // Render quân cờ bằng SVG
-      if (piece && PIECE_SVG[piece]) {
-        const img = document.createElement('img');
-        img.src = PIECE_SVG[piece];
-        img.alt = piece;
-        img.style.cssText = `
-          width: 90%;
-          height: 90%;
-          filter: drop-shadow(0 2px 2px rgba(0,0,0,0.3));
-          pointer-events: none;
-        `;
-        img.onerror = () => {
-          img.remove();
-          const fallback = document.createElement('span');
-          fallback.textContent = piece[1];
-          fallback.style.cssText = `font-size: 1.4rem; color: ${piece[0] === 'w' ? '#fff' : '#000'};`;
-          squareDiv.appendChild(fallback);
-        };
-        squareDiv.appendChild(img);
-      }
-      
-      rowDiv.appendChild(squareDiv);
-    });
-    boardDiv.appendChild(rowDiv);
-  });
-  
-  container.appendChild(boardDiv);
+    }
+  }
+
+  svgParts.push('</svg>');
+  container.innerHTML = svgParts.join('');
+  container.style.cssText = 'display:inline-block;line-height:0;';
 }
 </script>
 
@@ -875,7 +826,11 @@ function renderChessBoardSVG(containerId, fen, size = 320) {
       <button class="btn btn-outline mt-16" onclick="showPage('page-account-login')" style="margin-top:10px">🔐 Đăng Nhập Tài Khoản</button>
     </div>
     <div id="home-logged-in" style="display:none;">
-      <div id="home-team-tag" style="font-size:0.85rem; color:var(--gold); margin-top:12px; font-family:'Space Mono',monospace; display:none;">Nhóm của bạn: —</div>
+      <div id="home-team-tag" style="display:none; margin:14px 0 4px; padding:10px 16px; background:rgba(245,200,66,0.08); border:1px solid rgba(245,200,66,0.35); border-radius:10px; font-family:'Space Mono',monospace; font-size:0.8rem; color:var(--gold); text-align:center; line-height:1.5;">
+        <div style="font-size:0.62rem; color:var(--muted); margin-bottom:3px; letter-spacing:0.1em; text-transform:uppercase;">Nhóm Thi Đấu Của Bạn</div>
+        <div id="home-team-name" style="font-size:1rem; font-weight:700; letter-spacing:0.05em;">—</div>
+        <div style="font-size:0.62rem; color:var(--muted); margin-top:3px;">Dùng tên nhóm này để đăng ký Thi Đấu 2</div>
+      </div>
       <div id="home-test1-section">
         <button class="btn btn-gold mt-16" id="btn-start-test1" onclick="handleStartTest1()">🎮 Bắt Đầu Thi Đấu 1</button>
       </div>
@@ -1054,54 +1009,94 @@ function renderChessBoardSVG(containerId, fen, size = 320) {
 <!-- ==================== PAGE: AUCTION PLAYER ==================== -->
 <div class="page" id="page-auction-player">
   <div class="auction-player-card anim-fade">
-    <div style="text-align:center; margin-bottom:20px;">
+
+    <!-- Round badge + title -->
+    <div style="text-align:center; margin-bottom:14px;">
       <div class="round-badge" id="player-round-badge">VÒNG 1 / 5</div>
-      <div class="logo" style="font-size:1.4rem; margin-bottom:8px;">Thế Cờ Đấu Giá</div>
-      <div style="font-family:'Space Mono',monospace; font-size:0.8rem; color:var(--muted);" id="player-team-info">Nhóm: ?</div>
-      <div style="font-family:'Space Mono',monospace; font-size:0.8rem; color:var(--gold); margin-top:6px;" id="player-side-to-move">Gợi ý: —</div>
+      <div class="logo" style="font-size:1.3rem; margin-bottom:4px;">Thế Cờ Đấu Giá</div>
+      <div style="font-family:'Space Mono',monospace; font-size:0.78rem; color:var(--muted);" id="player-team-info">Nhóm: ?</div>
     </div>
 
-    <div id="player-result-notification" style="display:none; padding:14px 16px; background:linear-gradient(135deg,rgba(46,204,113,0.15),rgba(52,152,219,0.15)); border:1px solid var(--green); border-radius:10px; margin-bottom:16px; text-align:center; animation:slideDown 0.4s ease;">
-      <div style="font-size:1.2rem; margin-bottom:6px;">🎊 CÔNG BỐ KẾT QUẢ!</div>
-      <div style="font-size:0.85rem; color:var(--white); font-family:'Space Mono',monospace;">Vòng đấu giá đã chốt. Xem kết quả dưới đây →</div>
-    </div>
-    
-    <div class="auction-board-container">
-      <div style="font-size:0.75rem; color:var(--muted); font-family:'Space Mono',monospace; margin-bottom:8px;">BÀN CỜ</div>
-      <div class="chess-board" id="player-chess-board"></div>
+    <!-- FIX 4: Side to move hint — shown above board -->
+    <div id="player-side-hint-bar" style="text-align:center; margin-bottom:10px;">
+      <span id="player-side-to-move" style="display:inline-block; padding:5px 16px; border-radius:20px; font-family:'Space Mono',monospace; font-size:0.78rem; font-weight:700; background:var(--surface2); border:1px solid var(--border); color:var(--gold);">Đang tải...</span>
     </div>
 
-    <div style="font-size:0.9rem; color:var(--muted); font-family:'Space Mono',monospace; margin-bottom:14px; text-align:center;">
-      Thời gian còn lại: <span id="player-auction-timer" style="color:var(--gold);">3:00</span>
-    </div>
-    <div class="bet-controls">
-      <input type="number" id="player-bet-input" class="bet-input" min="50" max="500" value="50" placeholder="Số tiền cược">
-      <button class="btn btn-blue btn-sm" id="player-bet-btn" onclick="placeAuctionBid()">💰 Cược</button>
-      <button class="btn btn-outline btn-sm" id="player-pass-btn" onclick="passAuctionBid()">⛔ Pass</button>
-    </div>
-    <div id="player-bid-status" style="font-size:0.85rem; color:var(--muted); font-family:'Space Mono',monospace; margin-bottom:16px; text-align:center;">
-      Chưa đặt cược. Vui lòng nhập nước đi và bấm Cược hoặc bấm Pass khi phiên đấu giá bắt đầu.
+    <!-- Result notification -->
+    <div id="player-result-notification" style="display:none; padding:12px 14px; background:linear-gradient(135deg,rgba(46,204,113,0.15),rgba(52,152,219,0.1)); border:1px solid var(--green); border-radius:10px; margin-bottom:12px; text-align:center;">
+      <div style="font-size:1.1rem; margin-bottom:4px;">🎊 KẾT QUẢ ĐÃ CÔNG BỐ!</div>
+      <div style="font-size:0.78rem; color:var(--white); font-family:'Space Mono',monospace;">Kết quả vòng hiển thị bên dưới ↓</div>
     </div>
 
-    <hr class="divider">
+    <!-- Chess board -->
+    <div class="auction-board-container" style="text-align:center; margin-bottom:12px;">
+      <div id="player-chess-board" style="display:inline-block;"></div>
+      <div id="player-game-ctx" style="font-size:0.68rem; color:var(--muted); font-family:'Space Mono',monospace; margin-top:6px; line-height:1.5;"></div>
+    </div>
 
-    <div class="answer-input-group">
-      <label>🎯 NHẬP NƯỚC ĐI KHI CƯỢC (Vd: e4, Nf3, O-O, Kh8, ...)</label>
-      <input type="text" id="player-answer-input" class="answer-input" placeholder="Vd: e4" autocomplete="off" maxlength="8">
-      <div style="font-size:0.7rem; color:var(--muted); margin-top:6px; font-family:'Space Mono',monospace;">
-        ✓ Nước đi hợp lệ: e4, e5, Nf3, Nf6, O-O (nhập thành), O-O-O (nhập thành dài), Kh8, Qd4, ...
+    <!-- Timer + bet range -->
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; font-family:'Space Mono',monospace; font-size:0.75rem; color:var(--muted);">
+      <span>⏱ Còn lại: <span id="player-auction-timer" style="color:var(--gold); font-weight:700;">3:00</span></span>
+      <span>Cược: <span id="player-bet-range" style="color:var(--gold); font-weight:700;">50–200 ĐP</span></span>
+    </div>
+
+    <!-- FIX 3: Single-action section — bet + answer together, lock after submit -->
+    <div id="player-action-section">
+      <div style="background:var(--surface2); border-radius:12px; padding:16px; border:1px solid var(--border);">
+        <div style="margin-bottom:12px;">
+          <label style="display:block; font-size:0.68rem; color:var(--muted); font-family:'Space Mono',monospace; text-transform:uppercase; letter-spacing:0.1em; margin-bottom:6px;">🎯 Nước Đi (bắt buộc nếu Cược)</label>
+          <input type="text" id="player-answer-input" autocomplete="off" maxlength="10" placeholder="Vd: e4, Nf3, O-O, Kh8..."
+            style="width:100%; padding:10px 12px; background:var(--surface); border:1px solid var(--border); border-radius:8px; color:var(--white); font-size:0.95rem; font-family:'Space Mono',monospace; outline:none; box-sizing:border-box;">
+          <div style="font-size:0.62rem; color:var(--muted); margin-top:4px; font-family:'Space Mono',monospace;">e4 · Nf3 · O-O · O-O-O · Qd4 · Kh8...</div>
+        </div>
+        <div style="margin-bottom:14px;">
+          <label style="display:block; font-size:0.68rem; color:var(--muted); font-family:'Space Mono',monospace; text-transform:uppercase; letter-spacing:0.1em; margin-bottom:6px;">💰 Số Điểm Cược</label>
+          <input type="number" id="player-bet-input" min="50" max="500" value="50"
+            style="width:100%; padding:10px 12px; background:var(--surface); border:1px solid var(--border); border-radius:8px; color:var(--white); font-size:0.95rem; font-family:'Space Mono',monospace; outline:none; box-sizing:border-box;">
+        </div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:10px;">
+          <button id="player-bet-btn" onclick="placeAuctionBid()"
+            style="padding:13px 8px; background:var(--blue); color:#fff; border:none; border-radius:10px; font-size:0.88rem; font-weight:700; cursor:pointer; font-family:'Space Mono',monospace; letter-spacing:0.04em;">
+            💰 CƯỢC
+          </button>
+          <button id="player-pass-btn" onclick="passAuctionBid()"
+            style="padding:13px 8px; background:transparent; color:var(--muted); border:2px solid var(--border); border-radius:10px; font-size:0.88rem; font-weight:700; cursor:pointer; font-family:'Space Mono',monospace;">
+            ⛔ PASS
+          </button>
+        </div>
+        <div style="text-align:center; font-size:0.65rem; color:var(--red); font-family:'Space Mono',monospace; opacity:0.75;">
+          ⚠ Chỉ 1 lần — không thể thay đổi sau khi bấm
+        </div>
       </div>
     </div>
 
-    <div id="player-round-result" class="result-card" style="display:none; margin-top:20px; border:2px solid var(--green);">
-      <div style="font-size:0.9rem; color:var(--muted); text-transform:uppercase; letter-spacing:0.15em;">Kết quả vòng</div>
+    <!-- Locked state shown after user commits -->
+    <div id="player-locked-section" style="display:none;">
+      <div style="background:var(--surface2); border-radius:12px; padding:22px 18px; text-align:center; border:2px solid var(--border);">
+        <div style="font-size:2.4rem; margin-bottom:8px;" id="player-locked-icon">🔒</div>
+        <div style="font-family:'Bebas Neue',sans-serif; font-size:1.2rem; letter-spacing:0.06em; margin-bottom:6px; color:var(--white);" id="player-locked-title"></div>
+        <div style="font-family:'Space Mono',monospace; font-size:0.75rem; color:var(--muted);" id="player-locked-sub"></div>
+        <div style="margin-top:12px; font-size:0.68rem; color:var(--muted); font-family:'Space Mono',monospace; padding:7px 12px; background:rgba(0,0,0,0.15); border-radius:6px;">
+          ⏳ Chờ Admin công bố kết quả vòng này...
+        </div>
+      </div>
+    </div>
+
+    <!-- Status bar -->
+    <div id="player-bid-status" style="margin-top:10px; font-size:0.75rem; color:var(--muted); font-family:'Space Mono',monospace; text-align:center; padding:8px 12px; background:var(--surface2); border-radius:8px;">
+      Chờ Admin bắt đầu phiên đấu giá.
+    </div>
+
+    <!-- Round result -->
+    <div id="player-round-result" class="result-card" style="display:none; margin-top:14px;">
+      <div style="font-size:0.78rem; color:var(--muted); text-transform:uppercase; letter-spacing:0.15em; margin-bottom:8px;">Kết Quả Vòng</div>
       <div class="result-answer" id="player-round-result-text">...</div>
       <div class="result-item"><span>Đáp án chính xác</span><strong id="player-correct-answer"></strong></div>
       <div class="result-item"><span>Kết quả nhóm</span><strong id="player-round-result-status"></strong></div>
       <div class="result-item"><span>Điểm thay đổi</span><strong id="player-round-result-delta"></strong></div>
     </div>
 
-    <button class="btn btn-outline" onclick="showPage('page-home')" style="margin-top:8px;">← Trang Chủ</button>
+    <button class="btn btn-outline" onclick="showPage('page-home')" style="margin-top:12px; width:100%;">← Trang Chủ</button>
   </div>
 </div>
 
@@ -2373,1217 +2368,245 @@ async function startAuctionPlayer() {
 }
 
 async function placeAuctionBid() {
-  if (!auctionState.running) { alert('⚠ Phiên đấu giá chưa bắt đầu hoặc đã dừng.'); return; }
-  const team = await resolveCurrentUserTeam();
-  if (!team) { alert('⚠ Lỗi: không tìm thấy nhóm của bạn.'); return; }
-  const bidRecord = auctionState.bids?.[team];
-  if (bidRecord && (bidRecord.amount > 0 || bidRecord.passed)) {
-    alert('⚠ Bạn đã đặt cược hoặc pass trong vòng này rồi.');
-    return;
-  }
+  // LOCK buttons immediately to prevent double-click
+  const betBtn = document.getElementById('player-bet-btn');
+  const passBtn = document.getElementById('player-pass-btn');
+  if (betBtn) betBtn.disabled = true;
+  if (passBtn) passBtn.disabled = true;
 
-  const amount = parseInt(document.getElementById('player-bet-input').value) || 0;
-  const answerInput = document.getElementById('player-answer-input');
-  const answer = answerInput?.value.trim().toUpperCase() || '';
-  if (!answer) {
-    alert('⚠ Vui lòng nhập nước đi trước khi bấm Cược.');
-    return;
-  }
+  try {
+    if (!auctionState.running) { alert('⚠ Phiên đấu giá chưa bắt đầu hoặc đã dừng.'); return; }
+    const team = await resolveCurrentUserTeam();
+    if (!team) { alert('⚠ Lỗi: không tìm thấy nhóm của bạn.'); return; }
+    const bidRecord = auctionState.bids?.[team];
+    if (bidRecord && (bidRecord.amount > 0 || bidRecord.passed)) {
+      renderAuctionPlayerState(); // sync locked UI
+      return;
+    }
 
-  const rd = auctionState.roundData[auctionState.round];
-  const parts = rd.range.split('–');
-  const minBet = parseInt(parts[0]) || 50;
-  
-  const teams = await getTeams();
-  const teamData = teams.find(t => t.name === team);
-  const maxBet = Math.min(parseInt(parts[1]) || 500, teamData?.totalScore || 0);
-  
-  if (amount < minBet || amount > maxBet) {
-    alert(`Cược phải từ ${minBet} đến ${maxBet} ĐP (Tổng điểm hiện tại của nhóm: ${teamData?.totalScore || 0})`);
-    return;
+    const answer = (document.getElementById('player-answer-input')?.value || '').trim().toUpperCase();
+    if (!answer) {
+      alert('⚠ Vui lòng nhập nước đi trước khi bấm Cược.');
+      if (betBtn) betBtn.disabled = false;
+      if (passBtn) passBtn.disabled = false;
+      return;
+    }
+    const amount = parseInt(document.getElementById('player-bet-input')?.value) || 0;
+    const rd = auctionState.roundData[auctionState.round];
+    const parts = (rd.range || '50–200').split('–');
+    const minBet = parseInt(parts[0]) || 50;
+    const teams = await getTeams();
+    const teamData = teams.find(t => t.name === team);
+    const maxBet = Math.min(parseInt(parts[1]) || 500, teamData?.totalScore || 9999);
+    if (amount < minBet || amount > maxBet) {
+      alert('Cược phải từ ' + minBet + ' đến ' + maxBet + ' ĐP (Điểm nhóm: ' + (teamData?.totalScore||0) + ')');
+      if (betBtn) betBtn.disabled = false;
+      if (passBtn) passBtn.disabled = false;
+      return;
+    }
+    auctionState.bids = auctionState.bids || {};
+    auctionState.answers = auctionState.answers || {};
+    auctionState.teamReview = auctionState.teamReview || {};
+    auctionState.bids[team] = { amount, passed: false };
+    auctionState.answers[team] = answer;
+    auctionState.teamReview[team] = { status: 'auto', delta: 0 };
+    await auctionStateDoc.set(auctionState, { merge: true });
+    renderAuctionPlayerState();
+  } catch(e) {
+    alert('❌ Lỗi: ' + e.message);
+    if (betBtn) betBtn.disabled = false;
+    if (passBtn) passBtn.disabled = false;
   }
-  
-  auctionState.bids = auctionState.bids || {};
-  auctionState.answers = auctionState.answers || {};
-  auctionState.teamReview = auctionState.teamReview || {};
-  auctionState.bids[team] = { amount, passed: false };
-  auctionState.answers[team] = answer;
-  auctionState.teamReview[team] = { status: 'auto', delta: 0 };
-  await auctionStateDoc.set(auctionState, { merge: true });
-  renderAuctionPlayerState();
-  alert('✅ Bạn đã cược và nộp nước đi. Hành động đã khóa, chờ kết quả.');
 }
 
 async function passAuctionBid() {
-  if (!auctionState.running) { alert('⚠ Phiên đấu giá chưa bắt đầu hoặc đã dừng.'); return; }
-  const team = await resolveCurrentUserTeam();
-  if (!team) { alert('⚠ Lỗi: không tìm thấy nhóm của bạn.'); return; }
-  const bidRecord = auctionState.bids?.[team];
-  if (bidRecord && (bidRecord.amount > 0 || bidRecord.passed)) {
-    alert('⚠ Bạn đã đặt cược hoặc pass trong vòng này rồi.');
-    return;
+  const betBtn = document.getElementById('player-bet-btn');
+  const passBtn = document.getElementById('player-pass-btn');
+  if (betBtn) betBtn.disabled = true;
+  if (passBtn) passBtn.disabled = true;
+  try {
+    if (!auctionState.running) { alert('⚠ Phiên đấu giá chưa bắt đầu hoặc đã dừng.'); return; }
+    const team = await resolveCurrentUserTeam();
+    if (!team) { alert('⚠ Lỗi: không tìm thấy nhóm của bạn.'); return; }
+    const bidRecord = auctionState.bids?.[team];
+    if (bidRecord && (bidRecord.amount > 0 || bidRecord.passed)) {
+      renderAuctionPlayerState();
+      return;
+    }
+    auctionState.bids = auctionState.bids || {};
+    auctionState.answers = auctionState.answers || {};
+    auctionState.teamReview = auctionState.teamReview || {};
+    auctionState.bids[team] = { amount: 0, passed: true };
+    auctionState.answers[team] = '';
+    auctionState.teamReview[team] = { status: 'pass', delta: 0 };
+    await auctionStateDoc.set(auctionState, { merge: true });
+    renderAuctionPlayerState();
+  } catch(e) {
+    alert('❌ Lỗi: ' + e.message);
+    if (betBtn) betBtn.disabled = false;
+    if (passBtn) passBtn.disabled = false;
   }
-
-  auctionState.bids = auctionState.bids || {};
-  auctionState.answers = auctionState.answers || {};
-  auctionState.teamReview = auctionState.teamReview || {};
-  auctionState.bids[team] = { amount: 0, passed: true };
-  auctionState.answers[team] = '';
-  auctionState.teamReview[team] = { status: 'pass', delta: 0 };
-  await auctionStateDoc.set(auctionState, { merge: true });
-  renderAuctionPlayerState();
-  alert('✅ Bạn đã chọn PASS. Hành động đã khóa, chờ kết quả.');
 }
 
 function renderAuctionPlayerState() {
-  const timerEl = document.getElementById('player-auction-timer');
-  const statusEl = document.getElementById('player-bid-status');
-  const resultCard = document.getElementById('player-round-result');
-  const resultNotif = document.getElementById('player-result-notification');
-  const rd = auctionState.roundData[auctionState.round] || auctionState.roundData[0];
-  const answerInput = document.getElementById('player-answer-input');
-  const bidInput = document.getElementById('player-bet-input');
-  const betBtn = document.getElementById('player-bet-btn');
-  const passBtn = document.getElementById('player-pass-btn');
-  const teamInfo = document.getElementById('player-team-info');
-  const sideHint = document.getElementById('player-side-to-move');
-  const team = currentTest2Player?.team;
-  
-  if (timerEl) timerEl.textContent = formatTime(auctionState.timeLeft);
+  const rd = auctionState.roundData[Math.min(auctionState.round, auctionState.roundData.length-1)] || auctionState.roundData[0];
+  const team = currentTest2Player?.team || null;
+
+  // FIX 1: Update round badge in realtime
+  const badge = document.getElementById('player-round-badge');
+  if (badge) badge.textContent = 'VÒNG ' + Math.min(auctionState.round + 1, auctionState.roundData.length) + ' / ' + auctionState.roundData.length;
+
+  // FIX 1: Update chess board for current round
   if (rd && document.getElementById('player-chess-board')) {
     renderChessBoardSVG('player-chess-board', rd.fen, 320);
   }
-  if (teamInfo) teamInfo.textContent = `Nhóm: ${team || '—'}`;
-  if (sideHint) sideHint.textContent = `Gợi ý: ${getSideToMove(rd?.fen)}`;
-  if (document.getElementById('player-round-badge')) {
-    document.getElementById('player-round-badge').textContent = `VÒNG ${Math.min(auctionState.round + 1, auctionState.roundData.length)} / ${auctionState.roundData.length}`;
+
+  // FIX 4: Update side-to-move hint
+  const sideEl = document.getElementById('player-side-to-move');
+  if (sideEl && rd) {
+    const fenParts = (rd.fen || '').split(' ');
+    const side = fenParts[1];
+    if (side === 'w') {
+      sideEl.textContent = '⬜ Trắng đi (White to move)';
+      sideEl.style.borderColor = 'rgba(240,217,181,0.5)';
+      sideEl.style.color = '#f0d9b5';
+    } else if (side === 'b') {
+      sideEl.textContent = '⬛ Đen đi (Black to move)';
+      sideEl.style.borderColor = 'rgba(52,152,219,0.5)';
+      sideEl.style.color = 'var(--blue)';
+    } else {
+      sideEl.textContent = 'Gợi ý: —';
+    }
   }
 
+  // Update game context
+  const ctxEl = document.getElementById('player-game-ctx');
+  if (ctxEl && rd) ctxEl.textContent = rd.gm ? rd.gm + (rd.ctx ? ' · ' + rd.ctx : '') : '';
+
+  // Update team info
+  const teamInfo = document.getElementById('player-team-info');
+  if (teamInfo) teamInfo.textContent = 'Nhóm: ' + (team || '—');
+
+  // Update timer
+  const timerEl = document.getElementById('player-auction-timer');
+  if (timerEl) timerEl.textContent = formatTime(auctionState.timeLeft);
+
+  // Update bet range
+  const rangeEl = document.getElementById('player-bet-range');
+  if (rangeEl && rd) rangeEl.textContent = (rd.range || '50–200') + ' ĐP';
+
+  // If team not resolved yet, try async resolve
   if (!team && isLoggedIn()) {
-    getUserTeamName(getLoggedInMssv()).then((teamName) => {
+    getUserTeamName(getLoggedInMssv()).then(function(teamName) {
       if (teamName) {
         currentTest2Player = currentTest2Player || {};
         currentTest2Player.team = teamName;
         renderAuctionPlayerState();
       }
     });
+    const statusEl = document.getElementById('player-bid-status');
+    if (statusEl) statusEl.textContent = '⚠ Không tìm thấy nhóm. Vui lòng đăng ký lại hoặc liên hệ Admin.';
+    return;
   }
 
   const bid = team ? auctionState.bids?.[team] : null;
   const hasActed = bid && (bid.passed || bid.amount > 0);
 
-  if (!team) {
-    if (statusEl) statusEl.textContent = '⚠ Không tìm thấy nhóm của bạn. Vui lòng đăng ký lại hoặc liên hệ Admin.';
-    if (answerInput) answerInput.disabled = true;
-    if (bidInput) bidInput.disabled = true;
-    if (betBtn) betBtn.disabled = true;
-    if (passBtn) passBtn.disabled = true;
-    return;
-  }
+  const actionSection = document.getElementById('player-action-section');
+  const lockedSection = document.getElementById('player-locked-section');
+  const lockedIcon = document.getElementById('player-locked-icon');
+  const lockedTitle = document.getElementById('player-locked-title');
+  const lockedSub = document.getElementById('player-locked-sub');
+  const statusEl = document.getElementById('player-bid-status');
+  const resultCard = document.getElementById('player-round-result');
+  const resultNotif = document.getElementById('player-result-notification');
+  const betBtn = document.getElementById('player-bet-btn');
+  const passBtn = document.getElementById('player-pass-btn');
+  const answerInput = document.getElementById('player-answer-input');
+  const betInput = document.getElementById('player-bet-input');
 
+  // Determine UI state
   if (auctionState.finalized) {
-    if (statusEl) statusEl.textContent = 'Phiên đấu giá đã chốt. Kết quả được hiển thị bên dưới.';
-    if (answerInput) answerInput.disabled = true;
-    if (bidInput) bidInput.disabled = true;
-    if (betBtn) betBtn.disabled = true;
-    if (passBtn) passBtn.disabled = true;
-    if (resultNotif && resultNotif.style.display === 'none') {
-      resultNotif.style.display = 'block';
-      resultNotif.style.animation = 'slideDown 0.4s ease';
-      setTimeout(() => {
-        resultCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      }, 500);
+    // Show locked + result
+    if (actionSection) actionSection.style.display = 'none';
+    if (lockedSection) lockedSection.style.display = 'block';
+    if (lockedIcon && bid) lockedIcon.textContent = bid.passed ? '⊘' : '🔒';
+    if (lockedTitle) lockedTitle.textContent = bid ? (bid.passed ? 'ĐÃ PASS' : 'ĐÃ CƯỢC ' + bid.amount + ' ĐP') : 'CHƯA HÀNH ĐỘNG';
+    if (lockedSub) lockedSub.textContent = bid && !bid.passed ? 'Nước đi: ' + (auctionState.answers?.[team] || '—') : '';
+    if (statusEl) statusEl.textContent = 'Phiên đấu giá đã chốt. Kết quả hiển thị bên dưới.';
+    if (resultNotif) {
+      if (resultNotif.style.display === 'none' || !resultNotif.style.display) {
+        resultNotif.style.display = 'block';
+        setTimeout(function() { if (resultCard) resultCard.scrollIntoView({ behavior: 'smooth', block: 'center' }); }, 400);
+      }
     }
-  } else if (auctionState.running) {
-    if (hasActed) {
-      if (statusEl) statusEl.textContent = bid.passed ? 'Bạn đã chọn PASS. Hành động đã khóa.' : `Bạn đã cược ${bid.amount} ĐP và nộp nước đi. Hành động đã khóa.`;
-      if (answerInput) answerInput.disabled = true;
-      if (bidInput) bidInput.disabled = true;
-      if (betBtn) betBtn.disabled = true;
-      if (passBtn) passBtn.disabled = true;
-    } else {
-      if (statusEl) statusEl.textContent = 'Phiên đấu giá đang diễn ra. Nhập nước đi và bấm Cược hoặc bấm Pass.';
-      if (answerInput) answerInput.disabled = false;
-      if (bidInput) bidInput.disabled = false;
-      if (betBtn) betBtn.disabled = false;
-      if (passBtn) passBtn.disabled = false;
+  } else if (auctionState.running && hasActed) {
+    // Committed — show locked, hide action inputs
+    if (actionSection) actionSection.style.display = 'none';
+    if (lockedSection) lockedSection.style.display = 'block';
+    if (lockedIcon) lockedIcon.textContent = bid.passed ? '⊘' : '✅';
+    if (lockedTitle) {
+      lockedTitle.textContent = bid.passed ? 'ĐÃ CHỌN PASS' : 'ĐÃ CƯỢC ' + bid.amount + ' ĐP';
+      lockedTitle.style.color = bid.passed ? 'var(--muted)' : 'var(--green)';
     }
+    if (lockedSub) lockedSub.textContent = bid && !bid.passed ? 'Nước đi đã nộp: ' + (auctionState.answers?.[team] || '—') : 'Nhóm sẽ không được cộng/trừ điểm vòng này.';
+    if (statusEl) statusEl.textContent = bid.passed ? '⊘ Bạn đã PASS vòng này.' : '✅ Đã cược ' + bid.amount + ' ĐP + nộp nước đi. Khóa hành động.';
+    if (resultNotif) resultNotif.style.display = 'none';
+  } else if (auctionState.running && !hasActed) {
+    // Open — show action section
+    if (actionSection) actionSection.style.display = 'block';
+    if (lockedSection) lockedSection.style.display = 'none';
+    if (betBtn) { betBtn.disabled = false; betBtn.style.opacity = '1'; }
+    if (passBtn) { passBtn.disabled = false; passBtn.style.opacity = '1'; }
+    if (answerInput) answerInput.disabled = false;
+    if (betInput) betInput.disabled = false;
+    if (statusEl) statusEl.textContent = 'Phiên đấu giá đang diễn ra. Nhập nước đi và bấm Cược hoặc bấm Pass.';
     if (resultNotif) resultNotif.style.display = 'none';
   } else if (auctionState.review) {
+    // Stopped by admin — lock without result
+    if (actionSection) actionSection.style.display = 'none';
+    if (lockedSection) lockedSection.style.display = 'block';
+    if (lockedIcon) lockedIcon.textContent = '⏸';
+    if (lockedTitle) { lockedTitle.textContent = 'PHIÊN ĐÃ DỪNG'; lockedTitle.style.color = 'var(--gold)'; }
+    if (lockedSub) lockedSub.textContent = 'Admin đang chốt kết quả...';
     if (statusEl) statusEl.textContent = 'Phiên đã dừng, chờ Admin chốt kết quả.';
-    if (answerInput) answerInput.disabled = true;
-    if (bidInput) bidInput.disabled = true;
-    if (betBtn) betBtn.disabled = true;
-    if (passBtn) passBtn.disabled = true;
     if (resultNotif) resultNotif.style.display = 'none';
   } else {
-    if (statusEl) statusEl.textContent = 'Chờ Admin bắt đầu phiên đấu giá.';
+    // Not started
+    if (actionSection) actionSection.style.display = 'block';
+    if (lockedSection) lockedSection.style.display = 'none';
+    if (betBtn) { betBtn.disabled = true; betBtn.style.opacity = '0.4'; }
+    if (passBtn) { passBtn.disabled = true; passBtn.style.opacity = '0.4'; }
     if (answerInput) answerInput.disabled = true;
-    if (bidInput) bidInput.disabled = true;
-    if (betBtn) betBtn.disabled = true;
-    if (passBtn) passBtn.disabled = true;
+    if (betInput) betInput.disabled = true;
+    if (statusEl) statusEl.textContent = 'Chờ Admin bắt đầu phiên đấu giá.';
     if (resultNotif) resultNotif.style.display = 'none';
   }
 
-  if (auctionState.finalized && auctionState.finalResults && auctionState.finalResults[team]) {
+  // Show round result card if finalized
+  if (auctionState.finalized && team && auctionState.finalResults?.[team]) {
     const result = auctionState.finalResults[team];
-    resultCard.style.display = 'block';
+    if (resultCard) resultCard.style.display = 'block';
     const statusColor = result.status === 'correct' ? 'var(--green)' : result.status === 'wrong' ? 'var(--red)' : 'var(--muted)';
     const statusEmoji = result.status === 'correct' ? '✅' : result.status === 'wrong' ? '❌' : '⊘';
-    document.getElementById('player-round-result-text').innerHTML = `<span style="color:${statusColor};">${statusEmoji} Vòng ${auctionState.round + 1}</span>`;
-    document.getElementById('player-correct-answer').textContent = result.correctAnswer || rd.answer;
-    document.getElementById('player-round-result-status').innerHTML = `<span style="color:${statusColor};font-weight:700;">${result.status === 'correct' ? 'ĐÚNG ✅' : result.status === 'pass' ? 'PASS ⊘' : 'SAI ❌'}</span>`;
-    document.getElementById('player-round-result-delta').innerHTML = `<span style="color:${result.delta >= 0 ? 'var(--green)' : 'var(--red)'};">${result.delta >= 0 ? '+' : ''}${result.delta} ĐP</span>`;
+    if (document.getElementById('player-round-result-text'))
+      document.getElementById('player-round-result-text').innerHTML = '<span style="color:' + statusColor + ';">' + statusEmoji + ' Vòng ' + (auctionState.round + 1) + '</span>';
+    if (document.getElementById('player-correct-answer'))
+      document.getElementById('player-correct-answer').textContent = result.correctAnswer || rd?.answer || '—';
+    if (document.getElementById('player-round-result-status'))
+      document.getElementById('player-round-result-status').innerHTML = '<span style="color:' + statusColor + ';font-weight:700;">' + (result.status === 'correct' ? 'ĐÚNG ✅' : result.status === 'pass' ? 'PASS ⊘' : 'SAI ❌') + '</span>';
+    if (document.getElementById('player-round-result-delta'))
+      document.getElementById('player-round-result-delta').innerHTML = '<span style="color:' + (result.delta >= 0 ? 'var(--green)' : 'var(--red)') + ';">' + (result.delta >= 0 ? '+' : '') + result.delta + ' ĐP</span>';
+    if (lockedSection && lockedIcon) {
+      lockedIcon.textContent = result.status === 'correct' ? '🏆' : result.status === 'wrong' ? '❌' : '⊘';
+      if (lockedTitle) { lockedTitle.textContent = result.status === 'correct' ? 'ĐÚNG! +' + result.delta + ' ĐP' : result.status === 'wrong' ? 'SAI! ' + result.delta + ' ĐP' : 'PASS'; lockedTitle.style.color = statusColor; }
+      if (lockedSub) lockedSub.textContent = 'Đáp án đúng: ' + (result.correctAnswer || rd?.answer || '—');
+    }
   } else {
     if (resultCard) resultCard.style.display = 'none';
   }
 }
+}
 
 // ============================================================
 // LEADERBOARD
-// ============================================================
-async function renderLeaderboard() {
-  const players = await getPlayers();
-  const sorted = players.sort((a,b) => {
-    if (b.score !== a.score) return b.score - a.score;
-    return (a.responseTime||0) - (b.responseTime||0);
-  });
-  
-  const el = document.getElementById('lb-individual');
-  if (!sorted.length) { el.innerHTML = '<div style="color:var(--muted);text-align:center;padding:24px;font-family:Space Mono,monospace;font-size:0.8rem;">Chưa có người chơi nào</div>'; return; }
-
-  const medals = ['🥇','🥈','🥉'];
-  el.innerHTML = `<table class="lb-table"><thead><th>#</th><th>Người Chơi</th><th>Điểm</th><th>Thời Gian</th></thead><tbody>` +
-    sorted.map((p,i) => `<tr class="anim-slide" style="animation-delay:${i*0.03}s">
-      <td class="${i<3?'rank-'+(i+1):''}">${medals[i]||i+1}</td>
-      <td><div style="font-weight:600">${p.name}</div><div class="mssv-tag">${p.mssv}</div></td>
-      <td class="score-badge">${p.score}</td>
-      <td style="color:var(--muted);font-family:'Space Mono',monospace;font-size:0.8rem">${p.responseTime || 0}s</td>
-     </tr>`).join('') + '</tbody></table>';
-
-  const teams = await getTeams();
-  const teamPanel = document.getElementById('lb-teams');
-  if (!teams.length) { teamPanel.innerHTML = '<div style="color:var(--muted);font-size:0.8rem;font-family:Space Mono,monospace;">Chưa ghép nhóm</div>'; return; }
-  const sortedTeams = [...teams].sort((a,b) => b.totalScore-a.totalScore);
-  teamPanel.innerHTML = sortedTeams.map((t,i) => `
-    <div class="team-card ${i===0?'winner':''}">
-      <div>
-        <div class="team-name">${i===0?'👑 ':''}${t.name}</div>
-        <div class="team-members">${t.members.map(m=>m.name).join(' · ')}</div>
-      </div>
-      <div class="team-score">${t.totalScore} ĐP</div>
-    </div>`).join('');
-}
-
-// ============================================================
-// ADMIN – PLAYERS
-// ============================================================
-async function adminRefreshPlayers() {
-  const players = await getPlayers();
-  const sorted = players.sort((a,b) => {
-    if (b.score !== a.score) return b.score - a.score;
-    return (a.responseTime||0) - (b.responseTime||0);
-  });
-  const el = document.getElementById('admin-player-list');
-  if (!sorted.length) { el.innerHTML = '<div style="color:var(--muted);text-align:center;padding:16px;font-size:0.8rem;">Chưa có người đăng ký</div>'; return; }
-  el.innerHTML = sorted.map((p,i) => `
-    <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;padding:8px 0;border-bottom:1px solid var(--border);font-size:0.85rem;">
-      <div>
-        <span style="color:var(--gold);font-family:'Space Mono',monospace;margin-right:8px;">#${i+1}</span>
-        <strong>${p.name}</strong>
-        <span class="mssv-tag" style="margin-left:6px;">${p.mssv}</span>
-      </div>
-      <div style="text-align:right;">
-        <span style="font-family:'Space Mono',monospace;color:var(--gold);display:block;">${p.score} ĐP</span>
-        <span style="font-family:'Space Mono',monospace;color:var(--muted);font-size:0.75rem;">${p.responseTime||0}s</span>
-        <button class="btn btn-sm" style="background:#e74c3c;color:#fff;margin-top:8px;" onclick="deletePlayerByMssv('${p.mssv}')">Xóa</button>
-      </div>
-    </div>`).join('');
-  updateAdminStats();
-}
-
-async function updateAdminStats() {
-  const players = await getPlayers();
-  const teams = await getTeams();
-  const total = players.length;
-  const avg = total ? Math.round(players.reduce((s,p)=>s+p.score,0)/total) : 0;
-  const max = total ? Math.max(...players.map(p=>p.score)) : 0;
-  document.getElementById('admin-stats').innerHTML =
-    `Tổng người chơi: <span style="color:var(--white)">${total}</span><br>` +
-    `Điểm TB: <span style="color:var(--white)">${avg}</span><br>` +
-    `Điểm cao nhất: <span style="color:var(--gold)">${max}</span><br>` +
-    `Số nhóm: <span style="color:var(--white)">${teams.length}</span>`;
-}
-
-async function adminOpenQuiz() {
-  await quizSettingsDoc.set({ quizOpen: true });
-  refreshQuizOpenUI();
-}
-
-async function adminCloseQuiz() {
-  await quizSettingsDoc.set({ quizOpen: false });
-  refreshQuizOpenUI();
-}
-
-function refreshQuizOpenUI() {
-  // Admin panel status
-  const status = document.getElementById('admin-quiz-status');
-  if (status) {
-    if (cachedQuizOpen) {
-      status.textContent = '✅ Quiz đang MỞ – Người chơi có thể đăng ký';
-      status.style.borderColor = 'var(--green)';
-      status.style.color = 'var(--green)';
-    } else {
-      status.textContent = '🔒 Quiz đã ĐÓNG';
-      status.style.borderColor = 'rgba(245,200,66,0.3)';
-      status.style.color = 'var(--gold)';
-    }
-  }
-
-  // User register page: hiển thị trạng thái quiz và enable/disable nút
-  const quizStatusIndicator = document.getElementById('reg-quiz-status');
-  const startBtn = document.getElementById('btn-register-test1');
-  const alreadyDone = document.getElementById('reg-already-done');
-  const alreadyDoneVisible = alreadyDone && alreadyDone.style.display !== 'none';
-
-  if (quizStatusIndicator) {
-    if (cachedQuizOpen) {
-      quizStatusIndicator.style.display = 'none';
-    } else {
-      quizStatusIndicator.style.display = 'flex';
-    }
-  }
-  if (startBtn && !alreadyDoneVisible) {
-    startBtn.disabled = !cachedQuizOpen;
-  }
-}
-
-function shareQuizLink() {
-  const baseUrl = window.location.origin + window.location.pathname;
-  navigator.clipboard.writeText(baseUrl).then(() => {
-    alert('✅ Đã sao chép link!\nGửi link này cho những người tham gia.');
-  }).catch(() => {
-    alert('Link: ' + baseUrl);
-  });
-}
-
-async function clearAllData() {
-  if (!confirm('Xóa TẤT CẢ dữ liệu? Không thể hoàn tác!')) return;
-  
-  showLoading(true);
-  try {
-    // Delete all players
-    const playersSnapshot = await playersCollection.get();
-    const batch = db.batch();
-    playersSnapshot.docs.forEach(doc => batch.delete(doc.ref));
-    
-    // Delete all test2 players
-    const test2Snapshot = await test2PlayersCollection.get();
-    test2Snapshot.docs.forEach(doc => batch.delete(doc.ref));
-    
-    // Delete all teams
-    const teamsSnapshot = await teamsCollection.get();
-    teamsSnapshot.docs.forEach(doc => batch.delete(doc.ref));
-    
-    await batch.commit();
-    
-    // Reset auction state
-    auctionState = {
-      round: 0,
-      running: false,
-      review: false,
-      finalized: false,
-      timerInterval: null,
-      timeLeft: 180,
-      bids: {},
-      answers: {},
-      teamReview: {},
-      finalResults: {},
-      roundData: auctionState.roundData
-    };
-    await auctionStateDoc.set(auctionState);
-    
-    alert('✅ Đã xóa toàn bộ dữ liệu!');
-    adminRefreshPlayers();
-    adminRefreshTeams();
-    updateAdminStats();
-  } catch (error) {
-    console.error('Clear data error:', error);
-    alert('❌ Lỗi khi xóa dữ liệu: ' + error.message);
-  } finally {
-    showLoading(false);
-  }
-}
-
-// ============================================================
-// ADMIN – TEAMS
-// ============================================================
-async function autoGroupTeams() {
-  await deleteAllTeams();
-  const players = await getPlayers();
-  const sorted = players.sort((a,b) => b.score-a.score);
-  if (sorted.length < 3) { document.getElementById('group-result').textContent = '⚠ Cần ít nhất 3 người chơi!'; return; }
-
-  const teams = [];
-  const used = new Set();
-  let teamNum = 1;
-
-  for (let i = 0; i < sorted.length; i++) {
-    if (used.has(sorted[i].mssv)) continue;
-    const group = [sorted[i]];
-    used.add(sorted[i].mssv);
-    for (let j = i+1; j < sorted.length && group.length < 3; j++) {
-      if (used.has(sorted[j].mssv)) continue;
-      if (Math.abs(sorted[i].score - sorted[j].score) <= 300) {
-        group.push(sorted[j]);
-        used.add(sorted[j].mssv);
-      }
-    }
-    for (let j = 0; j < sorted.length && group.length < 3; j++) {
-      if (!used.has(sorted[j].mssv)) { 
-        group.push(sorted[j]); 
-        used.add(sorted[j].mssv); 
-      }
-    }
-    if (group.length >= 1) {
-      const teamName = `USSC ${teamNum++}`;
-      const teamData = {
-        name: teamName,
-        members: group.map(p => ({ name: p.name, mssv: p.mssv, score: p.score })),
-        baseScore: group.reduce((s,p)=>s+p.score,0),
-        totalScore: group.reduce((s,p)=>s+p.score,0),
-        auctionScore: 0,
-        correctAnswers: 0,
-        wrongAnswers: 0,
-      };
-      await saveTeam(teamData);
-      teams.push(teamData);
-    }
-  }
-
-  document.getElementById('group-result').textContent = `✅ Đã ghép ${teams.length} nhóm thành công!`;
-  adminRefreshTeams();
-  renderTeamBidList();
-}
-
-async function clearTeams() {
-  await deleteAllTeams();
-  adminRefreshTeams();
-  renderTeamBidList();
-}
-
-async function adminRefreshTeams() {
-  const teams = await getTeams();
-  const sorted = teams.sort((a,b) => b.totalScore-a.totalScore);
-  const el = document.getElementById('admin-team-list');
-  if (!sorted.length) { el.innerHTML = '<div style="color:var(--muted);font-size:0.8rem;text-align:center;padding:16px;">Chưa có nhóm</div>'; return; }
-  el.innerHTML = sorted.map((t,i) => `
-    <div class="team-card ${i===0?'winner':''}">
-      <div>
-        <div class="team-name">${t.name}</div>
-        <div class="team-members">${t.members.map(m=>m.name+' ('+m.score+')').join(' · ')}</div>
-      </div>
-      <div>
-        <div class="team-score">${t.totalScore} ĐP</div>
-        <div style="font-size:0.7rem;color:var(--muted);text-align:right;font-family:'Space Mono',monospace;">base: ${t.baseScore}</div>
-      </div>
-    </div>`).join('');
-}
-
-// ============================================================
-// AUCTION ADMIN
-// ============================================================
-async function renderTeamBidList() {
-  const teams = await getTeams();
-  const round = auctionState.round;
-  const el = document.getElementById('team-bid-list');
-  if (!teams.length) { if(el) el.innerHTML = '<div style="color:var(--muted);font-size:0.8rem;padding:12px 0;">Chưa có nhóm</div>'; return; }
-
-  const rd = auctionState.roundData[Math.min(round, auctionState.roundData.length-1)];
-
-  if(el) el.innerHTML = teams.map(t => {
-    const bid = auctionState.bids[t.name];
-    const answer = auctionState.answers[t.name];
-
-    // Xác định trạng thái cược
-    let bidLine = '';
-    let bidColor = 'var(--muted)';
-    if (bid) {
-      if (bid.passed) {
-        bidLine = '⛔ PASS';
-        bidColor = 'var(--muted)';
-      } else if (bid.amount > 0) {
-        bidLine = `💰 Cược ${bid.amount} ĐP`;
-        bidColor = 'var(--blue)';
-      } else {
-        bidLine = '⏳ Đang quyết định...';
-        bidColor = 'var(--gold)';
-      }
-    } else {
-      bidLine = '⏳ Đang quyết định...';
-      bidColor = 'var(--gold)';
-    }
-
-    // Nước đi nộp
-    let answerLine = '';
-    let answerColor = 'var(--muted)';
-    if (auctionState.finalized && auctionState.finalResults && auctionState.finalResults[t.name]) {
-      const res = auctionState.finalResults[t.name];
-      if (res.status === 'correct') {
-        answerLine = `✅ ${res.submittedAnswer || answer || '—'} (Đúng +${res.delta} ĐP)`;
-        answerColor = 'var(--green)';
-      } else if (res.status === 'wrong') {
-        answerLine = `❌ ${res.submittedAnswer || answer || '—'} (Sai ${res.delta} ĐP)`;
-        answerColor = 'var(--red)';
-      } else {
-        answerLine = '⊘ Pass';
-        answerColor = 'var(--muted)';
-      }
-    } else if (answer) {
-      answerLine = `📝 Nộp: ${answer}`;
-      answerColor = 'var(--white)';
-    } else if (bid && !bid.passed) {
-      answerLine = '⏳ Chưa nộp nước đi';
-      answerColor = 'var(--muted)';
-    } else if (bid && bid.passed) {
-      answerLine = '';
-    } else {
-      answerLine = '';
-    }
-
-    // Border color theo trạng thái
-    let borderColor = 'var(--border)';
-    if (auctionState.finalized && auctionState.finalResults[t.name]) {
-      const s = auctionState.finalResults[t.name].status;
-      borderColor = s === 'correct' ? 'var(--green)' : s === 'wrong' ? 'var(--red)' : 'var(--border)';
-    } else if (bid) {
-      borderColor = bid.passed ? 'var(--border)' : 'rgba(52,152,219,0.5)';
-    }
-
-    return `
-    <div style="background:var(--surface2); border:1px solid ${borderColor}; border-radius:10px; padding:12px 14px; margin-bottom:8px; transition:border-color 0.3s;">
-      <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:8px;">
-        <div>
-          <div style="font-family:'Bebas Neue',sans-serif; font-size:1rem; letter-spacing:0.08em; color:var(--gold);">${t.name}</div>
-          <div style="font-family:'Space Mono',monospace; font-size:0.68rem; color:var(--muted); margin-top:2px;">${t.members.map(m=>m.name).join(' · ')}</div>
-        </div>
-        <div style="text-align:right;">
-          <div style="font-family:'Space Mono',monospace; font-size:0.9rem; font-weight:700; color:var(--white);">${t.totalScore} ĐP</div>
-          <div style="font-size:0.65rem; color:var(--muted); font-family:'Space Mono',monospace;">tổng điểm</div>
-        </div>
-      </div>
-      <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px;">
-        <div style="background:var(--surface); border-radius:6px; padding:7px 10px;">
-          <div style="font-size:0.6rem; color:var(--muted); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:3px;">Cược</div>
-          <div style="font-size:0.82rem; font-weight:600; color:${bidColor}; font-family:'Space Mono',monospace;">${bidLine}</div>
-        </div>
-        <div style="background:var(--surface); border-radius:6px; padding:7px 10px;">
-          <div style="font-size:0.6rem; color:var(--muted); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:3px;">Nước Đi</div>
-          <div style="font-size:0.82rem; font-weight:600; color:${answerColor}; font-family:'Space Mono',monospace;">${answerLine || '—'}</div>
-        </div>
-      </div>
-    </div>`;
-  }).join('');
-
-  if(rd) {
-    const roundEl = document.getElementById('auction-round-indicator');
-    if(roundEl) roundEl.textContent = `VÒNG ${round+1} / ${auctionState.roundData.length}`;
-    const rangeEl = document.getElementById('auction-bet-range');
-    if(rangeEl) rangeEl.textContent = rd.range + ' ĐP';
-    renderChessBoardSVG('auction-board-display', rd.fen, 320);
-  }
-}
-
-function updateAuctionStatus() {
-  const statusEl = document.getElementById('auction-round-status');
-  if (!statusEl) return;
-  if (auctionState.running) {
-    statusEl.textContent = '⏱ Phiên đấu giá đang chạy. Người chơi có thể đặt cược và nộp đáp án.';
-    statusEl.style.borderColor = 'var(--green)';
-    statusEl.style.color = 'var(--green)';
-  } else if (auctionState.review) {
-    statusEl.textContent = '⏳ Phiên đã dừng. Chờ Admin chốt kết quả.';
-    statusEl.style.borderColor = 'var(--gold)';
-    statusEl.style.color = 'var(--gold)';
-  } else if (auctionState.finalized) {
-    const isLastRound = auctionState.round >= auctionState.roundData.length - 1;
-    statusEl.textContent = isLastRound ? '🏁 Vòng cuối đã chốt. Sẵn sàng công bố kết quả giải đấu!' : '✅ Kết quả đã chốt. Sẵn sàng vòng tiếp theo.';
-    statusEl.style.borderColor = isLastRound ? 'var(--gold)' : 'var(--blue)';
-    statusEl.style.color = isLastRound ? 'var(--gold)' : 'var(--blue)';
-  } else {
-    statusEl.textContent = 'Phiên đấu giá chưa bắt đầu.';
-    statusEl.style.borderColor = 'var(--border)';
-    statusEl.style.color = 'var(--muted)';
-  }
-  updateRoundButtons();
-}
-
-function updateRoundButtons() {
-  const btnNext = document.getElementById('btn-next-round');
-  const btnPublish = document.getElementById('btn-publish-tournament');
-  if (!btnNext || !btnPublish) return;
-  const isLastRound = auctionState.round >= auctionState.roundData.length - 1;
-  const isFinalized = auctionState.finalized;
-  if (isLastRound && isFinalized) {
-    btnNext.style.display = 'none';
-    btnPublish.style.display = '';
-  } else {
-    btnNext.style.display = '';
-    btnPublish.style.display = 'none';
-  }
-}
-
-async function placeBid(teamName) {
-  if (!auctionState.running) { alert('⚠ Phiên đấu giá chưa bắt đầu.'); return; }
-  const key = teamName.replace(/\s+/g,'_');
-  const val = parseInt(document.getElementById('bet-'+key).value) || 0;
-  const teams = await getTeams();
-  const team = teams.find(t=>t.name===teamName);
-  if (!team) return;
-  const rd = auctionState.roundData[auctionState.round] || auctionState.roundData[0];
-  const parts = rd.range.split('–');
-  const minBet = parseInt(parts[0])||50;
-  const maxBet = Math.min(parseInt(parts[1])||500, team.totalScore);
-  if (val < minBet || val > maxBet) {
-    alert(`Cược phải từ ${minBet} đến ${maxBet} ĐP`); return;
-  }
-  auctionState.bids[teamName] = { amount: val, passed: false };
-  auctionState.teamReview[teamName] = auctionState.teamReview[teamName] || { status:'auto', delta:0 };
-  await auctionStateDoc.set(auctionState, { merge: true });
-  renderTeamBidList();
-}
-
-async function passRound(teamName) {
-  if (!auctionState.running) { alert('⚠ Phiên đấu giá chưa bắt đầu.'); return; }
-  auctionState.bids[teamName] = { amount: 0, passed: true };
-  auctionState.teamReview[teamName] = { status:'pass', delta:0 };
-  await auctionStateDoc.set(auctionState, { merge: true });
-  renderTeamBidList();
-}
-
-async function updateTeamReview(teamName) {
-  const statusEl = document.getElementById(`review-status-${teamName.replace(/\s+/g,'_')}`);
-  const deltaEl = document.getElementById(`review-delta-${teamName.replace(/\s+/g,'_')}`);
-  if (!statusEl || !deltaEl) return;
-  const status = statusEl.value;
-  const delta = parseInt(deltaEl.value) || 0;
-  auctionState.teamReview[teamName] = { status, delta };
-  await auctionStateDoc.set(auctionState, { merge: true });
-  renderTeamBidList();
-}
-
-async function publishAuctionResults() {
-  if (!auctionState.review) { alert('⚠ Vui lòng dừng phiên đấu giá trước khi chốt kết quả.'); return; }
-  const rd = auctionState.roundData[auctionState.round] || auctionState.roundData[0];
-  const teams = await getTeams();
-  const test2Players = await getTest2Players();
-  auctionState.finalResults = {};
-
-  for (const t of teams) {
-    const bid = auctionState.bids[t.name];
-    const answer = auctionState.answers[t.name] ? auctionState.answers[t.name].toUpperCase() : '';
-    const review = auctionState.teamReview[t.name] || { status:'auto', delta:0 };
-    let status = 'pass';
-    let delta = 0;
-
-    if (!bid || bid.passed) {
-      status = 'pass';
-      delta = 0;
-    } else {
-      const autoCorrect = answer === rd.answer.toUpperCase();
-      if (review.status === 'auto') {
-        status = autoCorrect ? 'correct' : 'wrong';
-      } else {
-        status = review.status;
-      }
-      if (review.status !== 'auto') {
-        delta = review.delta;
-      } else if (status === 'correct') {
-        delta = bid.amount * 2;
-      } else if (status === 'wrong') {
-        delta = -bid.amount;
-      }
-    }
-
-    if (status !== 'pass') {
-      t.totalScore += delta;
-      t.auctionScore = (t.auctionScore||0) + delta;
-      if (status === 'correct') t.correctAnswers = (t.correctAnswers||0) + 1;
-      if (status === 'wrong') t.wrongAnswers = (t.wrongAnswers||0) + 1;
-    }
-    if (t.totalScore < 0) t.totalScore = 0;
-
-    await saveTeam(t);
-
-    auctionState.finalResults[t.name] = {
-      status,
-      delta,
-      correctAnswer: rd.answer,
-      submittedAnswer: answer,
-    };
-
-    // Save results to each test2 player in the team
-    for (const member of t.members) {
-      const test2Player = test2Players.find(p => p.mssv === member.mssv);
-      if (test2Player) {
-        if (!test2Player.auctionResults) test2Player.auctionResults = [];
-        // Store this round's result
-        test2Player.auctionResults.push({
-          round: auctionState.round + 1,
-          teamName: t.name,
-          bid: bid ? bid.amount : 0,
-          passed: bid ? bid.passed : true,
-          answer: answer,
-          correctAnswer: rd.answer,
-          status: status,
-          delta: delta,
-          timestamp: Date.now()
-        });
-        await test2PlayersCollection.doc(member.mssv).set(test2Player);
-      }
-    }
-  }
-
-  auctionState.finalized = true;
-  auctionState.review = false;
-  await auctionStateDoc.set(auctionState);
-  adminRefreshTeams();
-  renderTeamBidList();
-  updateAdminStats();
-  alert('✅ Đã chốt kết quả vòng đấu giá. Người chơi có thể xem điểm cập nhật.');
-}
-
-async function nextAuctionRound() {
-  if (auctionState.round < auctionState.roundData.length - 1) {
-    auctionState.round++;
-    auctionState.running = false;
-    auctionState.review = false;
-    auctionState.finalized = false;
-    auctionState.timeLeft = 180;
-    if (auctionState.timerInterval) clearInterval(auctionState.timerInterval);
-    auctionState.timerInterval = null;
-    auctionState.bids = {};
-    auctionState.answers = {};
-    auctionState.teamReview = {};
-    auctionState.finalResults = {};
-    await auctionStateDoc.set(auctionState);
-    stopAuctionTimer();
-    renderTeamBidList();
-    updateAuctionStatus();
-    updateRoundButtons();
-  } else {
-    alert('🏁 Đã kết thúc tất cả ' + auctionState.roundData.length + ' vòng đấu giá!');
-    adminTab('result');
-  }
-}
-
-let auctionTimerInterval = null;
-
-function startAuctionTimer() {
-  if (auctionState.running) return;
-  auctionState.running = true;
-  auctionState.review = false;
-  auctionState.finalized = false;
-  auctionState.timeLeft = 180;
-  auctionState.finalResults = {};
-  if (auctionState.timerInterval) clearInterval(auctionState.timerInterval);
-  auctionState.timerInterval = null;
-  auctionStateDoc.set(auctionState);
-  renderTeamBidList();
-  updateAuctionStatus();
-
-  auctionTimerInterval = setInterval(async () => {
-    if (!auctionState.running) {
-      clearInterval(auctionTimerInterval);
-      return;
-    }
-    auctionState.timeLeft--;
-    const m = Math.floor(auctionState.timeLeft/60);
-    const s = auctionState.timeLeft%60;
-    const el = document.getElementById('auction-timer');
-    if(el) { el.textContent = `${m}:${String(s).padStart(2,'0')}`; el.style.color = auctionState.timeLeft<=30?'var(--red)':'var(--gold)'; }
-    await auctionStateDoc.set(auctionState);
-    if (auctionState.timeLeft <= 0) {
-      clearInterval(auctionTimerInterval);
-      auctionState.running = false;
-      auctionState.review = true;
-      await auctionStateDoc.set(auctionState);
-      updateAuctionStatus();
-      renderTeamBidList();
-      alert('⏰ Hết giờ thảo luận! Hãy chốt kết quả.');
-    }
-  }, 1000);
-}
-
-function stopAuctionTimer() {
-  clearInterval(auctionTimerInterval);
-  auctionTimerInterval = null;
-  auctionState.running = false;
-  auctionState.review = true;
-  auctionStateDoc.set(auctionState);
-  updateAuctionStatus();
-  renderTeamBidList();
-}
-
-async function resetAuctionRound() {
-  stopAuctionTimer();
-  auctionState.running = false;
-  auctionState.review = false;
-  auctionState.finalized = false;
-  auctionState.timeLeft = 180;
-  auctionState.bids = {};
-  auctionState.answers = {};
-  auctionState.teamReview = {};
-  auctionState.finalResults = {};
-  await auctionStateDoc.set(auctionState);
-  const el = document.getElementById('auction-timer');
-  if(el) { el.textContent='3:00'; el.style.color='var(--gold)'; }
-  renderTeamBidList();
-  updateAuctionStatus();
-}
-
-// ============================================================
-// FINAL RESULT
-// ============================================================
-async function renderFinalResult() {
-  const teams = await getTeams();
-  const sorted = teams.sort((a,b)=>b.totalScore-a.totalScore);
-  const el = document.getElementById('final-result-list');
-  if (!sorted.length) { el.innerHTML='<div style="color:var(--muted);font-size:0.8rem;">Chưa có dữ liệu nhóm</div>'; return; }
-  const medals = ['🥇','🥈','🥉'];
-  el.innerHTML = sorted.map((t,i) => `
-    <div class="team-card ${i===0?'winner':''}">
-      <div>
-        <div class="team-name">${medals[i]||'#'+(i+1)} ${t.name}</div>
-        <div class="team-members">${t.members.map(m=>m.name).join(' · ')}</div>
-        <div style="font-size:0.7rem;color:var(--muted);font-family:'Space Mono',monospace;margin-top:2px;">
-          Base: ${t.baseScore} ĐP | Đấu giá: <span style="color:${(t.auctionScore||0)>=0?'var(--green)':'var(--red)'}">${(t.auctionScore||0)>=0?'+':''}${t.auctionScore||0}</span> | Đúng: ${t.correctAnswers||0} | Sai: ${t.wrongAnswers||0}
-        </div>
-      </div>
-      <div class="team-score" style="font-size:1.4rem;">${t.totalScore} ĐP</div>
-    </div>`).join('');
-  // Show published banner if already published
-  const banner = document.getElementById('tournament-published-banner');
-  if (banner) {
-    const settingsSnap = await db.collection('settings').doc('tournament_result').get();
-    banner.style.display = settingsSnap.exists && settingsSnap.data().published ? '' : 'none';
-  }
-}
-
-async function computeFinalResult() {
-  await renderFinalResult();
-  const teams = await getTeams();
-  const sorted = teams.sort((a,b)=>b.totalScore-a.totalScore);
-  if (sorted.length) alert(`🏆 CHÚC MỪNG ĐỘI ${sorted[0].name.toUpperCase()}!\n\nVô địch với ${sorted[0].totalScore} điểm!\n${sorted[0].members.map(m=>m.name).join(', ')}`);
-}
-
-// Called from auction tab button on last round
-async function publishTournamentResult() {
-  showLoading(true);
-  try {
-    const teams = await getTeams();
-    const sorted = teams.sort((a,b) => b.totalScore - a.totalScore);
-    const medals = ['🥇','🥈','🥉'];
-    const rankColors = ['var(--gold)', '#c0c0c0', '#cd7f32'];
-    const rankingsEl = document.getElementById('tournament-overlay-rankings');
-    if (rankingsEl) {
-      rankingsEl.innerHTML = sorted.slice(0, 3).map((t, i) => `
-        <div style="background:var(--surface2); border:2px solid ${i===0?'var(--gold)':rankColors[i]}30; border-radius:14px; padding:18px 20px; ${i===0?'background:rgba(245,200,66,0.06);':''}">
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-            <div style="display:flex; align-items:center; gap:10px;">
-              <span style="font-size:${i===0?'2rem':'1.5rem'};">${medals[i]}</span>
-              <div>
-                <div style="font-family:'Bebas Neue',sans-serif; font-size:${i===0?'1.4rem':'1.1rem'}; letter-spacing:0.08em; color:${rankColors[i]};">${t.name}</div>
-                <div style="font-size:0.72rem; color:var(--muted); font-family:'Space Mono',monospace;">${t.members.map(m=>m.name).join(' · ')}</div>
-              </div>
-            </div>
-            <div style="text-align:right;">
-              <div style="font-family:'Bebas Neue',sans-serif; font-size:${i===0?'1.8rem':'1.3rem'}; color:${rankColors[i]};">${t.totalScore}</div>
-              <div style="font-size:0.65rem; color:var(--muted); font-family:'Space Mono',monospace;">ĐIỂM</div>
-            </div>
-          </div>
-          <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:6px; font-family:'Space Mono',monospace; font-size:0.72rem; color:var(--muted);">
-            <div style="background:var(--surface); border-radius:6px; padding:6px 8px;">
-              <div style="margin-bottom:2px;">Base</div>
-              <div style="color:var(--white); font-weight:700;">${t.baseScore}</div>
-            </div>
-            <div style="background:var(--surface); border-radius:6px; padding:6px 8px;">
-              <div style="margin-bottom:2px;">Đấu Giá</div>
-              <div style="color:${(t.auctionScore||0)>=0?'var(--green)':'var(--red)'}; font-weight:700;">${(t.auctionScore||0)>=0?'+':''}${t.auctionScore||0}</div>
-            </div>
-            <div style="background:var(--surface); border-radius:6px; padding:6px 8px;">
-              <div style="margin-bottom:2px;">Đúng/Sai</div>
-              <div style="color:var(--white); font-weight:700;">✅${t.correctAnswers||0} ❌${t.wrongAnswers||0}</div>
-            </div>
-          </div>
-        </div>`).join('');
-      
-      // If more than 3 teams, show the rest briefly
-      if (sorted.length > 3) {
-        rankingsEl.innerHTML += `<div style="padding:10px 14px; background:var(--surface2); border-radius:10px; font-family:'Space Mono',monospace; font-size:0.78rem; color:var(--muted);">` +
-          sorted.slice(3).map((t,i) => `<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--border);"><span>#${i+4} ${t.name}</span><span style="color:var(--white);">${t.totalScore} ĐP</span></div>`).join('') +
-          `</div>`;
-      }
-    }
-    document.getElementById('tournament-overlay').style.display = 'flex';
-  } catch(e) {
-    alert('❌ Lỗi: ' + e.message);
-  } finally {
-    showLoading(false);
-  }
-}
-
-async function closeTournamentOverlayAndPublish() {
-  document.getElementById('tournament-overlay').style.display = 'none';
-  await confirmPublishTournament();
-  adminTab('result');
-}
-
-function closeTournamentOverlay() {
-  document.getElementById('tournament-overlay').style.display = 'none';
-  if (confirm('Xác nhận chơi lại từ Vòng 1?\n\nĐiểm đấu giá sẽ reset, điểm Quiz giữ nguyên.')) {
-    restartTournament();
-  }
-}
-
-async function confirmPublishTournament() {
-  showLoading(true);
-  try {
-    const teams = await getTeams();
-    const sorted = teams.sort((a,b)=>b.totalScore-a.totalScore);
-    const medals = ['🥇','🥈','🥉'];
-    const resultData = {
-      published: true,
-      publishedAt: Date.now(),
-      rankings: sorted.map((t, i) => ({
-        rank: i + 1,
-        medal: medals[i] || '#' + (i+1),
-        name: t.name,
-        members: t.members.map(m => m.name),
-        totalScore: t.totalScore,
-        baseScore: t.baseScore,
-        auctionScore: t.auctionScore || 0,
-        correctAnswers: t.correctAnswers || 0,
-        wrongAnswers: t.wrongAnswers || 0,
-      }))
-    };
-    await db.collection('settings').doc('tournament_result').set(resultData);
-    await renderFinalResult();
-    if (sorted.length) {
-      alert(`🏆 ĐÃ CÔNG BỐ KẾT QUẢ!\n\nVô địch: ${sorted[0].name.toUpperCase()}\n${sorted[0].totalScore} điểm\n${sorted[0].members.map(m=>m.name).join(', ')}\n\nNgười chơi có thể xem kết quả trong Lịch Sử Thi Đấu.`);
-    } else {
-      alert('✅ Đã công bố kết quả giải đấu!');
-    }
-  } catch(e) {
-    alert('❌ Lỗi: ' + e.message);
-  } finally {
-    showLoading(false);
-  }
-}
-
-async function restartTournament() {
-  if (!confirm('⚠ Đặt lại giải đấu từ Vòng 1?\n\nĐiểm đấu giá sẽ bị xóa. Điểm Quiz (Test 1) vẫn giữ nguyên.\n\nBấm OK để xác nhận.')) return;
-  showLoading(true);
-  try {
-    // Reset all teams auction scores
-    const teams = await getTeams();
-    for (const t of teams) {
-      t.totalScore = t.baseScore;
-      t.auctionScore = 0;
-      t.correctAnswers = 0;
-      t.wrongAnswers = 0;
-      await saveTeam(t);
-    }
-    // Reset auction state to round 0
-    auctionState = {
-      ...auctionState,
-      round: 0,
-      running: false,
-      review: false,
-      finalized: false,
-      timerInterval: null,
-      timeLeft: 180,
-      bids: {},
-      answers: {},
-      teamReview: {},
-      finalResults: {},
-    };
-    await auctionStateDoc.set(auctionState);
-    // Unpublish tournament result
-    await db.collection('settings').doc('tournament_result').set({ published: false });
-    // Reset test2 player auction results
-    const test2Players = await getTest2Players();
-    for (const p of test2Players) {
-      await test2PlayersCollection.doc(p.mssv).set({ ...p, auctionResults: [] });
-    }
-    adminRefreshTeams();
-    renderTeamBidList();
-    updateAuctionStatus();
-    updateRoundButtons();
-    adminTab('auction');
-    alert('✅ Đã đặt lại giải đấu từ Vòng 1!');
-  } catch(e) {
-    alert('❌ Lỗi: ' + e.message);
-  } finally {
-    showLoading(false);
-  }
-}
-
-function adminTab(tab) {
-  ['players','teams','auction','result'].forEach(t => {
-    const el = document.getElementById('admin-tab-'+t);
-    if (el) el.style.display = t===tab ? '' : 'none';
-    const btn = document.getElementById('tab-'+t);
-    if (btn) btn.classList.toggle('active', t===tab);
-  });
-  if (tab === 'auction') { renderTeamBidList(); updateAuctionStatus(); updateRoundButtons(); }
-  if (tab === 'result') renderFinalResult();
-  if (tab === 'teams') adminRefreshTeams();
-}
-
-// Expose global functions
-window.showPage = showPage;
-window.handleAdminLogin = handleAdminLogin;
-window.handleAdminLogout = handleAdminLogout;
-window.handleRegister = handleRegister;
-window.handleRegister2 = handleRegister2;
-window.handleStartTest1 = handleStartTest1;
-window.populateRegisterPage = populateRegisterPage;
-window.populateRegister2Page = populateRegister2Page;
-window.skipQuestion = skipQuestion;
-window.placeAuctionBid = placeAuctionBid;
-window.passAuctionBid = passAuctionBid;
-window.renderLeaderboard = renderLeaderboard;
-window.adminRefreshPlayers = adminRefreshPlayers;
-window.adminRefreshTeams = adminRefreshTeams;
-window.adminOpenQuiz = adminOpenQuiz;
-window.adminCloseQuiz = adminCloseQuiz;
-window.shareQuizLink = shareQuizLink;
-window.clearAllData = clearAllData;
-window.autoGroupTeams = autoGroupTeams;
-window.clearTeams = clearTeams;
-window.deletePlayersByMssvList = deletePlayersByMssvList;
-window.deletePlayerByMssv = deletePlayerByMssv;
-window.placeBid = placeBid;
-window.passRound = passRound;
-window.updateTeamReview = updateTeamReview;
-window.startAuctionTimer = startAuctionTimer;
-window.stopAuctionTimer = stopAuctionTimer;
-window.publishAuctionResults = publishAuctionResults;
-window.resetAuctionRound = resetAuctionRound;
-window.nextAuctionRound = nextAuctionRound;
-window.computeFinalResult = computeFinalResult;
-window.publishTournamentResult = publishTournamentResult;
-window.closeTournamentOverlayAndPublish = closeTournamentOverlayAndPublish;
-window.closeTournamentOverlay = closeTournamentOverlay;
-window.confirmPublishTournament = confirmPublishTournament;
-window.restartTournament = restartTournament;
-window.updateRoundButtons = updateRoundButtons;
-window.adminTab = adminTab;
-
-// Initial load
-document.addEventListener('DOMContentLoaded', async () => {
-  if (sessionStorage.getItem('admin_logged_in') === '1') {
-    isAdminLoggedIn = true;
-  }
-  
-  // Restore logged-in player session
-  if (isLoggedIn()) {
-    const mssv = getLoggedInMssv();
-    try {
-      const playerDoc = await playersCollection.doc(mssv).get();
-      if (playerDoc.exists) {
-        currentPlayer = playerDoc.data();
-      } else {
-        // Stale session, clear it
-        sessionStorage.removeItem('loggedInMssv');
-      }
-    } catch(e) { /* offline, will use cache */ }
-    refreshHomeUI();
-  }
-  
-  // Load auction state
-  // (cachedQuizOpen sẽ được set bởi onSnapshot trong startRealtimeListeners bên dưới)
-  try {
-    const auctionDoc = await auctionStateDoc.get();
-    if (auctionDoc.exists) {
-      auctionState = { ...auctionState, ...auctionDoc.data() };
-    } else if (isAdminLoggedIn) {
-      await auctionStateDoc.set(auctionState); // chỉ admin mới có quyền write
-    }
-  } catch(e) { console.warn('auctionState load error:', e.message); }
-
-  // Always start listeners for ALL users (quiz open status + auction state)
-  startRealtimeListeners();
-  
-  updateAuctionStatus();
-  renderTeamBidList();
-  updateRoundButtons();
-}); 
-</script>
-<!-- ==================== TOURNAMENT RESULT OVERLAY ==================== -->
-<div id="tournament-overlay" style="display:none; position:fixed; inset:0; z-index:999; background:rgba(0,0,0,0.85); backdrop-filter:blur(6px); overflow-y:auto;">
-  <div style="min-height:100vh; display:flex; align-items:center; justify-content:center; padding:24px;">
-    <div style="width:100%; max-width:600px; background:var(--surface); border:2px solid var(--gold); border-radius:20px; padding:36px 28px; animation:slideDown 0.5s ease;">
-      <div style="text-align:center; margin-bottom:28px;">
-        <div style="font-size:3rem; margin-bottom:8px;">🏆</div>
-        <div class="logo" style="font-size:2.2rem;">Kết Quả Giải Đấu</div>
-        <div style="font-family:'Space Mono',monospace; font-size:0.7rem; color:var(--muted); margin-top:6px; letter-spacing:0.2em;">USSC CHESS TOURNAMENT 2026</div>
-      </div>
-      <div id="tournament-overlay-rankings" style="display:grid; gap:12px; margin-bottom:28px;"></div>
-      <div style="display:flex; gap:10px; flex-wrap:wrap;">
-        <button class="btn btn-gold" onclick="closeTournamentOverlayAndPublish()" style="flex:1;">📢 Công Bố Cho Người Chơi</button>
-        <button class="btn btn-outline" onclick="closeTournamentOverlay()" style="flex:1; border-color:var(--red); color:var(--red);">🔄 Chơi Lại Từ Vòng 1</button>
-      </div>
-      <button class="btn btn-outline" onclick="document.getElementById('tournament-overlay').style.display='none'" style="width:100%; margin-top:8px; font-size:0.85rem;">✕ Đóng</button>
-    </div>
-  </div>
-</div>
-
-<script>
-</script>
-
-
-<script>
-// ============================================================
-// FIX: Re-render chess board when FEN changes
-// ============================================================
-
-// 1. Fix renderTeamBidList - đảm bảo render bàn cờ sau khi cập nhật
-const originalRenderTeamBidList = window.renderTeamBidList;
-window.renderTeamBidList = async function() {
-    if (originalRenderTeamBidList) {
-        await originalRenderTeamBidList();
-    }
-    // Render bàn cờ admin sau khi cập nhật danh sách
-    const rd = auctionState?.roundData?.[auctionState.round];
-    if (rd && document.getElementById('auction-board-display')) {
-        renderChessBoardSVG('auction-board-display', rd.fen, 320);
-    }
-};
-
-// 2. Fix nextAuctionRound - render lại bàn cờ khi chuyển vòng
-const originalNextAuctionRound = window.nextAuctionRound;
-window.nextAuctionRound = async function() {
-    if (originalNextAuctionRound) {
-        await originalNextAuctionRound();
-    }
-    // Render lại bàn cờ admin sau khi chuyển vòng
-    const rd = auctionState?.roundData?.[auctionState.round];
-    if (rd && document.getElementById('auction-board-display')) {
-        renderChessBoardSVG('auction-board-display', rd.fen, 320);
-    }
-    // Render lại bàn cờ player nếu đang ở trang player
-    if (document.getElementById('page-auction-player')?.classList.contains('active')) {
-        const playerRd = auctionState?.roundData?.[auctionState.round];
-        if (playerRd && document.getElementById('player-chess-board')) {
-            renderChessBoardSVG('player-chess-board', playerRd.fen, 320);
-        }
-    }
-};
-
-// 3. Fix resetAuctionRound - render lại khi reset
-const originalResetAuctionRound = window.resetAuctionRound;
-window.resetAuctionRound = async function() {
-    if (originalResetAuctionRound) {
-        await originalResetAuctionRound();
-    }
-    const rd = auctionState?.roundData?.[auctionState.round];
-    if (rd && document.getElementById('auction-board-display')) {
-        renderChessBoardSVG('auction-board-display', rd.fen, 320);
-    }
-};
-
-// 4. Fix startAuctionTimer - render khi bắt đầu
-const originalStartAuctionTimer = window.startAuctionTimer;
-window.startAuctionTimer = function() {
-    if (originalStartAuctionTimer) {
-        originalStartAuctionTimer();
-    }
-    const rd = auctionState?.roundData?.[auctionState.round];
-    if (rd && document.getElementById('auction-board-display')) {
-        renderChessBoardSVG('auction-board-display', rd.fen, 320);
-    }
-};
-
-// 5. Theo dõi thay đổi của auctionState.round từ Firestore
-// Thêm listener để tự động cập nhật bàn cờ khi round thay đổi
-if (typeof auctionStateDoc !== 'undefined') {
-    // Listener riêng để cập nhật bàn cờ khi FEN thay đổi
-    auctionStateDoc.onSnapshot((doc) => {
-        if (doc.exists) {
-            const newState = doc.data();
-            const oldRound = auctionState?.round;
-            auctionState = { ...auctionState, ...newState };
-            
-            // Nếu round thay đổi hoặc có dữ liệu mới, cập nhật bàn cờ
-            if (oldRound !== auctionState.round || newState.roundData) {
-                const rd = auctionState?.roundData?.[auctionState.round];
-                if (rd) {
-                    // Cập nhật bàn cờ admin
-                    if (document.getElementById('auction-board-display')) {
-                        renderChessBoardSVG('auction-board-display', rd.fen, 320);
-                    }
-                    // Cập nhật bàn cờ player nếu đang ở trang player
-                    if (document.getElementById('page-auction-player')?.classList.contains('active')) {
-                        if (document.getElementById('player-chess-board')) {
-                            renderChessBoardSVG('player-chess-board', rd.fen, 320);
-                        }
-                    }
-                }
-            }
-        }
-    });
-}
-
-// 6. Fix adminTab - render bàn cờ khi chuyển sang tab auction
-const originalAdminTab = window.adminTab;
-window.adminTab = function(tab) {
-    if (originalAdminTab) {
-        originalAdminTab(tab);
-    }
-    if (tab === 'auction') {
-        setTimeout(() => {
-            const rd = auctionState?.roundData?.[auctionState.round];
-            if (rd && document.getElementById('auction-board-display')) {
-                renderChessBoardSVG('auction-board-display', rd.fen, 320);
-            }
-        }, 100);
-    }
-};
-
-// 7. Fix startAuctionPlayer - đảm bảo render đúng FEN
-const originalStartAuctionPlayer = window.startAuctionPlayer;
-window.startAuctionPlayer = async function() {
-    if (originalStartAuctionPlayer) {
-        await originalStartAuctionPlayer();
-    }
-    // Đợi một chút để DOM cập nhật
-    setTimeout(() => {
-        const rd = auctionState?.roundData?.[auctionState.round];
-        if (rd && document.getElementById('player-chess-board')) {
-            renderChessBoardSVG('player-chess-board', rd.fen, 320);
-        }
-    }, 50);
-};
-
-// 8. Thêm hàm tiện ích để force refresh bàn cờ (có thể gọi từ console nếu cần)
-window.refreshChessBoards = function() {
-    const rd = auctionState?.roundData?.[auctionState.round];
-    if (rd) {
-        if (document.getElementById('auction-board-display')) {
-            renderChessBoardSVG('auction-board-display', rd.fen, 320);
-        }
-        if (document.getElementById('player-chess-board')) {
-            renderChessBoardSVG('player-chess-board', rd.fen, 320);
-        }
-        console.log('✅ Chess boards refreshed with FEN:', rd.fen);
-    } else {
-        console.warn('⚠ No round data available');
-    }
-};
-
-console.log('✅ Chess board auto-refresh fix applied!');
-</script>
-</body>
-</html>
