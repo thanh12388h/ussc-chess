@@ -1272,6 +1272,9 @@ console.log('✅ Lichess Style Chess Board Renderer loaded!');
       <div class="logo" style="font-size:1.4rem; margin-bottom:8px;">Thế Cờ Đấu Giá</div>
       <div style="font-family:'Space Mono',monospace; font-size:0.8rem; color:var(--muted);" id="player-team-info">Nhóm: ?</div>
       <div style="font-family:'Space Mono',monospace; font-size:0.8rem; color:var(--gold); margin-top:6px;" id="player-side-to-move">Gợi ý: —</div>
+      <div style="font-family:'Space Mono',monospace; font-size:0.8rem; color:var(--gold); margin-top:6px; font-weight:700; border-top: 1px solid rgba(245,200,66,0.2); padding-top: 8px; text-align:center;">
+      Giới hạn cược: <span id="player-bet-range">Đang tải...</span>
+      </div>
     </div>
 
     <div id="player-result-notification" style="display:none; padding:14px 16px; background:linear-gradient(135deg,rgba(46,204,113,0.15),rgba(52,152,219,0.15)); border:1px solid var(--green); border-radius:10px; margin-bottom:16px; text-align:center; animation:slideDown 0.4s ease;">
@@ -2817,6 +2820,7 @@ async function passAuctionBid() {
 }
 
 function renderAuctionPlayerState() {
+  const rangeEl = document.getElementById('player-bet-range'); 
   const timerEl = document.getElementById('player-auction-timer');
   const statusEl = document.getElementById('player-bid-status');
   const resultCard = document.getElementById('player-round-result');
@@ -2831,6 +2835,7 @@ function renderAuctionPlayerState() {
   const team = currentTest2Player?.team?.trim();
   
   if (timerEl) timerEl.textContent = formatTime(auctionState.timeLeft);
+  if (rangeEl && rd) rangeEl.textContent = rd.range + ' ĐP'; 
   if (rd && document.getElementById('player-chess-board')) {
     renderChessBoard('player-chess-board', rd.fen, 320);
   }
