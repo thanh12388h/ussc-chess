@@ -677,18 +677,20 @@
 <script type="text/babel">
 
 
-  // ============================================================
-// CHESS BOARD CANVAS RENDERER - LICHESS STYLE UPGRADE
+ // ============================================================
+// CHESS BOARD CANVAS RENDERER - LICHESS STYLE
 // ============================================================
 
-// 1. Khai báo URL bộ quân cờ (Bộ Cburnett cực đẹp của Lichess)
+// Bộ quân cờ SVG chất lượng cao (Cburnett - chuẩn Lichess)
 const PIECE_ASSETS = {
+  // Đen (chữ thường)
   'p': 'https://upload.wikimedia.org/wikipedia/commons/c/cd/Chess_pdt45.svg',
   'n': 'https://upload.wikimedia.org/wikipedia/commons/f/f1/Chess_ndt45.svg',
   'b': 'https://upload.wikimedia.org/wikipedia/commons/9/98/Chess_bdt45.svg',
   'r': 'https://upload.wikimedia.org/wikipedia/commons/f/ff/Chess_rdt45.svg',
   'q': 'https://upload.wikimedia.org/wikipedia/commons/4/47/Chess_qdt45.svg',
   'k': 'https://upload.wikimedia.org/wikipedia/commons/f/f0/Chess_kdt45.svg',
+  // Trắng (chữ hoa)
   'P': 'https://upload.wikimedia.org/wikipedia/commons/4/45/Chess_plt45.svg',
   'N': 'https://upload.wikimedia.org/wikipedia/commons/7/70/Chess_nlt45.svg',
   'B': 'https://upload.wikimedia.org/wikipedia/commons/b/b1/Chess_blt45.svg',
@@ -697,70 +699,327 @@ const PIECE_ASSETS = {
   'K': 'https://upload.wikimedia.org/wikipedia/commons/4/42/Chess_klt45.svg'
 };
 
-// Cache hình ảnh để tránh load lại nhiều lần gây giật lag
+// Cache hình ảnh để tránh load lại
 const imageCache = {};
-Object.entries(PIECE_ASSETS).forEach(([key, url]) => {
-  const img = new Image();
-  img.src = url;
-  imageCache[key] = img;
-});
+let imagesLoadedCount = 0;
+const totalImages = Object.keys(PIECE_ASSETS).length;
 
-function renderChessBoardToCanvas(canvas, fen, size = 320) {
+// Preload tất cả hình ảnh
+function preloadChessImages() {
+  return new Promise((resolve) => {
+    Object.entries(PIECE_ASSETS).forEach(([key, url]) => {
+      const img = new Image();
+      img.src = url;
+      img.onload = () => {
+        imagesLoadedCount++;
+        if (imagesLoadedCount === totalImages) {
+          console.log('✅ All chess pieces loaded');
+          resolve();
+        }
+      };
+      img.onerror = () => {
+        console.warn(`⚠ Failed to load: ${url}`);
+        imagesLoadedCount++;
+        if (imagesLoadedCount === totalImages) resolve();
+      };
+      imageCache[key] = img;
+    });
+  });
+}
+
+// Parse FEN thành object vị trí quân cờ
+function parseFenToPieces(fen) {
+  const pieces = {};
+  const rows = fen.split(' ')[0].split('/');
+  const files = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
+  const ranks = ['8', '7', '6', '5', '4', '3', '2', '1'];
+  
+  for (let i = 0; i < rows.length; i++) {
+    let fileIdx = 0;
+    for (const ch of rows[i]) {
+      if (isNaN(parseInt(ch))) {
+        pieces[files[fileIdx] + ranks[i]] = ch;
+        fileIdx++;
+      } else {
+        fileIdx += parseInt(ch);
+      }
+    }
+  }
+  return pieces;
+}
+
+// Vẽ highlight cho ô vua đang bị chiếu (tùy chọn)
+function drawCheckHighlight(ctx, x, y, size, isCheck) {
+  if (!isCheck) return;
+  ctx.save();
+  ctx.shadowBlur = 0;
+  ctx.beginPath();
+  ctx.arc(x + size/2, y + size/2, size * 0.35, 0, Math.PI * 2);
+  ctx.fillStyle = 'rgba(220, 50, 50, 0.35)';
+  ctx.fill();
+  ctx.restore();
+}
+
+// Hàm vẽ bàn cờ chính - LICHESS STYLE
+function renderChessBoardToCanvas(canvas, fen, size = 320, isCheck = false, lastMove = null) {
   if (!canvas) return;
-
-  // 2. Tối ưu độ phân giải (Retina/4K support)
+  
+  // Support Retina/High DPI
   const dpr = window.devicePixelRatio || 1;
   canvas.width = size * dpr;
   canvas.height = size * dpr;
-  canvas.style.width = size + "px";
-  canvas.style.height = size + "px";
-
+  canvas.style.width = size + 'px';
+  canvas.style.height = size + 'px';
+  
   const ctx = canvas.getContext('2d');
-  ctx.scale(dpr, dpr); // Tự động nhân tọa độ với dpr
+  ctx.scale(dpr, dpr);
   
   const sq = size / 8;
   
-  // 3. Vẽ ô bàn cờ (Màu sắc chuẩn Lichess Brown)
-  for (let r = 0; r < 8; r++) {
-    for (let c = 0; c < 8; c++) {
-      ctx.fillStyle = (r + c) % 2 === 0 ? '#f0d9b5' : '#b58863';
-      ctx.fillRect(c * sq, r * sq, sq, sq);
+  // Màu sắc chuẩn Lichess
+  const lightSquare = '#f0d9b5';  // Màu sáng
+  const darkSquare = '#b58863';   // Màu tối
+  
+  // Vẽ các ô bàn cờ
+  for (let row = 0; row < 8; row++) {
+    for (let col = 0; col < 8; col++) {
+      const isLight = (row + col) % 2 === 0;
+      ctx.fillStyle = isLight ? lightSquare : darkSquare;
+      ctx.fillRect(col * sq, row * sq, sq, sq);
+      
+      // Thêm viền mỏng cho từng ô (tạo cảm giác sắc nét)
+      ctx.strokeStyle = 'rgba(0,0,0,0.08)';
+      ctx.strokeRect(col * sq, row * sq, sq, sq);
     }
   }
   
-  // 4. Vẽ tọa độ tinh tế hơn
-  ctx.font = `bold ${Math.floor(sq * 0.25)}px 'Inter', sans-serif`;
-  for (let i = 0; i < 8; i++) {
-    // Files (a-h) - Góc dưới bên phải mỗi ô cuối hàng
-    ctx.fillStyle = i % 2 === 0 ? '#b58863' : '#f0d9b5';
-    ctx.fillText(String.fromCharCode(97 + i), (i + 1) * sq - sq * 0.2, size - sq * 0.05);
+  // Vẽ highlight cho nước đi cuối (nếu có)
+  if (lastMove && lastMove.from && lastMove.to) {
+    const files = ['a','b','c','d','e','f','g','h'];
+    const ranks = ['8','7','6','5','4','3','2','1'];
     
-    // Ranks (1-8) - Góc trên bên trái mỗi ô đầu cột
-    ctx.fillStyle = i % 2 === 0 ? '#b58863' : '#f0d9b5';
-    ctx.fillText((8 - i).toString(), sq * 0.05, i * sq + sq * 0.25);
+    [lastMove.from, lastMove.to].forEach(square => {
+      const col = files.indexOf(square[0]);
+      const row = ranks.indexOf(square[1]);
+      if (col !== -1 && row !== -1) {
+        ctx.fillStyle = 'rgba(180, 220, 100, 0.45)';
+        ctx.fillRect(col * sq, row * sq, sq, sq);
+      }
+    });
   }
   
-  // 5. Parse và vẽ quân cờ từ Image Cache
-  const pieces = parseFenToPieces(fen);
-  const files = ['a','b','c','d','e','f','g','h'];
-  const ranks = ['8','7','6','5','4','3','2','1'];
+  // Vẽ tọa độ bàn cờ (file a-h, rank 1-8) - style Lichess
+  ctx.font = `500 ${Math.max(10, Math.floor(sq * 0.22))}px 'Inter', 'Space Mono', monospace`;
+  ctx.shadowBlur = 0;
   
+  for (let i = 0; i < 8; i++) {
+    const isLight = (7 + i) % 2 === 0; // Cho hàng cuối (rank 1)
+    
+    // File letters (a-h) ở dưới cùng
+    ctx.fillStyle = isLight ? '#b58863cc' : '#f0d9b5cc';
+    ctx.fillText(
+      String.fromCharCode(97 + i), 
+      (i + 1) * sq - sq * 0.18, 
+      size - sq * 0.06
+    );
+    
+    // Rank numbers (1-8) ở bên trái
+    ctx.fillStyle = (i % 2 === 0) ? '#b58863cc' : '#f0d9b5cc';
+    ctx.fillText(
+      (8 - i).toString(), 
+      sq * 0.06, 
+      i * sq + sq * 0.22
+    );
+  }
+  
+  // Parse và vẽ quân cờ
+  const pieces = parseFenToPieces(fen);
+  const files = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
+  const ranks = ['8', '7', '6', '5', '4', '3', '2', '1'];
+  
+  // Vẽ từng quân cờ
   for (const [square, pieceChar] of Object.entries(pieces)) {
     const col = files.indexOf(square[0]);
     const row = ranks.indexOf(square[1]);
-    const img = imageCache[pieceChar];
+    if (col === -1 || row === -1) continue;
     
+    const img = imageCache[pieceChar];
     if (img && img.complete) {
-      // Vẽ ảnh quân cờ, căn giữa ô
-      ctx.drawImage(img, col * sq, row * sq, sq, sq);
+      // Vẽ ảnh quân cờ với padding nhẹ để trông cân đối
+      const padding = sq * 0.05;
+      ctx.drawImage(
+        img, 
+        col * sq + padding, 
+        row * sq + padding, 
+        sq - padding * 2, 
+        sq - padding * 2
+      );
     } else if (img) {
-      // Nếu ảnh chưa load xong, render lại khi load xong
-      img.onload = () => renderChessBoard(canvas.parentElement.id, fen, size);
+      // Nếu ảnh chưa load, vẽ fallback và đợi load xong
+      ctx.fillStyle = '#888';
+      ctx.font = `${sq * 0.6}px monospace`;
+      ctx.fillText('?', col * sq + sq/2 - sq*0.1, row * sq + sq/2 + sq*0.1);
+      img.onload = () => renderChessBoardToCanvas(canvas, fen, size, isCheck, lastMove);
+    }
+  }
+  
+  // Vẽ highlight cho vua đang bị chiếu (nếu có)
+  if (isCheck) {
+    // Tìm vị trí vua
+    const kingColor = fen.split(' ')[1] === 'b' ? 'k' : 'K';
+    for (const [square, pieceChar] of Object.entries(pieces)) {
+      if (pieceChar === kingColor) {
+        const col = files.indexOf(square[0]);
+        const row = ranks.indexOf(square[1]);
+        if (col !== -1 && row !== -1) {
+          drawCheckHighlight(ctx, col * sq, row * sq, sq, true);
+        }
+        break;
+      }
+    }
+  }
+  
+  // Thêm hiệu ứng shadow cho toàn bàn cờ
+  canvas.style.boxShadow = '0 12px 28px rgba(0,0,0,0.35), 0 0 0 1px rgba(0,0,0,0.08)';
+  canvas.style.borderRadius = '6px';
+  canvas.style.transition = 'box-shadow 0.2s ease';
+}
+
+// Class quản lý bàn cờ với state
+class ChessBoardManager {
+  constructor(containerId, fen, size = 320, options = {}) {
+    this.containerId = containerId;
+    this.fen = fen;
+    this.size = size;
+    this.options = {
+      isCheck: false,
+      lastMove: null,
+      ...options
+    };
+    this.canvas = null;
+    this.init();
+  }
+  
+  init() {
+    const container = document.getElementById(this.containerId);
+    if (!container) {
+      console.warn(`Container #${this.containerId} not found`);
+      return;
+    }
+    
+    // Clear container
+    container.innerHTML = '';
+    container.style.display = 'flex';
+    container.style.justifyContent = 'center';
+    container.style.alignItems = 'center';
+    
+    // Create canvas
+    this.canvas = document.createElement('canvas');
+    this.canvas.style.width = '100%';
+    this.canvas.style.height = 'auto';
+    this.canvas.style.maxWidth = `${this.size}px`;
+    this.canvas.style.display = 'block';
+    this.canvas.style.margin = '0 auto';
+    this.canvas.style.cursor = 'pointer';
+    
+    container.appendChild(this.canvas);
+    this.render();
+  }
+  
+  render() {
+    if (this.canvas) {
+      renderChessBoardToCanvas(
+        this.canvas, 
+        this.fen, 
+        this.size, 
+        this.options.isCheck, 
+        this.options.lastMove
+      );
+    }
+  }
+  
+  updateFen(newFen, options = {}) {
+    this.fen = newFen;
+    this.options = { ...this.options, ...options };
+    this.render();
+  }
+  
+  setCheck(isCheck) {
+    this.options.isCheck = isCheck;
+    this.render();
+  }
+  
+  setLastMove(from, to) {
+    this.options.lastMove = { from, to };
+    this.render();
+  }
+  
+  destroy() {
+    if (this.canvas && this.canvas.parentElement) {
+      this.canvas.parentElement.innerHTML = '';
     }
   }
 }
 
-// Giữ nguyên logic parse FEN và Class Management phía dưới nhưng cập nhật render
+// Store all board instances
+const chessBoards = {};
+
+// Main render function (compatible with old renderChessBoardSVG)
+async function renderChessBoard(containerId, fen, size = 320, options = {}) {
+  // Ensure images are preloaded
+  if (imagesLoadedCount < totalImages) {
+    await preloadChessImages();
+  }
+  
+  const container = document.getElementById(containerId);
+  if (!container) {
+    console.warn(`Container #${containerId} not found`);
+    return;
+  }
+  
+  if (chessBoards[containerId]) {
+    chessBoards[containerId].updateFen(fen, options);
+  } else {
+    chessBoards[containerId] = new ChessBoardManager(containerId, fen, size, options);
+  }
+}
+
+// Get side to move from FEN
+function getSideToMoveFromFen(fen) {
+  if (!fen || typeof fen !== 'string') return '❓ Không xác định';
+  const side = fen.split(' ')[1];
+  return side === 'b' ? '⚫ Đen đi' : '⚪ Trắng đi';
+}
+
+// Check if king is in check from FEN
+function isKingInCheckFromFen(fen) {
+  // Simple check - can be expanded with proper chess logic
+  const parts = fen.split(' ');
+  return parts[2] && parts[2].includes('+');
+}
+
+// Force refresh all boards
+function refreshAllChessBoards() {
+  Object.entries(chessBoards).forEach(([id, board]) => {
+    board.render();
+  });
+}
+
+// Export globals
+window.renderChessBoard = renderChessBoard;
+window.getSideToMove = getSideToMoveFromFen;
+window.isKingInCheck = isKingInCheckFromFen;
+window.refreshAllChessBoards = refreshAllChessBoards;
+window.preloadChessImages = preloadChessImages;
+
+// Auto preload images on page load
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', () => preloadChessImages());
+} else {
+  preloadChessImages();
+}
+
+console.log('✅ Lichess Style Chess Board Renderer loaded!');
 
 
 </script>
