@@ -1267,67 +1267,78 @@ console.log('✅ Lichess Style Chess Board Renderer loaded!');
 <!-- ==================== PAGE: AUCTION PLAYER ==================== -->
 <div class="page" id="page-auction-player">
   <div class="auction-player-card anim-fade">
-    
     <div style="text-align:center; margin-bottom:20px;">
       <div class="round-badge" id="player-round-badge">VÒNG 1 / 5</div>
       <div class="logo" style="font-size:1.4rem; margin-bottom:8px;">Thế Cờ Đấu Giá</div>
-      
-      <div id="player-bet-range-info" style="font-family:'Bebas Neue',sans-serif; font-size:1.8rem; color:var(--gold); margin-bottom:8px; letter-spacing:0.05em; text-shadow: 0 0 10px rgba(245,200,66,0.2);">
-        GIỚI HẠN: —
-      </div>
-      
       <div style="font-family:'Space Mono',monospace; font-size:0.8rem; color:var(--muted);" id="player-team-info">Nhóm: ?</div>
-      
-      <div id="player-side-to-move" style="font-family:'Space Mono',monospace; font-size:0.85rem; color:var(--gold); margin-top:8px; font-weight:700; background: rgba(245,200,66,0.1); padding: 4px 12px; border-radius: 20px; display: inline-block;">
-        Gợi ý: —
-      </div>
+      <div style="font-family:'Space Mono',monospace; font-size:0.8rem; color:var(--gold); margin-top:6px;" id="player-side-to-move">Gợi ý: —</div>
     </div>
 
     <div id="player-result-notification" style="display:none; padding:14px 16px; background:linear-gradient(135deg,rgba(46,204,113,0.15),rgba(52,152,219,0.15)); border:1px solid var(--green); border-radius:10px; margin-bottom:16px; text-align:center; animation:slideDown 0.4s ease;">
-      <div style="font-size:1.1rem; font-weight:bold; margin-bottom:4px;">🎊 ĐÃ CÓ KẾT QUẢ VÒNG!</div>
-      <div style="font-size:0.8rem; color:var(--white); font-family:'Space Mono',monospace;">Kiểm tra bảng điểm phía dưới</div>
+      <div style="font-size:1.2rem; margin-bottom:6px;">🎊 CÔNG BỐ KẾT QUẢ!</div>
+      <div style="font-size:0.85rem; color:var(--white); font-family:'Space Mono',monospace;">Vòng đấu giá đã chốt. Xem kết quả dưới đây →</div>
     </div>
     
     <div class="auction-board-container">
-      <div style="font-size:0.75rem; color:var(--muted); font-family:'Space Mono',monospace; margin-bottom:8px; text-transform:uppercase;">Bàn Cờ Thi Đấu</div>
+      <div style="font-size:0.75rem; color:var(--muted); font-family:'Space Mono',monospace; margin-bottom:8px;">BÀN CỜ</div>
       <div class="chess-board" id="player-chess-board"></div>
     </div>
 
-    <div style="font-size:0.95rem; color:var(--muted); font-family:'Space Mono',monospace; margin: 16px 0; text-align:center;">
-      ⏱️ Còn lại: <span id="player-auction-timer" style="color:var(--gold); font-weight:bold; font-size:1.2rem;">3:00</span>
+    <div style="font-size:0.9rem; color:var(--muted); font-family:'Space Mono',monospace; margin-bottom:14px; text-align:center;">
+      Thời gian còn lại: <span id="player-auction-timer" style="color:var(--gold);">3:00</span>
     </div>
-
-    <div class="bet-controls" style="background: var(--surface2); padding: 15px; border-radius: 12px; border: 1px solid var(--border);">
-      <div style="display: flex; gap: 10px; margin-bottom: 12px;">
-        <input type="number" id="player-bet-input" class="bet-input" style="flex:1" placeholder="Số tiền...">
-        <button class="btn btn-blue" id="player-bet-btn" onclick="placeAuctionBid()" style="padding: 0 20px;">💰 CƯỢC</button>
-      </div>
-      <button class="btn btn-outline" id="player-pass-btn" onclick="passAuctionBid()" style="width:100%; color: var(--red); border-color: rgba(231,76,60,0.3);">⛔ BỎ QUA (PASS)</button>
+    <div class="bet-controls">
+      <input type="number" id="player-bet-input" class="bet-input" min="50" max="500" value="50" placeholder="Số tiền cược">
+      <button class="btn btn-blue btn-sm" id="player-bet-btn" onclick="placeAuctionBid()">💰 Cược</button>
+      <button class="btn btn-outline btn-sm" id="player-pass-btn" onclick="passAuctionBid()">⛔ Pass</button>
     </div>
-
-    <div id="player-bid-status" style="font-size:0.75rem; color:var(--muted); font-family:'Space Mono',monospace; margin: 12px 0; text-align:center; line-height:1.4;">
-      Chưa đặt cược cho vòng này.
+    <div id="player-bid-status" style="font-size:0.85rem; color:var(--muted); font-family:'Space Mono',monospace; margin-bottom:16px; text-align:center;">
+      Chưa đặt cược. Vui lòng nhập nước đi và bấm Cược hoặc bấm Pass khi phiên đấu giá bắt đầu.
     </div>
 
     <hr class="divider">
 
     <div class="answer-input-group">
-      <label style="color: var(--gold); font-size: 0.8rem; font-weight: bold;">🎯 NHẬP NƯỚC ĐI CỦA NHÓM</label>
-      <input type="text" id="player-answer-input" class="answer-input" placeholder="Vd: Nf3, e4, O-O..." autocomplete="off">
-      <div style="font-size:0.65rem; color:var(--muted); margin-top:6px; font-family:'Space Mono',monospace; font-style:italic;">
-        Lưu ý: Nhập ký hiệu chuẩn (Nf3, Bxe5, O-O...).
+      <label>🎯 NHẬP NƯỚC ĐI KHI CƯỢC (Vd: e4, Nf3, O-O, Kh8, ...)</label>
+      <input type="text" id="player-answer-input" class="answer-input" placeholder="Vd: e4" autocomplete="off" maxlength="8">
+      <div style="font-size:0.7rem; color:var(--muted); margin-top:6px; font-family:'Space Mono',monospace;">
+        ✓ Nước đi hợp lệ: e4, e5, Nf3, Nf6, O-O (nhập thành), O-O-O (nhập thành dài), Kh8, Qd4, ...
       </div>
     </div>
 
-    <div id="player-round-result" class="result-card" style="display:none; margin-top:20px; border:2px solid var(--green); background: rgba(46,204,113,0.05);">
-      <div style="font-size:0.8rem; color:var(--muted); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:10px;">Chi tiết kết quả</div>
-      <div class="result-answer" id="player-round-result-text" style="font-size:1.5rem; margin-bottom:15px;">...</div>
-      <div class="result-item"><span>Đáp án:</span><strong id="player-correct-answer"></strong></div>
-      <div class="result-item"><span>Trạng thái:</span><strong id="player-round-result-status"></strong></div>
-      <div class="result-item"><span>Biến động:</span><strong id="player-round-result-delta"></strong></div>
+    <div id="player-round-result" class="result-card" style="display:none; margin-top:20px; border:2px solid var(--green);">
+      <div style="font-size:0.9rem; color:var(--muted); text-transform:uppercase; letter-spacing:0.15em;">Kết quả vòng</div>
+      <div class="result-answer" id="player-round-result-text">...</div>
+      <div class="result-item"><span>Đáp án chính xác</span><strong id="player-correct-answer"></strong></div>
+      <div class="result-item"><span>Kết quả nhóm</span><strong id="player-round-result-status"></strong></div>
+      <div class="result-item"><span>Điểm thay đổi</span><strong id="player-round-result-delta"></strong></div>
     </div>
 
-    <button class="btn btn-outline" onclick="showPage('page-home')" style="margin-top:20px; width:100%;">← TRỞ VỀ TRANG CHỦ</button>
+    <button class="btn btn-outline" onclick="showPage('page-home')" style="margin-top:8px;">← Trang Chủ</button>
+  </div>
+</div>
+
+<!-- ==================== PAGE: LEADERBOARD ==================== -->
+<div class="page top" id="page-leaderboard">
+  <div style="width:100%; max-width:700px;">
+    <div style="text-align:center; margin-bottom:20px;">
+      <div class="logo" style="font-size:2.2rem;">Bảng Xếp Hạng</div>
+      <div class="subtitle">Cá Nhân · Cập Nhật Trực Tiếp</div>
+    </div>
+    <div class="panel">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+        <div class="panel-title" style="margin:0;">👑 Top Người Chơi</div>
+        <button class="btn btn-outline btn-sm" onclick="renderLeaderboard()">🔄 Refresh</button>
+      </div>
+      <div class="scroll-area" id="lb-individual"></div>
+    </div>
+    <div class="panel" style="margin-top:16px;" id="lb-team-panel">
+      <div class="panel-title">🏆 Bảng Xếp Hạng Nhóm</div>
+      <div id="lb-teams"></div>
+    </div>
+    <div style="text-align:center; margin-top:16px;">
+      <button class="btn btn-outline btn-sm" onclick="showPage('page-home')">← Trang Chủ</button>
+    </div>
   </div>
 </div>
 
@@ -1418,13 +1429,13 @@ console.log('✅ Lichess Style Chess Board Renderer loaded!');
         <div class="panel">
           <div class="panel-title">♟️ Thế Cờ Đấu Giá</div>
           <div id="auction-round-indicator" class="round-badge">VÒNG 1 / 5</div>
-          <div class="chess-position" id="auction-position-info" style="display:none;">
-            <div style="font-size:1.5rem; margin-bottom:8px;" id="auction-gm-name">Kasparov vs Topalov</div>
-            <div style="font-size:0.75rem; letter-spacing:0.1em;" id="auction-context">Wijk aan Zee, 1999 · Nước đi số 24</div>
-            <div id="auction-side-hint" style="font-family:'Space Mono',monospace; font-size:0.85rem; color:var(--gold); margin-top:10px; font-weight:700; border-top: 1px solid rgba(245,200,66,0.2); padding-top: 8px;">
-              👉 Lượt đi: —
-            </div>
+        <div class="chess-position" id="auction-position-info" style="display:none;">
+          <div style="font-size:1.5rem; margin-bottom:8px;" id="auction-gm-name">Kasparov vs Topalov</div>
+          <div style="font-size:0.75rem; letter-spacing:0.1em;" id="auction-context">Wijk aan Zee, 1999 · Nước đi số 24</div>
+          <div id="auction-side-hint" style="font-family:'Space Mono',monospace; font-size:0.85rem; color:var(--gold); margin-top:10px; font-weight:700; border-top: 1px solid rgba(245,200,66,0.2); padding-top: 8px;">
+            👉 Lượt đi: —
           </div>
+        </div>
           <div style="text-align:center; margin-bottom:12px;">
             <div style="font-size:0.75rem; color:var(--muted); font-family:'Space Mono',monospace; margin-bottom:6px;">GIỚI HẠN CƯỢC VÒNG NÀY</div>
             <div style="font-family:'Bebas Neue',sans-serif; font-size:2rem; color:var(--gold);" id="auction-bet-range">50 – 200 ĐP</div>
@@ -2810,47 +2821,25 @@ function renderAuctionPlayerState() {
   const statusEl = document.getElementById('player-bid-status');
   const resultCard = document.getElementById('player-round-result');
   const resultNotif = document.getElementById('player-result-notification');
+  const rd = auctionState.roundData[auctionState.round] || auctionState.roundData[0];
   const answerInput = document.getElementById('player-answer-input');
   const bidInput = document.getElementById('player-bet-input');
   const betBtn = document.getElementById('player-bet-btn');
   const passBtn = document.getElementById('player-pass-btn');
   const teamInfo = document.getElementById('player-team-info');
   const sideHint = document.getElementById('player-side-to-move');
-  const rangeInfoEl = document.getElementById('player-bet-range-info');
-  
-  // 1. Lấy dữ liệu vòng đấu hiện tại
-  const rd = auctionState.roundData[auctionState.round] || auctionState.roundData[0];
   const team = currentTest2Player?.team?.trim();
   
-  // 2. Cập nhật các thông tin văn bản cơ bản
   if (timerEl) timerEl.textContent = formatTime(auctionState.timeLeft);
+  if (rd && document.getElementById('player-chess-board')) {
+    renderChessBoard('player-chess-board', rd.fen, 320);
+  }
   if (teamInfo) teamInfo.textContent = `Nhóm: ${team || '—'}`;
-  
+  if (sideHint) sideHint.textContent = `Gợi ý: ${getSideToMove(rd?.fen)}`;
   if (document.getElementById('player-round-badge')) {
     document.getElementById('player-round-badge').textContent = `VÒNG ${Math.min(auctionState.round + 1, auctionState.roundData.length)} / ${auctionState.roundData.length}`;
   }
 
-  // 3. Hiển thị GIỚI HẠN CƯỢC và GỢI Ý LƯỢT ĐI
-  if (rangeInfoEl && rd) {
-    rangeInfoEl.textContent = `GIỚI HẠN: ${rd.range} ĐP`;
-    // Tự động gán min/max cho ô input từ chuỗi range (ví dụ: "50–200")
-    if (bidInput && rd.range.includes('–')) {
-        const parts = rd.range.split('–').map(s => parseInt(s.trim()));
-        bidInput.min = parts[0];
-        bidInput.max = parts[1];
-    }
-  }
-  
-  if (sideHint && rd) {
-    sideHint.textContent = `👉 Lượt đi: ${getSideToMoveFromFen(rd.fen)}`;
-  }
-
-  // 4. Vẽ bàn cờ chuẩn Lichess Style
-  if (rd && document.getElementById('player-chess-board')) {
-    renderChessBoard('player-chess-board', rd.fen, 320);
-  }
-
-  // 5. Kiểm tra định danh nhóm (Nếu chưa có thì tự tìm)
   if (!team && isLoggedIn()) {
     getUserTeamName(getLoggedInMssv()).then((teamName) => {
       if (teamName) {
@@ -2861,67 +2850,88 @@ function renderAuctionPlayerState() {
     });
   }
 
-  // 6. LOGIC ĐIỀU KHIỂN TRẠNG THÁI UI (KHÓA/MỞ NÚT)
+  // Lấy dữ liệu bid từ server
   const bid = team ? auctionState.bids?.[team] : null;
   const hasActedOnServer = bid && (bid.passed || bid.amount > 0);
 
-  // Giải phóng chặn nếu server đã nhận data
+  // --- LOGIC FIX: KIỂM TRA TRẠNG THÁI ĐANG XỬ LÝ ---
   if (hasActedOnServer) {
-    isProcessingAction = false; 
+    isProcessingAction = false; // Giải phóng chốt chặn vì server đã nhận data
   }
 
   if (!team) {
     if (statusEl) statusEl.textContent = '⚠ Không tìm thấy nhóm của bạn. Vui lòng đăng ký lại hoặc liên hệ Admin.';
-    [answerInput, bidInput, betBtn, passBtn].forEach(el => el && (el.disabled = true));
+    if (answerInput) answerInput.disabled = true;
+    if (bidInput) bidInput.disabled = true;
+    if (betBtn) betBtn.disabled = true;
+    if (passBtn) passBtn.disabled = true;
     return;
   }
 
-  // ƯU TIÊN 1: Khóa UI nếu đang gửi dữ liệu hoặc đã cược xong
-  if (typeof isProcessingAction !== 'undefined' && isProcessingAction || hasActedOnServer) {
+  // ƯU TIÊN 1: Khóa UI nếu đang gửi data hoặc server đã ghi nhận
+  if (isProcessingAction || hasActedOnServer) {
       if (statusEl) {
           statusEl.textContent = hasActedOnServer 
             ? (bid.passed ? 'Bạn đã chọn PASS. Hành động đã khóa.' : `Bạn đã cược ${bid.amount} ĐP và nộp nước đi. Hành động đã khóa.`)
             : 'Đang gửi dữ liệu lên máy chủ...';
       }
-      [answerInput, bidInput, betBtn, passBtn].forEach(el => el && (el.disabled = true));
+      if (answerInput) answerInput.disabled = true;
+      if (bidInput) answerInput.disabled = true; // Fix lỗi typo nhỏ trong code gốc của bạn
+      if (bidInput) bidInput.disabled = true;
+      if (betBtn) betBtn.disabled = true;
+      if (passBtn) passBtn.disabled = true;
   } 
-  // ƯU TIÊN 2: Đã chốt kết quả vòng (Finalized)
+  // ƯU TIÊN 2: Nếu đã chốt kết quả (Finalized)
   else if (auctionState.finalized) {
     if (statusEl) statusEl.textContent = 'Phiên đấu giá đã chốt. Kết quả được hiển thị bên dưới.';
-    [answerInput, bidInput, betBtn, passBtn].forEach(el => el && (el.disabled = true));
-    
+    if (answerInput) answerInput.disabled = true;
+    if (bidInput) bidInput.disabled = true;
+    if (betBtn) betBtn.disabled = true;
+    if (passBtn) passBtn.disabled = true;
     if (resultNotif && resultNotif.style.display === 'none') {
       resultNotif.style.display = 'block';
       resultNotif.style.animation = 'slideDown 0.4s ease';
-      setTimeout(() => resultCard?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 500);
+      setTimeout(() => {
+        resultCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 500);
     }
   } 
-  // ƯU TIÊN 3: Phiên đang chạy (Running)
+  // ƯU TIÊN 3: Nếu phiên đang chạy (Running) và chưa làm gì
   else if (auctionState.running) {
     if (statusEl) statusEl.textContent = 'Phiên đấu giá đang diễn ra. Nhập nước đi và bấm Cược hoặc bấm Pass.';
-    [answerInput, bidInput, betBtn, passBtn].forEach(el => el && (el.disabled = false));
+    if (answerInput) answerInput.disabled = false;
+    if (bidInput) bidInput.disabled = false;
+    if (betBtn) betBtn.disabled = false;
+    if (passBtn) passBtn.disabled = false;
     if (resultNotif) resultNotif.style.display = 'none';
   } 
   // ƯU TIÊN 4: Review hoặc Chờ bắt đầu
-  else {
-    if (statusEl) statusEl.textContent = auctionState.review ? 'Phiên đã dừng, chờ Admin chốt kết quả.' : 'Chờ Admin bắt đầu phiên đấu giá.';
-    [answerInput, bidInput, betBtn, passBtn].forEach(el => el && (el.disabled = true));
+  else if (auctionState.review) {
+    if (statusEl) statusEl.textContent = 'Phiên đã dừng, chờ Admin chốt kết quả.';
+    if (answerInput) answerInput.disabled = true;
+    if (bidInput) bidInput.disabled = true;
+    if (betBtn) betBtn.disabled = true;
+    if (passBtn) passBtn.disabled = true;
+    if (resultNotif) resultNotif.style.display = 'none';
+  } else {
+    if (statusEl) statusEl.textContent = 'Chờ Admin bắt đầu phiên đấu giá.';
+    if (answerInput) answerInput.disabled = true;
+    if (bidInput) bidInput.disabled = true;
+    if (betBtn) betBtn.disabled = true;
+    if (passBtn) passBtn.disabled = true;
     if (resultNotif) resultNotif.style.display = 'none';
   }
 
-  // 7. HIỂN THỊ CHI TIẾT KẾT QUẢ KHI CÓ ĐIỂM
+  // --- PHẦN HIỂN THỊ KẾT QUẢ CUỐI VÒNG (GIỮ NGUYÊN) ---
   if (auctionState.finalized && auctionState.finalResults && auctionState.finalResults[team]) {
     const result = auctionState.finalResults[team];
-    if (resultCard) {
-        resultCard.style.display = 'block';
-        const statusColor = result.status === 'correct' ? 'var(--green)' : result.status === 'wrong' ? 'var(--red)' : 'var(--muted)';
-        const statusEmoji = result.status === 'correct' ? '✅' : result.status === 'wrong' ? '❌' : '⊘';
-        
-        document.getElementById('player-round-result-text').innerHTML = `<span style="color:${statusColor};">${statusEmoji} Vòng ${auctionState.round + 1}</span>`;
-        document.getElementById('player-correct-answer').textContent = result.correctAnswer || rd.answer;
-        document.getElementById('player-round-result-status').innerHTML = `<span style="color:${statusColor};font-weight:700;">${result.status === 'correct' ? 'ĐÚNG ✅' : result.status === 'pass' ? 'PASS ⊘' : 'SAI ❌'}</span>`;
-        document.getElementById('player-round-result-delta').innerHTML = `<span style="color:${result.delta >= 0 ? 'var(--green)' : 'var(--red)'};">${result.delta >= 0 ? '+' : ''}${result.delta} ĐP</span>`;
-    }
+    resultCard.style.display = 'block';
+    const statusColor = result.status === 'correct' ? 'var(--green)' : result.status === 'wrong' ? 'var(--red)' : 'var(--muted)';
+    const statusEmoji = result.status === 'correct' ? '✅' : result.status === 'wrong' ? '❌' : '⊘';
+    document.getElementById('player-round-result-text').innerHTML = `<span style="color:${statusColor};">${statusEmoji} Vòng ${auctionState.round + 1}</span>`;
+    document.getElementById('player-correct-answer').textContent = result.correctAnswer || rd.answer;
+    document.getElementById('player-round-result-status').innerHTML = `<span style="color:${statusColor};font-weight:700;">${result.status === 'correct' ? 'ĐÚNG ✅' : result.status === 'pass' ? 'PASS ⊘' : 'SAI ❌'}</span>`;
+    document.getElementById('player-round-result-delta').innerHTML = `<span style="color:${result.delta >= 0 ? 'var(--green)' : 'var(--red)'};">${result.delta >= 0 ? '+' : ''}${result.delta} ĐP</span>`;
   } else {
     if (resultCard) resultCard.style.display = 'none';
   }
@@ -3185,21 +3195,17 @@ async function renderTeamBidList() {
   const teams = await getTeams();
   const round = auctionState.round;
   const el = document.getElementById('team-bid-list');
-  if (!teams.length) { 
-    if(el) el.innerHTML = '<div style="color:var(--muted);font-size:0.8rem;padding:12px 0;">Chưa có nhóm</div>'; 
-    return; 
-  }
+  if (!teams.length) { if(el) el.innerHTML = '<div style="color:var(--muted);font-size:0.8rem;padding:12px 0;">Chưa có nhóm</div>'; return; }
 
-  // Lấy dữ liệu của vòng đấu hiện tại (đảm bảo không vượt quá mảng)
-  const rd = auctionState.roundData[Math.min(round, auctionState.roundData.length - 1)];
+  const rd = auctionState.roundData[Math.min(round, auctionState.roundData.length-1)];
 
-  // 1. RENDER DANH SÁCH CÁC NHÓM ĐANG CƯỢC (Giữ nguyên logic render của bạn)
   if(el) el.innerHTML = teams.map(t => {
     const bid = auctionState.bids[t.name];
     const answer = auctionState.answers[t.name];
 
-    let bidLine = '⏳ Đang quyết định...';
-    let bidColor = 'var(--gold)';
+    // Xác định trạng thái cược
+    let bidLine = '';
+    let bidColor = 'var(--muted)';
     if (bid) {
       if (bid.passed) {
         bidLine = '⛔ PASS';
@@ -3207,9 +3213,16 @@ async function renderTeamBidList() {
       } else if (bid.amount > 0) {
         bidLine = `💰 Cược ${bid.amount} ĐP`;
         bidColor = 'var(--blue)';
+      } else {
+        bidLine = '⏳ Đang quyết định...';
+        bidColor = 'var(--gold)';
       }
+    } else {
+      bidLine = '⏳ Đang quyết định...';
+      bidColor = 'var(--gold)';
     }
 
+    // Nước đi nộp
     let answerLine = '';
     let answerColor = 'var(--muted)';
     if (auctionState.finalized && auctionState.finalResults && auctionState.finalResults[t.name]) {
@@ -3230,10 +3243,15 @@ async function renderTeamBidList() {
     } else if (bid && !bid.passed) {
       answerLine = '⏳ Chưa nộp nước đi';
       answerColor = 'var(--muted)';
+    } else if (bid && bid.passed) {
+      answerLine = '';
+    } else {
+      answerLine = '';
     }
 
+    // Border color theo trạng thái
     let borderColor = 'var(--border)';
-    if (auctionState.finalized && auctionState.finalResults && auctionState.finalResults[t.name]) {
+    if (auctionState.finalized && auctionState.finalResults[t.name]) {
       const s = auctionState.finalResults[t.name].status;
       borderColor = s === 'correct' ? 'var(--green)' : s === 'wrong' ? 'var(--red)' : 'var(--border)';
     } else if (bid) {
@@ -3265,32 +3283,11 @@ async function renderTeamBidList() {
     </div>`;
   }).join('');
 
-  // 2. CẬP NHẬT THÔNG TIN THẾ CỜ (PHẦN BẠN CẦN THÊM)
   if(rd) {
-    // Cập nhật số vòng
     const roundEl = document.getElementById('auction-round-indicator');
-    if(roundEl) roundEl.textContent = `VÒNG ${round + 1} / ${auctionState.roundData.length}`;
-    
-    // Cập nhật giới hạn cược
+    if(roundEl) roundEl.textContent = `VÒNG ${round+1} / ${auctionState.roundData.length}`;
     const rangeEl = document.getElementById('auction-bet-range');
     if(rangeEl) rangeEl.textContent = rd.range + ' ĐP';
-    
-    // Cập nhật thông tin ván đấu kinh điển
-    const gmNameEl = document.getElementById('auction-gm-name');
-    const contextEl = document.getElementById('auction-context');
-    const posInfoEl = document.getElementById('auction-position-info');
-    
-    if (gmNameEl) gmNameEl.textContent = rd.gm;
-    if (contextEl) contextEl.textContent = rd.ctx;
-    if (posInfoEl) posInfoEl.style.display = 'block';
-
-    // Hiển thị lượt đi (Side Hint)
-    const sideHintEl = document.getElementById('auction-side-hint');
-    if (sideHintEl) {
-      sideHintEl.textContent = "👉 Lượt đi: " + getSideToMoveFromFen(rd.fen);
-    }
-
-    // Vẽ bàn cờ chuẩn Lichess
     renderChessBoard('auction-board-display', rd.fen, 320);
   }
 }
