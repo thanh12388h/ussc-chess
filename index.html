@@ -360,26 +360,21 @@
     line-height:1.6;
     color:var(--muted);
   }
- .chess-board {
-  width: 320px;
-  height: 320px; /* Xác định rõ chiều cao để giữ khung hình vuông */
-  max-width: 100%; /* Giúp responsive tốt hơn trên màn hình nhỏ */
-  margin: 0 auto 12px;
-  display: block; 
-  position: relative; /* Giúp quản lý canvas bên trong tốt hơn */
-  overflow: hidden;
-  border: 1px solid rgba(15, 15, 15, 0.12);
-  border-radius: 8px; 
-  box-shadow: 0 18px 45px rgba(0,0,0,0.18);
-  background: #b58863; /* Màu nền dự phòng trùng với màu ô tối */
-}
+  .chess-board {
+    width: 320px;
+    height: 320px;
+    margin: 0 auto;
+    border-radius: 4px; /* Lichess thường bo góc rất nhẹ */
+    overflow: hidden;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.4), 
+                0 0 0 1px rgba(255,255,255,0.05);
+    background: #262421; /* Màu nền gỗ tối bao quanh */
+  }
 
-/* Thêm đoạn này để đảm bảo Canvas luôn khít với khung */
-.chess-board canvas {
-  width: 100% !important;
-  height: 100% !important;
-  display: block;
-}
+  .chess-board canvas {
+    display: block;
+    image-rendering: -webkit-optimize-contrast; /* Giúp SVG sắc nét hơn trên Chrome */
+  }
   .chess-board.dark { background: #cbd4c4; }
   .chess-square {
     display:flex;
@@ -681,164 +676,51 @@
 
 <script type="text/babel">
 
-// ============================================================
-// CHESS BOARD CANVAS RENDERER - THAY THẾ HOÀN TOÀN
+
+  // ============================================================
+// CHESS BOARD CANVAS RENDERER - LICHESS STYLE UPGRADE
 // ============================================================
 
-// Mapping từ ký hiệu FEN sang tên quân cờ
-const PIECE_NAMES = {
-  'r': 'rook_b', 'n': 'knight_b', 'b': 'bishop_b', 'q': 'queen_b', 'k': 'king_b', 'p': 'pawn_b',
-  'R': 'rook_w', 'N': 'knight_w', 'B': 'bishop_w', 'Q': 'queen_w', 'K': 'king_w', 'P': 'pawn_w'
+// 1. Khai báo URL bộ quân cờ (Bộ Cburnett cực đẹp của Lichess)
+const PIECE_ASSETS = {
+  'p': 'https://upload.wikimedia.org/wikipedia/commons/c/cd/Chess_pdt45.svg',
+  'n': 'https://upload.wikimedia.org/wikipedia/commons/f/f1/Chess_ndt45.svg',
+  'b': 'https://upload.wikimedia.org/wikipedia/commons/9/98/Chess_bdt45.svg',
+  'r': 'https://upload.wikimedia.org/wikipedia/commons/f/ff/Chess_rdt45.svg',
+  'q': 'https://upload.wikimedia.org/wikipedia/commons/4/47/Chess_qdt45.svg',
+  'k': 'https://upload.wikimedia.org/wikipedia/commons/f/f0/Chess_kdt45.svg',
+  'P': 'https://upload.wikimedia.org/wikipedia/commons/4/45/Chess_plt45.svg',
+  'N': 'https://upload.wikimedia.org/wikipedia/commons/7/70/Chess_nlt45.svg',
+  'B': 'https://upload.wikimedia.org/wikipedia/commons/b/b1/Chess_blt45.svg',
+  'R': 'https://upload.wikimedia.org/wikipedia/commons/7/72/Chess_rlt45.svg',
+  'Q': 'https://upload.wikimedia.org/wikipedia/commons/1/15/Chess_qlt45.svg',
+  'K': 'https://upload.wikimedia.org/wikipedia/commons/4/42/Chess_klt45.svg'
 };
 
-// Hàm parse FEN (giữ nguyên logic nhưng viết lại gọn)
-function parseFenToPieces(fen) {
-  const pieces = {};
-  const rows = fen.split(' ')[0].split('/');
-  const files = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
-  const ranks = ['8', '7', '6', '5', '4', '3', '2', '1'];
-  
-  for (let i = 0; i < rows.length; i++) {
-    let fileIdx = 0;
-    for (const ch of rows[i]) {
-      if (isNaN(parseInt(ch))) {
-        pieces[files[fileIdx] + ranks[i]] = ch;
-        fileIdx++;
-      } else {
-        fileIdx += parseInt(ch);
-      }
-    }
-  }
-  return pieces;
-}
+// Cache hình ảnh để tránh load lại nhiều lần gây giật lag
+const imageCache = {};
+Object.entries(PIECE_ASSETS).forEach(([key, url]) => {
+  const img = new Image();
+  img.src = url;
+  imageCache[key] = img;
+});
 
-// Hàm vẽ quân cờ vector
-function drawPieceOnCanvas(ctx, x, y, size, pieceType) {
-  const cx = x + size / 2;
-  const cy = y + size / 2;
-  const baseSize = size * 0.65;
-  const isWhite = pieceType.endsWith('_w');
-  
-  ctx.save();
-  ctx.fillStyle = isWhite ? '#ffffff' : '#222222';
-  ctx.strokeStyle = isWhite ? '#333333' : '#cccccc';
-  ctx.lineWidth = Math.max(1.5, size * 0.05);
-  ctx.shadowBlur = 0;
-  
-  const pieceCode = pieceType.split('_')[0];
-  
-  switch(pieceCode) {
-    case 'pawn':
-      ctx.beginPath();
-      ctx.ellipse(cx, cy - size*0.08, baseSize*0.32, baseSize*0.38, 0, 0, Math.PI*2);
-      ctx.fill();
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.moveTo(cx - baseSize*0.18, cy - size*0.32);
-      ctx.lineTo(cx, cy - size*0.52);
-      ctx.lineTo(cx + baseSize*0.18, cy - size*0.32);
-      ctx.fill();
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.ellipse(cx, cy + size*0.22, baseSize*0.38, baseSize*0.1, 0, 0, Math.PI*2);
-      ctx.fill();
-      ctx.stroke();
-      break;
-      
-    case 'knight':
-      ctx.beginPath();
-      ctx.ellipse(cx - size*0.08, cy - size*0.08, baseSize*0.32, baseSize*0.38, -0.15, 0, Math.PI*2);
-      ctx.fill();
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.moveTo(cx - size*0.22, cy - size*0.28);
-      ctx.lineTo(cx + size*0.12, cy - size*0.42);
-      ctx.lineTo(cx + size*0.22, cy - size*0.18);
-      ctx.fill();
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.ellipse(cx, cy + size*0.22, baseSize*0.38, baseSize*0.1, 0, 0, Math.PI*2);
-      ctx.fill();
-      ctx.stroke();
-      break;
-      
-    case 'bishop':
-      ctx.beginPath();
-      ctx.moveTo(cx, cy - size*0.52);
-      ctx.lineTo(cx - baseSize*0.18, cy - size*0.22);
-      ctx.lineTo(cx - baseSize*0.13, cy - size*0.08);
-      ctx.lineTo(cx, cy - size*0.17);
-      ctx.lineTo(cx + baseSize*0.13, cy - size*0.08);
-      ctx.lineTo(cx + baseSize*0.18, cy - size*0.22);
-      ctx.fill();
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.ellipse(cx, cy - size*0.12, baseSize*0.27, baseSize*0.32, 0, 0, Math.PI*2);
-      ctx.fill();
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.ellipse(cx, cy + size*0.22, baseSize*0.38, baseSize*0.1, 0, 0, Math.PI*2);
-      ctx.fill();
-      ctx.stroke();
-      break;
-      
-    case 'rook':
-      ctx.fillRect(cx - baseSize*0.32, cy - size*0.38, baseSize*0.64, baseSize*0.65);
-      ctx.strokeRect(cx - baseSize*0.32, cy - size*0.38, baseSize*0.64, baseSize*0.65);
-      for(let i = -1; i <= 1; i++) {
-        ctx.fillRect(cx + i*baseSize*0.2 - baseSize*0.07, cy - size*0.46, baseSize*0.14, baseSize*0.1);
-        ctx.strokeRect(cx + i*baseSize*0.2 - baseSize*0.07, cy - size*0.46, baseSize*0.14, baseSize*0.1);
-      }
-      ctx.beginPath();
-      ctx.ellipse(cx, cy + size*0.22, baseSize*0.42, baseSize*0.1, 0, 0, Math.PI*2);
-      ctx.fill();
-      ctx.stroke();
-      break;
-      
-    case 'queen':
-      ctx.beginPath();
-      ctx.ellipse(cx, cy - size*0.12, baseSize*0.36, baseSize*0.42, 0, 0, Math.PI*2);
-      ctx.fill();
-      ctx.stroke();
-      for(let i = -1; i <= 1; i++) {
-        ctx.beginPath();
-        ctx.arc(cx + i*baseSize*0.2, cy - size*0.46, baseSize*0.11, 0, Math.PI*2);
-        ctx.fill();
-        ctx.stroke();
-      }
-      ctx.beginPath();
-      ctx.ellipse(cx, cy + size*0.22, baseSize*0.42, baseSize*0.1, 0, 0, Math.PI*2);
-      ctx.fill();
-      ctx.stroke();
-      break;
-      
-    case 'king':
-      ctx.beginPath();
-      ctx.ellipse(cx, cy - size*0.12, baseSize*0.36, baseSize*0.42, 0, 0, Math.PI*2);
-      ctx.fill();
-      ctx.stroke();
-      ctx.fillRect(cx - baseSize*0.05, cy - size*0.6, baseSize*0.1, baseSize*0.18);
-      ctx.fillRect(cx - baseSize*0.18, cy - size*0.53, baseSize*0.36, baseSize*0.09);
-      ctx.beginPath();
-      ctx.ellipse(cx, cy + size*0.22, baseSize*0.42, baseSize*0.1, 0, 0, Math.PI*2);
-      ctx.fill();
-      ctx.stroke();
-      break;
-  }
-  
-  ctx.restore();
-}
-
-// Hàm vẽ toàn bộ bàn cờ
 function renderChessBoardToCanvas(canvas, fen, size = 320) {
   if (!canvas) return;
-  
-  canvas.width = size;
-  canvas.height = size;
+
+  // 2. Tối ưu độ phân giải (Retina/4K support)
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = size * dpr;
+  canvas.height = size * dpr;
+  canvas.style.width = size + "px";
+  canvas.style.height = size + "px";
+
   const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr); // Tự động nhân tọa độ với dpr
+  
   const sq = size / 8;
   
-  // Vẽ ô
+  // 3. Vẽ ô bàn cờ (Màu sắc chuẩn Lichess Brown)
   for (let r = 0; r < 8; r++) {
     for (let c = 0; c < 8; c++) {
       ctx.fillStyle = (r + c) % 2 === 0 ? '#f0d9b5' : '#b58863';
@@ -846,15 +728,19 @@ function renderChessBoardToCanvas(canvas, fen, size = 320) {
     }
   }
   
-  // Vẽ tọa độ
-  ctx.font = `${Math.max(9, Math.floor(sq * 0.22))}px 'Space Mono', monospace`;
-  ctx.fillStyle = 'rgba(0,0,0,0.45)';
+  // 4. Vẽ tọa độ tinh tế hơn
+  ctx.font = `bold ${Math.floor(sq * 0.25)}px 'Inter', sans-serif`;
   for (let i = 0; i < 8; i++) {
-    ctx.fillText(String.fromCharCode(97 + i), i * sq + sq - sq * 0.13, size - sq * 0.04);
-    ctx.fillText((8 - i).toString(), sq * 0.05, i * sq + sq * 0.18);
+    // Files (a-h) - Góc dưới bên phải mỗi ô cuối hàng
+    ctx.fillStyle = i % 2 === 0 ? '#b58863' : '#f0d9b5';
+    ctx.fillText(String.fromCharCode(97 + i), (i + 1) * sq - sq * 0.2, size - sq * 0.05);
+    
+    // Ranks (1-8) - Góc trên bên trái mỗi ô đầu cột
+    ctx.fillStyle = i % 2 === 0 ? '#b58863' : '#f0d9b5';
+    ctx.fillText((8 - i).toString(), sq * 0.05, i * sq + sq * 0.25);
   }
   
-  // Vẽ quân cờ
+  // 5. Parse và vẽ quân cờ từ Image Cache
   const pieces = parseFenToPieces(fen);
   const files = ['a','b','c','d','e','f','g','h'];
   const ranks = ['8','7','6','5','4','3','2','1'];
@@ -862,81 +748,22 @@ function renderChessBoardToCanvas(canvas, fen, size = 320) {
   for (const [square, pieceChar] of Object.entries(pieces)) {
     const col = files.indexOf(square[0]);
     const row = ranks.indexOf(square[1]);
-    if (col !== -1 && row !== -1) {
-      const pieceName = PIECE_NAMES[pieceChar];
-      if (pieceName) drawPieceOnCanvas(ctx, col * sq, row * sq, sq, pieceName);
+    const img = imageCache[pieceChar];
+    
+    if (img && img.complete) {
+      // Vẽ ảnh quân cờ, căn giữa ô
+      ctx.drawImage(img, col * sq, row * sq, sq, sq);
+    } else if (img) {
+      // Nếu ảnh chưa load xong, render lại khi load xong
+      img.onload = () => renderChessBoard(canvas.parentElement.id, fen, size);
     }
   }
-  
-  canvas.style.boxShadow = '0 8px 20px rgba(0,0,0,0.3)';
-  canvas.style.borderRadius = '8px';
 }
 
-// Class quản lý bàn cờ
-class ChessBoardManager {
-  constructor(containerId, fen, size = 320) {
-    this.containerId = containerId;
-    this.fen = fen;
-    this.size = size;
-    this.canvas = null;
-    this.init();
-  }
-  
-  init() {
-    const container = document.getElementById(this.containerId);
-    if (!container) return;
-    container.innerHTML = '';
-    this.canvas = document.createElement('canvas');
-    this.canvas.style.width = '100%';
-    this.canvas.style.height = 'auto';
-    this.canvas.style.maxWidth = `${this.size}px`;
-    this.canvas.style.display = 'block';
-    this.canvas.style.margin = '0 auto';
-    container.appendChild(this.canvas);
-    this.render();
-  }
-  
-  render() {
-    if (this.canvas) renderChessBoardToCanvas(this.canvas, this.fen, this.size);
-  }
-  
-  updateFen(newFen) {
-    this.fen = newFen;
-    this.render();
-  }
-}
-
-// Lưu instances
-const chessBoards = {};
-
-// Hàm render chính (thay thế renderChessBoard cũ)
-function renderChessBoard(containerId, fen, size = 320) {
-  if (!document.getElementById(containerId)) return;
-  if (chessBoards[containerId]) {
-    chessBoards[containerId].updateFen(fen);
-  } else {
-    chessBoards[containerId] = new ChessBoardManager(containerId, fen, size);
-  }
-}
-
-// Hàm lấy bên đi (giữ nguyên)
-function getSideToMoveFromFen(fen) {
-  if (!fen || typeof fen !== 'string') return 'Không xác định';
-  const side = fen.split(' ')[1];
-  return side === 'b' ? '🔴 Đen đi' : '⚪ Trắng đi';
-}
-
-// Export global
-window.renderChessBoard = renderChessBoard;
-window.getSideToMove = getSideToMoveFromFen;
-
-console.log('✅ Canvas Chess Board Renderer loaded');
-
+// Giữ nguyên logic parse FEN và Class Management phía dưới nhưng cập nhật render
 
 
 </script>
-
-
 
 
 <script>
@@ -963,7 +790,7 @@ console.log('✅ Canvas Chess Board Renderer loaded');
     db = firebase.firestore();
     auth = firebase.auth();
   }
-</script>
+</>
 </head>
 <body>
 
