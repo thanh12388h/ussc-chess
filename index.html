@@ -1893,35 +1893,32 @@ function refreshHomeUI() {
 
 async function getUserTeamName(mssv) {
   if (!mssv) return null;
-  if (currentTest2Player?.mssv === mssv && currentTest2Player.team) {
-    return String(currentTest2Player.team).trim();
-  }
-  if (currentPlayer?.mssv === mssv && currentPlayer.team) {
-    return String(currentPlayer.team).trim();
-  }
-
-  try {
-    const test2Doc = await test2PlayersCollection.doc(mssv).get();
-    if (test2Doc.exists) {
-      const data = test2Doc.data();
-      if (data.team) return String(data.team).trim();
-    }
-  } catch (error) {
-    console.warn('getUserTeamName test2 lookup failed:', error);
-  }
 
   try {
     const teamsSnapshot = await teamsCollection.get();
     for (const doc of teamsSnapshot.docs) {
       const teamData = doc.data();
       const members = Array.isArray(teamData.members) ? teamData.members : [];
-      const found = members.find(member => member.mssv === mssv || member.id === mssv || member.name === mssv);
+      const found = members.find(member => member?.mssv === mssv || member?.id === mssv);
       if (found) {
-        return String(teamData.name || found.team || '').trim();
+        const teamName = String(teamData.name || '').trim();
+        if (!teamName) return null;
+        if (currentTest2Player?.mssv === mssv) currentTest2Player.team = teamName;
+        if (currentPlayer?.mssv === mssv) currentPlayer.team = teamName;
+        return teamName;
       }
     }
   } catch (error) {
     console.warn('getUserTeamName team lookup failed:', error);
+  }
+
+  try {
+    const test2Doc = await test2PlayersCollection.doc(mssv).get();
+    if (test2Doc.exists && test2Doc.data()?.team) {
+      return null;
+    }
+  } catch (error) {
+    console.warn('getUserTeamName test2 lookup failed:', error);
   }
 
   return null;
@@ -1930,7 +1927,30 @@ async function getUserTeamName(mssv) {
 async function resolveCurrentUserTeam() {
   const mssv = getLoggedInMssv();
   if (!mssv) return null;
-  return await getUserTeamName(mssv);
+
+  try {
+    const teamsSnapshot = await teamsCollection.get();
+    for (const doc of teamsSnapshot.docs) {
+      const teamData = doc.data();
+      const members = Array.isArray(teamData.members) ? teamData.members : [];
+      const found = members.find(member => member?.mssv === mssv || member?.id === mssv);
+      if (found) {
+        const teamName = String(teamData.name || '').trim();
+        if (!teamName) return null;
+
+        if (currentTest2Player && currentTest2Player.team !== teamName) {
+          currentTest2Player.team = teamName;
+          await test2PlayersCollection.doc(mssv).set({ team: teamName }, { merge: true }).catch(e => console.warn(e));
+        }
+        if (currentPlayer?.mssv === mssv) currentPlayer.team = teamName;
+        return teamName;
+      }
+    }
+  } catch (error) {
+    console.warn('resolveCurrentUserTeam error:', error);
+  }
+
+  return null;
 }
 
 function getSideToMove(fen) {
@@ -2385,7 +2405,7 @@ function populateRegisterPage() {
   }
 }
 
-function populateRegister2Page() {
+async function populateRegister2Page() {
   if (!isLoggedIn()) return;
   const mssv = getLoggedInMssv();
   const nameEl = document.getElementById('reg2-display-name');
@@ -2393,35 +2413,39 @@ function populateRegister2Page() {
   const err = document.getElementById('reg2-error');
   const teamInputEl = document.getElementById('reg2-team');
   if (err) err.style.display = 'none';
+
   if (currentPlayer) {
     if (nameEl) nameEl.textContent = currentPlayer.name || mssv;
     if (mssvEl) mssvEl.textContent = 'MSSV: ' + (currentPlayer.mssv || mssv);
   } else {
-    playersCollection.doc(mssv).get().then(doc => {
-      if (doc.exists) {
-        const data = doc.data();
-        if (nameEl) nameEl.textContent = data.name || mssv;
-        if (mssvEl) mssvEl.textContent = 'MSSV: ' + mssv;
-      }
-    });
-  }
-  
-  // Check if user has already registered for test2
-  test2PlayersCollection.doc(mssv).get().then(doc => {
+    const doc = await playersCollection.doc(mssv).get();
     if (doc.exists) {
-      const existingData = doc.data();
-      // Pre-fill the team field with previously entered team
-      if (teamInputEl && existingData.team) {
-        teamInputEl.value = existingData.team;
-      }
+      const data = doc.data();
+      if (nameEl) nameEl.textContent = data.name || mssv;
+      if (mssvEl) mssvEl.textContent = 'MSSV: ' + mssv;
     }
-  });
+  }
 
-  // If admin đã ghép nhóm, tự động điền tên nhóm hiện tại
-  if (teamInputEl && !teamInputEl.value) {
-    getUserTeamName(mssv).then(teamName => {
-      if (teamName) teamInputEl.value = teamName;
-    }).catch(() => {});
+  const latestTeamName = await getUserTeamName(mssv);
+
+  if (teamInputEl) {
+    if (latestTeamName) {
+      teamInputEl.value = latestTeamName;
+      try {
+        const test2Doc = await test2PlayersCollection.doc(mssv).get();
+        if (test2Doc.exists) {
+          const oldTeam = test2Doc.data()?.team;
+          if (oldTeam !== latestTeamName) {
+            await test2PlayersCollection.doc(mssv).set({ team: latestTeamName }, { merge: true });
+            if (currentTest2Player?.mssv === mssv) currentTest2Player.team = latestTeamName;
+          }
+        }
+      } catch (e) {
+        console.warn('Failed to update test2_players:', e);
+      }
+    } else if (!teamInputEl.value) {
+      teamInputEl.value = '';
+    }
   }
 }
 
@@ -2514,56 +2538,69 @@ async function handleRegister2() {
   }
 
   const mssv = getLoggedInMssv();
-  const team = document.getElementById('reg2-team').value.trim();
+  let team = document.getElementById('reg2-team').value.trim();
   const err = document.getElementById('reg2-error');
 
-  if (!team) { err.textContent = '⚠ Vui lòng nhập tên nhóm được cấp'; err.style.display='block'; return; }
+  if (!team) {
+    err.textContent = '⚠ Vui lòng nhập tên nhóm được cấp';
+    err.style.display = 'block';
+    return;
+  }
 
-  // Get player data from Firestore
+  const correctTeamName = await getUserTeamName(mssv);
+  if (correctTeamName && correctTeamName !== team) {
+    err.textContent = `⚠ Tên nhóm không khớp! Theo hệ thống, bạn thuộc nhóm "${correctTeamName}". Vui lòng nhập đúng tên nhóm.`;
+    err.style.display = 'block';
+    document.getElementById('reg2-team').value = correctTeamName;
+    return;
+  }
+
   const playerDoc = await playersCollection.doc(mssv).get();
   if (!playerDoc.exists) {
     err.textContent = '⚠ Tài khoản không tồn tại.';
-    err.style.display='block';
+    err.style.display = 'block';
     return;
   }
 
   const playerData = playerDoc.data();
   const name = playerData.name;
 
+  team = correctTeamName || team;
   const teamDoc = await teamsCollection.doc(team).get();
   if (!teamDoc.exists) {
-    err.textContent = '⚠ Tên nhóm không tồn tại! Liên hệ Admin để được cấp nhóm.';
-    err.style.display='block';
+    err.textContent = `⚠ Tên nhóm "${team}" không tồn tại! Liên hệ Admin để được cấp nhóm.`;
+    err.style.display = 'block';
     return;
   }
 
   const teamData = teamDoc.data();
-  const member = teamData.members.find(m => m.mssv === mssv);
+  const members = Array.isArray(teamData.members) ? teamData.members : [];
+  const member = members.find(m => m?.mssv === mssv || m?.id === mssv);
   if (!member) {
-    err.textContent = '⚠ MSSV của bạn không thuộc nhóm này! Kiểm tra lại tên nhóm.';
-    err.style.display='block';
+    err.textContent = `⚠ MSSV ${mssv} không thuộc nhóm "${team}"! Kiểm tra lại tên nhóm.`;
+    err.style.display = 'block';
     return;
   }
 
-  err.style.display='none';
-  
-  // Load existing test2 player data if available, or create new
+  err.style.display = 'none';
+
   const existingPlayerDoc = await test2PlayersCollection.doc(mssv).get();
   if (existingPlayerDoc.exists) {
     currentTest2Player = { ...existingPlayerDoc.data(), name, mssv, team };
+    if (existingPlayerDoc.data()?.team !== team) {
+      await test2PlayersCollection.doc(mssv).set({ team }, { merge: true });
+    }
   } else {
-    currentTest2Player = { name, mssv, team, registeredAt: Date.now(), auctionResults: [] };
+    currentTest2Player = {
+      name,
+      mssv,
+      team,
+      registeredAt: Date.now(),
+      auctionResults: []
+    };
     await test2PlayersCollection.doc(mssv).set(currentTest2Player);
   }
-  
-  // Ensure player's team in Firestore is updated if they rejoin with a different team
-  if (currentTest2Player.team !== team) {
-    currentTest2Player.team = team;
-    await test2PlayersCollection.doc(mssv).set({ team: team }, { merge: true });
-  }
 
-  // Check if there's an ongoing auction. If so, go straight to the auction player page.
-  // Otherwise, go to home and let the admin start the auction.
   const auctionStateSnap = await auctionStateDoc.get();
   const currentAuctionState = auctionStateSnap.exists ? auctionStateSnap.data() : auctionState;
 
@@ -3995,8 +4032,55 @@ async function forceSyncCodeToFirebase() {
     }
 }
 
+async function syncAllTest2PlayersWithTeams() {
+  showLoading(true);
+  try {
+    const teamsSnapshot = await teamsCollection.get();
+    const teamMap = new Map();
+
+    for (const doc of teamsSnapshot.docs) {
+      const teamData = doc.data();
+      const teamName = String(teamData.name || '').trim();
+      const members = Array.isArray(teamData.members) ? teamData.members : [];
+      for (const member of members) {
+        const memberMssv = member?.mssv || member?.id;
+        if (memberMssv && teamName) {
+          teamMap.set(memberMssv, teamName);
+        }
+      }
+    }
+
+    const test2Snapshot = await test2PlayersCollection.get();
+    const batch = db.batch();
+    let updatedCount = 0;
+
+    for (const doc of test2Snapshot.docs) {
+      const mssv = doc.id;
+      const correctTeam = teamMap.get(mssv);
+      const currentTeam = String(doc.data()?.team || '').trim();
+      if (correctTeam && currentTeam !== correctTeam) {
+        batch.update(doc.ref, { team: correctTeam });
+        updatedCount++;
+      }
+    }
+
+    if (updatedCount > 0) {
+      await batch.commit();
+      alert(`✅ Đã đồng bộ ${updatedCount} người chơi!`);
+    } else {
+      alert('✅ Tất cả người chơi đã được đồng bộ!');
+    }
+  } catch (error) {
+    console.error('Sync error:', error);
+    alert('❌ Lỗi khi đồng bộ: ' + error.message);
+  } finally {
+    showLoading(false);
+  }
+}
+
 // Khai báo để HTML nhận diện được hàm
 window.forceSyncCodeToFirebase = forceSyncCodeToFirebase;
+window.syncAllTest2PlayersWithTeams = syncAllTest2PlayersWithTeams;
 
 // Expose global functions
 window.showPage = showPage;
