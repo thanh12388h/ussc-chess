@@ -2815,6 +2815,51 @@ function getTeamSync() {
   return t ? String(t).trim() : null;
 }
 
+async function persistAuctionStatePatch(patch, mergeIfMissing = true) {
+  try {
+    await auctionStateDoc.update(patch);
+  } catch (e) {
+    const msg = String(e?.message || '');
+    const missingDoc = e?.code === 'not-found' || msg.includes('No document to update') || msg.includes('NOT_FOUND');
+    if (mergeIfMissing && missingDoc) {
+      await auctionStateDoc.set(patch, { merge: true });
+      return;
+    }
+    throw e;
+  }
+}
+
+async function verifyBidWrite(team, expectedBid, expectedAnswer, expectedMutationId, maxAttempts = 3) {
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    const snap = await auctionStateDoc.get();
+    const data = snap.data() || {};
+    const savedBid = data.bids?.[team];
+    const savedAnswer = data.answers?.[team];
+    const savedMutation = data.lastMutationIdByTeam?.[team];
+
+    const bidMatch = !!savedBid
+      && savedBid.amount === expectedBid.amount
+      && savedBid.passed === expectedBid.passed;
+
+    const answerMatch = expectedAnswer === ''
+      ? (savedAnswer === '' || savedAnswer == null)
+      : savedAnswer === expectedAnswer;
+
+    const mutationMatch = savedMutation === expectedMutationId;
+
+    if (bidMatch && answerMatch && mutationMatch) {
+      return { ok: true, savedBid, savedAnswer };
+    }
+
+    if (attempt < maxAttempts - 1) {
+      const delay = 120 * (attempt + 1);
+      await new Promise(resolve => setTimeout(resolve, delay));
+    }
+  }
+
+  return { ok: false };
+}
+
 async function placeAuctionBid() {
   if (!auctionState.running) {
     alert('⚠ Phiên đấu giá chưa bắt đầu hoặc đã dừng.');
@@ -2895,39 +2940,51 @@ async function placeAuctionBid() {
       throw new Error(`Số tiền cược không được vượt quá ${maxBet} ĐP (điểm nhóm: ${teamData.totalScore || 0}).`);
     }
 
+    const mutationId = `${team}_${Date.now()}_${Math.random().toString(16).slice(2, 8)}`;
+
     auctionState.bids = auctionState.bids || {};
     auctionState.answers = auctionState.answers || {};
     auctionState.teamReview = auctionState.teamReview || {};
+    auctionState.lastMutationIdByTeam = auctionState.lastMutationIdByTeam || {};
 
-    auctionState.bids[team] = { amount, passed: false };
+    auctionState.bids[team] = { amount, passed: false, mutationId };
     auctionState.answers[team] = answer;
     auctionState.teamReview[team] = { status: 'auto', delta: 0 };
+    auctionState.lastMutationIdByTeam[team] = mutationId;
     wroteOptimistic = true;
 
     renderAuctionPlayerState();
 
-    const updatePayload = {
-      [`bids.${team}`]: { amount, passed: false },
-      [`answers.${team}`]: answer,
-      [`teamReview.${team}`]: { status: 'auto', delta: 0 },
-    };
-
     await Promise.race([
-      auctionStateDoc.update(updatePayload),
+      db.runTransaction(async (tx) => {
+        const snap = await tx.get(auctionStateDoc);
+        if (!snap.exists) {
+          throw new Error('Trạng thái đấu giá chưa sẵn sàng.');
+        }
+
+        const serverState = snap.data() || {};
+        if (!serverState.running) {
+          throw new Error('Phiên đấu giá đã dừng. Vui lòng thử lại vòng sau.');
+        }
+
+        const serverBid = serverState.bids?.[team];
+        if (serverBid && (serverBid.amount > 0 || serverBid.passed)) {
+          throw new Error('Bạn đã đặt cược hoặc pass trong vòng này rồi.');
+        }
+
+        tx.update(auctionStateDoc, {
+          [`bids.${team}`]: { amount, passed: false, mutationId },
+          [`answers.${team}`]: answer,
+          [`teamReview.${team}`]: { status: 'auto', delta: 0 },
+          [`lastMutationIdByTeam.${team}`]: mutationId,
+        });
+      }),
       new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout - Mạng chậm, vui lòng thử lại.')), 10000))
     ]);
 
-    await new Promise(resolve => setTimeout(resolve, 500));
-    const verifyDoc = await auctionStateDoc.get();
-    const savedBid = verifyDoc.data()?.bids?.[team];
-    const savedAnswer = verifyDoc.data()?.answers?.[team];
-
-    if (!savedBid || savedBid.amount !== amount || savedBid.passed !== false) {
+    const verify = await verifyBidWrite(team, { amount, passed: false }, answer, mutationId, 3);
+    if (!verify.ok) {
       throw new Error('Xác nhận thất bại - Dữ liệu chưa được lưu. Vui lòng thử lại hoặc báo Admin.');
-    }
-
-    if (savedAnswer !== answer) {
-      console.warn(`[BID] Answer mismatch: saved=${savedAnswer}, expected=${answer}`);
     }
 
     committed = true;
@@ -2950,6 +3007,7 @@ async function placeAuctionBid() {
         delete auctionState.bids?.[team];
         delete auctionState.answers?.[team];
         delete auctionState.teamReview?.[team];
+        delete auctionState.lastMutationIdByTeam?.[team];
       }
       if (team) {
         teamActionLocked.delete(team);
@@ -3001,33 +3059,50 @@ async function passAuctionBid() {
     lockPlayerUI(true);
     renderAuctionPlayerState();
 
+    const mutationId = `${team}_${Date.now()}_${Math.random().toString(16).slice(2, 8)}`;
+
     auctionState.bids = auctionState.bids || {};
     auctionState.answers = auctionState.answers || {};
     auctionState.teamReview = auctionState.teamReview || {};
+    auctionState.lastMutationIdByTeam = auctionState.lastMutationIdByTeam || {};
 
-    auctionState.bids[team] = { amount: 0, passed: true };
+    auctionState.bids[team] = { amount: 0, passed: true, mutationId };
     auctionState.answers[team] = '';
     auctionState.teamReview[team] = { status: 'pass', delta: 0 };
+    auctionState.lastMutationIdByTeam[team] = mutationId;
     wroteOptimistic = true;
 
     renderAuctionPlayerState();
 
-    const updatePayload = {
-      [`bids.${team}`]: { amount: 0, passed: true },
-      [`answers.${team}`]: '',
-      [`teamReview.${team}`]: { status: 'pass', delta: 0 },
-    };
-
     await Promise.race([
-      auctionStateDoc.update(updatePayload),
+      db.runTransaction(async (tx) => {
+        const snap = await tx.get(auctionStateDoc);
+        if (!snap.exists) {
+          throw new Error('Trạng thái đấu giá chưa sẵn sàng.');
+        }
+
+        const serverState = snap.data() || {};
+        if (!serverState.running) {
+          throw new Error('Phiên đấu giá đã dừng. Vui lòng thử lại vòng sau.');
+        }
+
+        const serverBid = serverState.bids?.[team];
+        if (serverBid && (serverBid.amount > 0 || serverBid.passed)) {
+          throw new Error('Bạn đã đặt cược hoặc pass trong vòng này rồi.');
+        }
+
+        tx.update(auctionStateDoc, {
+          [`bids.${team}`]: { amount: 0, passed: true, mutationId },
+          [`answers.${team}`]: '',
+          [`teamReview.${team}`]: { status: 'pass', delta: 0 },
+          [`lastMutationIdByTeam.${team}`]: mutationId,
+        });
+      }),
       new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout - Mạng chậm, vui lòng thử lại.')), 10000))
     ]);
 
-    await new Promise(resolve => setTimeout(resolve, 500));
-    const verifyDoc = await auctionStateDoc.get();
-    const savedBid = verifyDoc.data()?.bids?.[team];
-
-    if (!savedBid || savedBid.passed !== true || savedBid.amount !== 0) {
+    const verify = await verifyBidWrite(team, { amount: 0, passed: true }, '', mutationId, 3);
+    if (!verify.ok) {
       throw new Error('Xác nhận thất bại - Dữ liệu PASS chưa được lưu.');
     }
 
@@ -3051,6 +3126,7 @@ async function passAuctionBid() {
         delete auctionState.bids?.[team];
         delete auctionState.answers?.[team];
         delete auctionState.teamReview?.[team];
+        delete auctionState.lastMutationIdByTeam?.[team];
       }
       if (team) {
         teamActionLocked.delete(team);
@@ -3217,7 +3293,17 @@ window.nextAuctionRound = async function() {
       auctionState.answers = {};
       auctionState.teamReview = {};
       auctionState.finalResults = {};
-      await auctionStateDoc.set(auctionState);
+      await persistAuctionStatePatch({
+        round: auctionState.round,
+        running: false,
+        review: false,
+        finalized: false,
+        timeLeft: 180,
+        bids: {},
+        answers: {},
+        teamReview: {},
+        finalResults: {}
+      });
       stopAuctionTimer();
       renderTeamBidList();
       updateAuctionStatus();
@@ -3250,7 +3336,16 @@ window.resetAuctionRound = async function() {
     auctionState.answers = {};
     auctionState.teamReview = {};
     auctionState.finalResults = {};
-    await auctionStateDoc.set(auctionState);
+    await persistAuctionStatePatch({
+      running: false,
+      review: false,
+      finalized: false,
+      timeLeft: 180,
+      bids: {},
+      answers: {},
+      teamReview: {},
+      finalResults: {}
+    });
     const el = document.getElementById('auction-timer');
     if(el) { el.textContent='3:00'; el.style.color='var(--gold)'; }
     renderTeamBidList();
@@ -3446,7 +3541,18 @@ async function clearAllData() {
       finalResults: {},
       roundData: auctionState.roundData
     };
-    await auctionStateDoc.set(auctionState);
+    await persistAuctionStatePatch({
+      round: 0,
+      running: false,
+      review: false,
+      finalized: false,
+      timeLeft: 180,
+      bids: {},
+      answers: {},
+      teamReview: {},
+      finalResults: {},
+      roundData: auctionState.roundData
+    });
     
     alert('✅ Đã xóa toàn bộ dữ liệu!');
     adminRefreshPlayers();
@@ -3962,7 +4068,10 @@ async function placeBid(teamName) {
   }
   auctionState.bids[teamName] = { amount: val, passed: false };
   auctionState.teamReview[teamName] = auctionState.teamReview[teamName] || { status:'auto', delta:0 };
-  await auctionStateDoc.set(auctionState, { merge: true });
+  await persistAuctionStatePatch({
+    [`bids.${teamName}`]: { amount: val, passed: false },
+    [`teamReview.${teamName}`]: auctionState.teamReview[teamName]
+  });
   renderTeamBidList();
 }
 
@@ -3970,7 +4079,10 @@ async function passRound(teamName) {
   if (!auctionState.running) { alert('⚠ Phiên đấu giá chưa bắt đầu.'); return; }
   auctionState.bids[teamName] = { amount: 0, passed: true };
   auctionState.teamReview[teamName] = { status:'pass', delta:0 };
-  await auctionStateDoc.set(auctionState, { merge: true });
+  await persistAuctionStatePatch({
+    [`bids.${teamName}`]: { amount: 0, passed: true },
+    [`teamReview.${teamName}`]: { status:'pass', delta:0 }
+  });
   renderTeamBidList();
 }
 
@@ -3981,7 +4093,9 @@ async function updateTeamReview(teamName) {
   const status = statusEl.value;
   const delta = parseInt(deltaEl.value) || 0;
   auctionState.teamReview[teamName] = { status, delta };
-  await auctionStateDoc.set(auctionState, { merge: true });
+  await persistAuctionStatePatch({
+    [`teamReview.${teamName}`]: { status, delta }
+  });
   renderTeamBidList();
 }
 
@@ -4059,7 +4173,11 @@ async function publishAuctionResults() {
 
   auctionState.finalized = true;
   auctionState.review = false;
-  await auctionStateDoc.set(auctionState);
+  await persistAuctionStatePatch({
+    finalized: true,
+    review: false,
+    finalResults: auctionState.finalResults
+  });
   adminRefreshTeams();
   renderTeamBidList();
   updateAdminStats();
@@ -4079,7 +4197,17 @@ async function nextAuctionRound() {
     auctionState.answers = {};
     auctionState.teamReview = {};
     auctionState.finalResults = {};
-    await auctionStateDoc.set(auctionState);
+    await persistAuctionStatePatch({
+      round: auctionState.round,
+      running: false,
+      review: false,
+      finalized: false,
+      timeLeft: 180,
+      bids: {},
+      answers: {},
+      teamReview: {},
+      finalResults: {}
+    });
     stopAuctionTimer();
     renderTeamBidList();
     updateAuctionStatus();
@@ -4101,7 +4229,13 @@ function startAuctionTimer() {
   auctionState.finalResults = {};
   if (auctionState.timerInterval) clearInterval(auctionState.timerInterval);
   auctionState.timerInterval = null;
-  auctionStateDoc.set(auctionState);
+  persistAuctionStatePatch({
+    running: true,
+    review: false,
+    finalized: false,
+    timeLeft: 180,
+    finalResults: {}
+  });
   renderTeamBidList();
   updateAuctionStatus();
 
@@ -4115,12 +4249,12 @@ function startAuctionTimer() {
     const s = auctionState.timeLeft%60;
     const el = document.getElementById('auction-timer');
     if(el) { el.textContent = `${m}:${String(s).padStart(2,'0')}`; el.style.color = auctionState.timeLeft<=30?'var(--red)':'var(--gold)'; }
-    await auctionStateDoc.set(auctionState);
+    await persistAuctionStatePatch({ timeLeft: auctionState.timeLeft }, false);
     if (auctionState.timeLeft <= 0) {
       clearInterval(auctionTimerInterval);
       auctionState.running = false;
       auctionState.review = true;
-      await auctionStateDoc.set(auctionState);
+      await persistAuctionStatePatch({ running: false, review: true, timeLeft: 0 }, false);
       updateAuctionStatus();
       renderTeamBidList();
       alert('⏰ Hết giờ thảo luận! Hãy chốt kết quả.');
@@ -4133,7 +4267,7 @@ function stopAuctionTimer() {
   auctionTimerInterval = null;
   auctionState.running = false;
   auctionState.review = true;
-  auctionStateDoc.set(auctionState);
+  persistAuctionStatePatch({ running: false, review: true }, false);
   updateAuctionStatus();
   renderTeamBidList();
 }
@@ -4148,7 +4282,16 @@ async function resetAuctionRound() {
   auctionState.answers = {};
   auctionState.teamReview = {};
   auctionState.finalResults = {};
-  await auctionStateDoc.set(auctionState);
+  await persistAuctionStatePatch({
+    running: false,
+    review: false,
+    finalized: false,
+    timeLeft: 180,
+    bids: {},
+    answers: {},
+    teamReview: {},
+    finalResults: {}
+  });
   const el = document.getElementById('auction-timer');
   if(el) { el.textContent='3:00'; el.style.color='var(--gold)'; }
   renderTeamBidList();
@@ -4321,7 +4464,17 @@ async function restartTournament() {
       teamReview: {},
       finalResults: {},
     };
-    await auctionStateDoc.set(auctionState);
+    await persistAuctionStatePatch({
+      round: 0,
+      running: false,
+      review: false,
+      finalized: false,
+      timeLeft: 180,
+      bids: {},
+      answers: {},
+      teamReview: {},
+      finalResults: {}
+    });
     // Unpublish tournament result
     await db.collection('settings').doc('tournament_result').set({ published: false });
     // Reset test2 player auction results
@@ -4367,8 +4520,10 @@ async function forceSyncCodeToFirebase() {
         statusEl.style.color = "var(--gold)";
         statusEl.textContent = "Đang đẩy dữ liệu...";
 
-        // Đồng bộ dữ liệu quan trọng
-        await db.collection('settings').doc('auction_state').set(auctionState);
+        // Đồng bộ kịch bản FEN (tránh ghi đè bids/answers đang chạy)
+        await db.collection('settings').doc('auction_state').set({
+          roundData: auctionState.roundData
+        }, { merge: true });
         
         // (Tùy chọn) Nếu bạn muốn đồng bộ cả trạng thái Quiz
         // await db.collection('settings').doc('quiz').set({ quizOpen: cachedQuizOpen });
